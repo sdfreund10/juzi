@@ -38,15 +38,14 @@ Confirmed:
 - Product name is **juzi**. The local folder name `chengzi` is not the brand.
 - Vocabulary is traditional Chinese, with tone-marked pinyin and a basic English gloss.
 - Practice modes: `pinyin_to_en`, `en_to_zh`, `zh_to_en`.
-- Per-user, per-word, per-mode progress fields exist (`easy_streak`, `easy_count`, `due_on`, `last_practiced_at`); scheduling rules are not yet implemented.
+- Per-user, per-word progress (`UserWord`: `easy_streak`, `easy_count`, `due_on`, `last_practiced_at`). Quiz mode for a session card is chosen randomly among modes unlocked from `easy_count` milestones.
+- Scheduling: hard resets streak and sets due today; easy advances streak/count and schedules by the streak ladder in settings. Session = due words in the chosen category × difficulty bands, one card per word.
 - Accounts are admin-provisioned (email + password, stored lowercase). No public registration.
 - App chrome stays in English. Chinese appears as study content, not UI language.
 - This is a web product, not a native iOS or Android app.
 
 Undecided (do not invent):
 
-- Exact due-date / ease scheduling algorithm.
-- How decks are chosen or combined in a session.
 - Whether a learner can see or edit their own progress beyond practicing.
 
 ## Brand Commitments
@@ -64,7 +63,7 @@ Undecided (do not invent):
 ## Product Principles
 
 1. Practice is directional: each session is one of the three word quizzes, not a generic card flip.
-2. Due words come back; progress is per learner, per word, per direction.
+2. Due words come back; progress is per learner, per word.
 3. The household is closed: accounts and content are operator-provisioned.
 4. Study material is traditional Chinese with pinyin and a basic English gloss — nothing else is required to start.
 5. Ship the practice loop before adjacent study types (sentences, characters, audio).

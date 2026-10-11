@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from datetime import date
 
 from django.contrib.auth.models import AbstractBaseUser
+from django.db.models import Q
 from django.utils import timezone
 
 from api.models import Category, UserWord, Word
+from api.services.scheduling import unlocked_modes_for_row
 
 DIFFICULTY_LEVELS: dict[str, frozenset[int]] = {
     "beginner": frozenset({1, 2, 3}),
@@ -16,9 +18,6 @@ DIFFICULTY_LEVELS: dict[str, frozenset[int]] = {
 }
 
 KNOWN_DIFFICULTIES = frozenset(DIFFICULTY_LEVELS)
-# Due filtering stays on pinyin→en until per-mode unlock lands; display mode is random for now.
-DUE_MODE = UserWord.Mode.PINYIN_TO_EN
-SESSION_MODES = tuple(UserWord.Mode)
 
 
 class EmptySessionError(Exception):
@@ -61,8 +60,9 @@ def _prompt_for_mode(word: Word, mode: str) -> str:
     return word.chinese
 
 
-def _card_for_word(word: Word) -> SessionCard:
-    mode = random.choice(SESSION_MODES)
+def _card_from_user_word(user_word: UserWord) -> SessionCard:
+    word = user_word.word
+    mode = random.choice(unlocked_modes_for_row(user_word))
     return SessionCard(
         word_id=word.id,
         mode=mode,
@@ -73,12 +73,34 @@ def _card_for_word(word: Word) -> SessionCard:
     )
 
 
+def _ensure_user_words(
+    *,
+    user: AbstractBaseUser,
+    words: list[Word],
+    as_of: date,
+) -> None:
+    if not words:
+        return
+    existing_ids = set(
+        UserWord.objects.filter(
+            user=user,
+            word_id__in=[word.id for word in words],
+        ).values_list("word_id", flat=True)
+    )
+    missing = [
+        UserWord(user=user, word=word, due_on=as_of)
+        for word in words
+        if word.id not in existing_ids
+    ]
+    if missing:
+        UserWord.objects.bulk_create(missing)
+
+
 def build_session(
     *,
     user: AbstractBaseUser,
     category: Category,
     difficulties: list[str],
-    today: date | None = None,
 ) -> StudySession:
     """Build a shuffled queue for due words in category × difficulty bands."""
     levels = hsk_levels_for_difficulties(difficulties)
@@ -91,22 +113,19 @@ def build_session(
     if not words:
         raise EmptySessionError()
 
+    today = timezone.localdate()
+    _ensure_user_words(user=user, words=words, as_of=today)
+
     word_ids = [word.id for word in words]
-    as_of = today if today is not None else timezone.localdate()
-    # Only rows with a future due date are not due; missing / null / today-or-past count as due.
-    not_due_ids = set(
-        UserWord.objects.filter(
-            user=user,
-            mode=DUE_MODE,
-            word_id__in=word_ids,
-            due_on__gt=as_of,
-        ).values_list("word_id", flat=True)
+    due_rows = list(
+        UserWord.objects.filter(user=user, word_id__in=word_ids)
+        .filter(Q(due_on__isnull=True) | Q(due_on__lte=today))
+        .select_related("word")
     )
-    due_words = [word for word in words if word.id not in not_due_ids]
-    if not due_words:
+    if not due_rows:
         raise EmptySessionError()
 
-    cards = [_card_for_word(word) for word in due_words]
+    cards = [_card_from_user_word(row) for row in due_rows]
     random.shuffle(cards)
     return StudySession(
         category=category,

@@ -62,7 +62,7 @@ class WordCategory(models.Model):
 
 
 class UserWord(models.Model):
-    """Per-user practice state for a word in a specific quiz mode."""
+    """Per-user practice state for a vocabulary word (all quiz modes share one row)."""
 
     class Mode(models.TextChoices):
         PINYIN_TO_EN = "pinyin_to_en", "Pinyin to English"
@@ -79,7 +79,6 @@ class UserWord(models.Model):
         on_delete=models.CASCADE,
         related_name="user_words",
     )
-    mode = models.CharField(max_length=20, choices=Mode.choices)
     easy_streak = models.PositiveIntegerField(default=0)
     easy_count = models.PositiveIntegerField(default=0)
     due_on = models.DateField(null=True, blank=True)
@@ -88,8 +87,8 @@ class UserWord(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "word", "mode"],
-                name="uniq_userword_user_word_mode",
+                fields=["user", "word"],
+                name="uniq_userword_user_word",
             ),
         ]
         indexes = [
@@ -97,4 +96,4 @@ class UserWord(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.user_id}:{self.word_id}:{self.mode}"
+        return f"{self.user_id}:{self.word_id}"

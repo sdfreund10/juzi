@@ -6,9 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from api.models import Category
-from api.serializers import CreateSessionSerializer
+from api.models import Category, UserWord
+from api.serializers import CreateSessionSerializer, RateCardSerializer
 from api.services.categories import list_topic_categories
+from api.services.scheduling import UserWordNotFoundError, rate_user_word
 from api.services.sessions import EmptySessionError, StudySession, build_session
 
 
@@ -41,6 +42,25 @@ def _session_payload(session: StudySession) -> dict:
             }
             for card in session.cards
         ],
+    }
+
+
+def _user_word_payload(user_word: UserWord, *, unlocked_modes: tuple[str, ...], newly_unlocked_modes: tuple[str, ...]) -> dict:
+    return {
+        "user_word": {
+            "id": user_word.id,
+            "word_id": user_word.word_id,
+            "easy_streak": user_word.easy_streak,
+            "easy_count": user_word.easy_count,
+            "due_on": user_word.due_on.isoformat() if user_word.due_on else None,
+            "last_practiced_at": (
+                user_word.last_practiced_at.isoformat()
+                if user_word.last_practiced_at
+                else None
+            ),
+        },
+        "unlocked_modes": list(unlocked_modes),
+        "newly_unlocked_modes": list(newly_unlocked_modes),
     }
 
 
@@ -80,3 +100,31 @@ def create_session(request: Request) -> Response:
         )
 
     return Response(_session_payload(session), status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def rate_card(request: Request) -> Response:
+    serializer = RateCardSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        result = rate_user_word(
+            user=request.user,
+            word_id=serializer.validated_data["word_id"],
+            grade=serializer.validated_data["grade"],
+        )
+    except UserWordNotFoundError:
+        return Response(
+            {"detail": "Word progress not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    return Response(
+        _user_word_payload(
+            result.user_word,
+            unlocked_modes=result.unlocked_modes,
+            newly_unlocked_modes=result.newly_unlocked_modes,
+        ),
+        status=status.HTTP_200_OK,
+    )

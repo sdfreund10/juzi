@@ -165,6 +165,18 @@ WHITENOISE_INDEX_FILE = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# Scheduling — streak ladder and mode unlock threshold (word-level easy_count)
+
+# Maps minimum easy_streak → days until next due. Highest matching floor wins.
+SCHEDULING_STREAK_INTERVALS: list[tuple[int, int]] = [
+    (1, 1),
+    (3, 2),
+    (6, 7),
+    (12, 14),
+]
+SCHEDULING_UNLOCK_EASY_COUNT = 5
+
+
 # Django REST Framework
 
 REST_FRAMEWORK = {
