@@ -45,7 +45,9 @@ def _session_payload(session: StudySession) -> dict:
     }
 
 
-def _user_word_payload(user_word: UserWord, *, unlocked_modes: tuple[str, ...], newly_unlocked_modes: tuple[str, ...]) -> dict:
+def _user_word_payload(
+    user_word: UserWord, *, unlocked_modes: tuple[str, ...], newly_unlocked_modes: tuple[str, ...]
+) -> dict:
     return {
         "user_word": {
             "id": user_word.id,
@@ -54,9 +56,7 @@ def _user_word_payload(user_word: UserWord, *, unlocked_modes: tuple[str, ...], 
             "easy_count": user_word.easy_count,
             "due_on": user_word.due_on.isoformat() if user_word.due_on else None,
             "last_practiced_at": (
-                user_word.last_practiced_at.isoformat()
-                if user_word.last_practiced_at
-                else None
+                user_word.last_practiced_at.isoformat() if user_word.last_practiced_at else None
             ),
         },
         "unlocked_modes": list(unlocked_modes),

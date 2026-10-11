@@ -43,7 +43,5 @@ class RateCardSerializer(serializers.Serializer):
     def validate_grade(self, value: str) -> str:
         grade = value.strip().lower()
         if grade not in KNOWN_GRADES:
-            raise serializers.ValidationError(
-                f"Unknown grade: {value}. Expected hard or easy."
-            )
+            raise serializers.ValidationError(f"Unknown grade: {value}. Expected hard or easy.")
         return grade

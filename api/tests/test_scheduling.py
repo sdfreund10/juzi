@@ -102,9 +102,9 @@ def words(topic: Category) -> dict[str, Word]:
     ("streak", "expected_days"),
     [
         (1, 1),
-        (2, 3),
+        (3, 3),
         (4, 3),
-        (5, 7),
+        (6, 7),
         (9, 7),
         (10, 14),
         (20, 14),
