@@ -47,9 +47,7 @@ def _session_payload(session: StudySession) -> dict:
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def categories(request: Request) -> Response:
-    return Response(
-        [_category_list_payload(category) for category in list_topic_categories()]
-    )
+    return Response([_category_list_payload(category) for category in list_topic_categories()])
 
 
 @api_view(["POST"])
