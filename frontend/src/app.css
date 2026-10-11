@@ -144,6 +144,8 @@ body {
 .cta:focus-visible,
 .difficulty-option:focus-visible,
 .btn:focus-visible,
+.grade-zone:focus-visible,
+.reveal-target:focus-visible,
 .login-form input:focus {
   outline: 2px solid var(--pin);
   outline-offset: 2px;
@@ -328,6 +330,19 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  user-select: none;
+}
+
+.study-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.reveal-target {
+  cursor: pointer;
 }
 
 .study-top {
@@ -355,17 +370,63 @@ body {
   white-space: nowrap;
 }
 
-.prompt {
-  text-align: center;
+.prompt-block {
   margin: 56px 0 0;
   padding: 0 16px;
+  text-align: center;
+}
+
+.prompt-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35em 0.55em;
+}
+
+.prompt-line {
+  margin: 0;
   font-size: 44px;
   font-weight: 500;
   line-height: 1.15;
 }
 
-.prompt.pinyin {
-  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+.prompt-line.pinyin {
+  font-size: 28px;
+  color: var(--pin);
+  font-weight: 500;
+}
+
+.prompt-line.english {
+  font-size: 40px;
+}
+
+.answer {
+  text-align: center;
+  margin-top: 12px;
+  padding: 0 16px;
+}
+
+.answer-line {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.answer-line + .answer-line {
+  margin-top: 4px;
+}
+
+.answer-line.pinyin {
+  font-size: 22px;
+  color: var(--pin);
+  font-weight: 400;
+}
+
+.answer-line.chinese {
+  font-size: 40px;
+  line-height: 1.2;
 }
 
 .hint {
@@ -378,6 +439,84 @@ body {
   text-align: center;
   font-size: 12px;
   color: var(--muted);
+}
+
+.grade-zones {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  display: flex;
+}
+
+.grade-zone {
+  appearance: none;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.grade-zone small {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.grade-zone.hard {
+  background: var(--hard);
+  color: var(--hard-ink);
+}
+
+.grade-zone.easy {
+  background: var(--easy);
+  color: var(--easy-ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grade-zones {
+    animation: grade-zones-in 0.15s ease-out;
+  }
+
+  @keyframes grade-zones-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+.caught-up {
+  text-align: center;
+  padding: 150px 28px 0;
+}
+
+.caught-up-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.caught-up-copy {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.caught-up .picker-actions {
+  display: flex;
+  justify-content: center;
 }
 
 /* Login */
