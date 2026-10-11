@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="juzi">
+  <!-- Brand fill edge-to-edge; fruit stays inside the center safe zone -->
+  <rect width="512" height="512" fill="#e85d04"/>
+  <circle cx="256" cy="268" r="148" fill="#d94f00"/>
+  <circle cx="200" cy="220" r="48" fill="#ffba08" opacity="0.45"/>
+  <path d="M256 118v42" fill="none" stroke="#2d6a1f" stroke-width="16" stroke-linecap="round"/>
+  <ellipse cx="288" cy="126" rx="36" ry="20" fill="#3d8b2e" transform="rotate(28 288 126)"/>
+</svg>

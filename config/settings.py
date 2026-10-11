@@ -2,11 +2,15 @@
 Django settings for config project.
 """
 
+import mimetypes
 import os
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
+
+# Ensure WhiteNoise/Django serve the web app manifest with the correct type.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -157,6 +161,10 @@ STORAGES = {
 # Serve Vite build output (index.html, /assets/*, favicon, etc.) at site root.
 WHITENOISE_ROOT = FRONTEND_DIST
 WHITENOISE_INDEX_FILE = True
+WHITENOISE_MIMETYPES = {".webmanifest": "application/manifest+json"}
+# Keep sw.js / manifest near-fresh so clients pick up shell updates; hashed
+# /assets/* still match WhiteNoise's immutable filename heuristic.
+WHITENOISE_MAX_AGE = 60
 
 
 # Default primary key field type

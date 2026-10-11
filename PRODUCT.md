@@ -24,12 +24,12 @@ juzi is opinionated directional practice for traditional Chinese vocabulary — 
 
 ## Operating Context
 
-- Learners use the same-origin web app (Django serving the Preact SPA) in a browser. Session cookies are the auth mechanism.
+- Learners use the same-origin web app (Django serving the Preact SPA) in a browser or as an installable online-first PWA. Session cookies are the auth mechanism. Study requires network; the service worker only caches the app shell.
 - The operator creates study accounts and vocabulary in Django admin. There is no in-app registration or password reset.
 - Study content is entered as words (traditional Chinese, tone-marked pinyin, basic English gloss) grouped into named decks (`Category` in the data model).
 - Production is a single DigitalOcean droplet (documented around `juzi.sfreund.tools`). Local work is Django on `:8000` with optional Vite HMR on `:5173`.
 
-Current shipped slice: sign-in and an authenticated decks shell. Deck listing, quizzes, and scheduling logic are modeled or placeholdered and not yet in the learner UI.
+Current shipped slice: sign-in, deck picker, study loop, and installable PWA shell.
 
 ## Capabilities and Constraints
 
@@ -55,8 +55,8 @@ Undecided (do not invent):
 
 ## Evidence on Hand
 
-- Favicon only: `frontend/public/favicon.svg` (orange circle, `aria-label="juzi"`).
-- No vocabulary seed, fixtures, audio, logos beyond the favicon, testimonials, or case studies.
+- Brand mark: tangerine icon — `frontend/public/favicon.svg`, PWA PNGs (`pwa-192.png`, `pwa-512.png`, `pwa-maskable-512.png`, `apple-touch-icon.png`), and `site.webmanifest`.
+- No vocabulary seed, fixtures, audio, testimonials, or case studies.
 - Test-only sample word: 字 / zì / character (`api/tests/test_auth.py`).
 - Future work must not fabricate decks, learner quotes, usage stats, or curriculum claims.
 
