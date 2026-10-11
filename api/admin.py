@@ -90,13 +90,11 @@ class UserWordAdmin(admin.ModelAdmin):
     list_display = (
         "user",
         "word",
-        "mode",
         "easy_streak",
         "easy_count",
         "due_on",
         "last_practiced_at",
     )
-    list_filter = ("mode",)
     list_select_related = ("user", "word")
     autocomplete_fields = ("user", "word")
     search_fields = (

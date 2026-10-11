@@ -158,3 +158,12 @@ export function createSession(
     body: { category_id: categoryId, difficulties },
   })
 }
+
+export type CardGrade = 'hard' | 'easy'
+
+export function rateCard(wordId: number, grade: CardGrade): Promise<void> {
+  return apiRequest('/api/ratings/', {
+    method: 'POST',
+    body: { word_id: wordId, grade },
+  })
+}

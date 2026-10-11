@@ -223,7 +223,6 @@ def test_create_session_excludes_future_due_words(
     UserWord.objects.create(
         user=user,
         word=seeded_words["beginner"],
-        mode=UserWord.Mode.PINYIN_TO_EN,
         due_on=tomorrow,
     )
     headers = _login(client, user)

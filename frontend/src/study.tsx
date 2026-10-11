@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import {
   ApiError,
   createSession,
+  rateCard,
   type Difficulty,
   type StudyCard,
   type StudySession,
@@ -68,8 +69,12 @@ function StudySessionView({ session }: { session: StudySession }) {
   const revealLines = cardReveal(card)
 
   function onGrade(hard: boolean) {
+    const wordId = card.word_id
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
+    void rateCard(wordId, hard ? 'hard' : 'easy').catch((err: unknown) => {
+      console.error('Failed to persist card grade', err)
+    })
   }
 
   return (

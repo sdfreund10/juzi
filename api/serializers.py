@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from api.services.scheduling import KNOWN_GRADES
 from api.services.sessions import KNOWN_DIFFICULTIES
 
 
@@ -33,3 +34,14 @@ class CreateSessionSerializer(serializers.Serializer):
                 seen.add(item)
                 ordered.append(item)
         return ordered
+
+
+class RateCardSerializer(serializers.Serializer):
+    word_id = serializers.IntegerField(min_value=1)
+    grade = serializers.CharField()
+
+    def validate_grade(self, value: str) -> str:
+        grade = value.strip().lower()
+        if grade not in KNOWN_GRADES:
+            raise serializers.ValidationError(f"Unknown grade: {value}. Expected hard or easy.")
+        return grade

@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .auth_views import login_view, logout_view, me
-from .study_views import categories, create_session
+from .study_views import categories, create_session, rate_card
 from .views import health
 
 urlpatterns = [
@@ -11,4 +11,5 @@ urlpatterns = [
     path("auth/logout/", logout_view, name="auth-logout"),
     path("categories/", categories, name="categories"),
     path("sessions/", create_session, name="sessions-create"),
+    path("ratings/", rate_card, name="ratings-create"),
 ]

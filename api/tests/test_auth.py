@@ -172,8 +172,8 @@ def test_userword_fk_isolates_rows_per_user(user: User, other_user: User) -> Non
         pinyin="zì",
         english_basic="character",
     )
-    UserWord.objects.create(user=user, word=word, mode=UserWord.Mode.ZH_TO_EN)
-    UserWord.objects.create(user=other_user, word=word, mode=UserWord.Mode.ZH_TO_EN)
+    UserWord.objects.create(user=user, word=word)
+    UserWord.objects.create(user=other_user, word=word)
 
     assert UserWord.objects.filter(user=user).count() == 1
     assert UserWord.objects.filter(user=other_user).count() == 1
