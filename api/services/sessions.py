@@ -16,7 +16,9 @@ DIFFICULTY_LEVELS: dict[str, frozenset[int]] = {
 }
 
 KNOWN_DIFFICULTIES = frozenset(DIFFICULTY_LEVELS)
-SESSION_MODE = UserWord.Mode.PINYIN_TO_EN
+# Due filtering stays on pinyin→en until per-mode unlock lands; display mode is random for now.
+DUE_MODE = UserWord.Mode.PINYIN_TO_EN
+SESSION_MODES = tuple(UserWord.Mode)
 
 
 class EmptySessionError(Exception):
@@ -51,11 +53,20 @@ def hsk_levels_for_difficulties(difficulties: list[str]) -> set[int]:
     return levels
 
 
+def _prompt_for_mode(word: Word, mode: str) -> str:
+    if mode == UserWord.Mode.PINYIN_TO_EN:
+        return word.pinyin
+    if mode == UserWord.Mode.EN_TO_ZH:
+        return word.english_basic
+    return word.chinese
+
+
 def _card_for_word(word: Word) -> SessionCard:
+    mode = random.choice(SESSION_MODES)
     return SessionCard(
         word_id=word.id,
-        mode=SESSION_MODE,
-        prompt=word.pinyin,
+        mode=mode,
+        prompt=_prompt_for_mode(word, mode),
         answer_chinese=word.chinese,
         answer_pinyin=word.pinyin,
         answer_english=word.english_basic,
@@ -69,7 +80,7 @@ def build_session(
     difficulties: list[str],
     today: date | None = None,
 ) -> StudySession:
-    """Build a shuffled pinyin→en queue for due words in category × difficulty bands."""
+    """Build a shuffled queue for due words in category × difficulty bands."""
     levels = hsk_levels_for_difficulties(difficulties)
     words = list(
         Word.objects.filter(
@@ -86,7 +97,7 @@ def build_session(
     not_due_ids = set(
         UserWord.objects.filter(
             user=user,
-            mode=SESSION_MODE,
+            mode=DUE_MODE,
             word_id__in=word_ids,
             due_on__gt=as_of,
         ).values_list("word_id", flat=True)

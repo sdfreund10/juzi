@@ -60,7 +60,7 @@ function StudySessionView({ session }: { session: StudySession }) {
 
   const card = queue[0]
   if (!card) {
-    return <CaughtUp onBack={() => navigate({ name: 'home' })} />
+    return <CaughtUp />
   }
 
   const modeLabel = MODE_LABELS[card.mode] ?? card.mode
@@ -216,7 +216,7 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   }
 
   if (empty) {
-    return <CaughtUp onBack={() => navigate({ name: 'home' })} />
+    return <CaughtUp />
   }
 
   if (error) {

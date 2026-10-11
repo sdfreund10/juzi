@@ -184,7 +184,7 @@ def test_create_session_filters_difficulty_bands(
     assert body["total"] == 2
     word_ids = {card["word_id"] for card in body["cards"]}
     assert word_ids == {seeded_words["beginner"].id, seeded_words["advanced"].id}
-    assert all(card["mode"] == UserWord.Mode.PINYIN_TO_EN for card in body["cards"])
+    assert all(card["mode"] in UserWord.Mode.values for card in body["cards"])
     assert all(card["prompt"] for card in body["cards"])
 
 

@@ -38,16 +38,22 @@ describe('cardPrompt / cardReveal', () => {
     ])
   })
 
-  it('lvl 3 zh_to_en: characters only, reveal English', () => {
+  it('lvl 3 zh_to_en: characters only, reveal English + pinyin', () => {
     const c = card({ mode: 'zh_to_en' })
     expect(cardPrompt(c)).toEqual([{ text: '圖書館', kind: 'chinese' }])
-    expect(cardReveal(c)).toEqual([{ text: 'library', kind: 'english' }])
+    expect(cardReveal(c)).toEqual([
+      { text: 'túshūguǎn', kind: 'pinyin' },
+      { text: 'library', kind: 'english' },
+    ])
   })
 })
 
 describe('gradeHard / gradeEasy', () => {
-  it('moves the front card to the end on hard', () => {
-    expect(gradeHard(['a', 'b', 'c'])).toEqual(['b', 'c', 'a'])
+  it('reinserts the front card after a ~20% buffer on hard', () => {
+    const queue = ['a', 'b', 'c', 'd', 'e', 'f']
+    // rest length 5 → minIndex 1; span 5 → indices 1..5
+    expect(gradeHard(queue, () => 0)).toEqual(['b', 'a', 'c', 'd', 'e', 'f'])
+    expect(gradeHard(queue, () => 0.99)).toEqual(['b', 'c', 'd', 'e', 'f', 'a'])
   })
 
   it('removes the front card on easy', () => {

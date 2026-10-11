@@ -31,16 +31,25 @@ export function cardReveal(card: StudyCard): DisplayLine[] {
         { text: card.answer_pinyin, kind: 'pinyin' },
       ]
     case 'zh_to_en':
-      return [{ text: card.answer_english, kind: 'english' }]
+      return [
+        { text: card.answer_pinyin, kind: 'pinyin' },
+        { text: card.answer_english, kind: 'english' },
+      ]
     default:
       return [{ text: card.answer_english, kind: 'english' }]
   }
 }
 
-export function gradeHard<T>(queue: T[]): T[] {
+export function gradeHard<T>(
+  queue: T[],
+  random: () => number = Math.random,
+): T[] {
   if (queue.length === 0) return queue
   const [current, ...rest] = queue
-  return [...rest, current]
+  if (rest.length === 0) return [current]
+  const minIndex = Math.ceil(rest.length * 0.2)
+  const index = minIndex + Math.floor(random() * (rest.length + 1 - minIndex))
+  return [...rest.slice(0, index), current, ...rest.slice(index)]
 }
 
 export function gradeEasy<T>(queue: T[]): T[] {
