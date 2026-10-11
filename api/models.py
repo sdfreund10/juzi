@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db import models
-from django.utils.functional import cached_property
 
 
 class Word(models.Model):
@@ -41,25 +40,6 @@ class Category(models.Model):
 
     def __str__(self) -> str:
         return self.name
-
-    # card counts are preloaded in index views
-    @cached_property
-    def beginner_count(self) -> int:
-        if not hasattr(self, "_beginner_count"):
-            self._beginner_count = self.words.filter(hsk_level__in=(1, 2, 3)).count()
-        return self._beginner_count
-
-    @cached_property
-    def intermediate_count(self) -> int:
-        if not hasattr(self, "_intermediate_count"):
-            self._intermediate_count = self.words.filter(hsk_level__in=(4, 5)).count()
-        return self._intermediate_count
-
-    @cached_property
-    def advanced_count(self) -> int:
-        if not hasattr(self, "_advanced_count"):
-            self._advanced_count = self.words.filter(hsk_level__gte=6).count()
-        return self._advanced_count
 
 
 class WordCategory(models.Model):

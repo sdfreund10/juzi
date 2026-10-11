@@ -235,5 +235,8 @@ __marimo__/
 
 .cursor
 
+# Local agent scratchpad (not checked in; fold durable lessons into AGENTS.md)
+.agents/Memories.md
+
 # Local HSK download + card build output (not checked in)
 data/hsk/

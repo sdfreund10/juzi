@@ -1,13 +1,6 @@
-import { useState } from 'preact/hooks'
-import { ApiError, logout, type AuthUser, type Category } from './api'
-
-type DecksProps = {
-  user: AuthUser
-  categories: Category[] | null
-  categoriesError: string | null
-  onSignedOut: () => void
-  onSelectCategory: (category: Category) => void
-}
+import type { Category } from './api'
+import { navigate } from './routes'
+import { useCategories } from './useCategories'
 
 function wordCount(category: Category): number {
   return (
@@ -17,52 +10,26 @@ function wordCount(category: Category): number {
   )
 }
 
-export function Decks({
-  user,
-  categories,
-  categoriesError,
-  onSignedOut,
-  onSelectCategory,
-}: DecksProps) {
-  const [error, setError] = useState<string | null>(null)
-  const [signingOut, setSigningOut] = useState(false)
-
-  async function onSignOut() {
-    setError(null)
-    setSigningOut(true)
-    try {
-      await logout()
-      onSignedOut()
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        onSignedOut()
-        return
-      }
-      setError('Could not sign out. Try again.')
-    } finally {
-      setSigningOut(false)
-    }
-  }
-
-  const banner = error ?? categoriesError
+export function Decks() {
+  const { categories, error } = useCategories()
 
   return (
-    <main class="app">
+    <>
       <h1 class="title">Choose a deck</h1>
 
-      {banner && (
+      {error && (
         <p class="error" role="alert" aria-live="polite">
-          {banner}
+          {error}
         </p>
       )}
 
-      {categories === null ? (
+      {categories === null && !error ? (
         <p class="subtitle">Loading decks…</p>
-      ) : categories.length === 0 ? (
+      ) : categories !== null && categories.length === 0 ? (
         <section class="panel">
           <p>No decks yet. Seed vocabulary to get started.</p>
         </section>
-      ) : (
+      ) : categories !== null ? (
         <section class="list" aria-label="Decks">
           {categories.map((category) => {
             const total = wordCount(category)
@@ -71,7 +38,9 @@ export function Decks({
                 key={category.id}
                 type="button"
                 class="row"
-                onClick={() => onSelectCategory(category)}
+                onClick={() =>
+                  navigate({ name: 'session-new', categoryId: category.id })
+                }
               >
                 <span class="g">
                   <b>{category.name}</b>
@@ -83,19 +52,7 @@ export function Decks({
             )
           })}
         </section>
-      )}
-
-      <footer class="session-footer">
-        <span class="session-email">{user.email}</span>
-        <button
-          type="button"
-          class="link-btn"
-          onClick={onSignOut}
-          disabled={signingOut}
-        >
-          {signingOut ? 'Signing out…' : 'Sign out'}
-        </button>
-      </footer>
-    </main>
+      ) : null}
+    </>
   )
 }

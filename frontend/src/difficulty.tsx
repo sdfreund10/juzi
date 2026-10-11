@@ -1,5 +1,7 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import type { Category, Difficulty } from './api'
+import { navigate } from './routes'
+import { useCategory } from './useCategories'
 
 const OPTIONS: { id: Difficulty; label: string; detail: string; countKey: keyof Category }[] = [
   { id: 'beginner', label: 'Beginner', detail: 'HSK 1–3', countKey: 'beginner_count' },
@@ -13,13 +15,44 @@ const OPTIONS: { id: Difficulty; label: string; detail: string; countKey: keyof 
 ]
 
 type DifficultyProps = {
-  category: Category
-  onBack: () => void
-  onContinue: (difficulties: Difficulty[]) => void
+  categoryId: number
 }
 
-export function DifficultyStep({ category, onBack, onContinue }: DifficultyProps) {
+export function DifficultyStep({ categoryId }: DifficultyProps) {
+  const { category, ready, missing, error } = useCategory(categoryId)
   const [selected, setSelected] = useState<Set<Difficulty>>(() => new Set())
+
+  useEffect(() => {
+    if (missing) {
+      navigate({ name: 'home' }, { replace: true })
+    }
+  }, [missing])
+
+  if (error) {
+    return (
+      <>
+        <div class="title-bar">
+          <h1 class="title">Difficulty</h1>
+          <button
+            type="button"
+            class="text-btn"
+            onClick={() => navigate({ name: 'home' })}
+          >
+            Back
+          </button>
+        </div>
+        <p class="error" role="alert" aria-live="polite">
+          {error}
+        </p>
+      </>
+    )
+  }
+
+  if (!ready || !category) {
+    return <p class="building-status">Loading…</p>
+  }
+
+  const selectedCategory = category
 
   function toggle(id: Difficulty) {
     setSelected((prev) => {
@@ -35,23 +68,31 @@ export function DifficultyStep({ category, onBack, onContinue }: DifficultyProps
 
   function submit() {
     if (selected.size === 0) return
-    onContinue(OPTIONS.map((opt) => opt.id).filter((id) => selected.has(id)))
+    navigate({
+      name: 'session',
+      categoryId: selectedCategory.id,
+      difficulties: OPTIONS.map((opt) => opt.id).filter((id) => selected.has(id)),
+    })
   }
 
   return (
-    <main class="app">
+    <>
       <div class="title-bar">
         <h1 class="title">Difficulty</h1>
-        <button type="button" class="text-btn" onClick={onBack}>
+        <button
+          type="button"
+          class="text-btn"
+          onClick={() => navigate({ name: 'home' })}
+        >
           Back
         </button>
       </div>
-      <p class="subtitle">{category.name}</p>
+      <p class="subtitle">{selectedCategory.name}</p>
 
       <section class="difficulty-grid" aria-label="Difficulty levels">
         {OPTIONS.map((opt) => {
           const isSelected = selected.has(opt.id)
-          const count = category[opt.countKey]
+          const count = selectedCategory[opt.countKey]
           return (
             <button
               key={opt.id}
@@ -82,6 +123,6 @@ export function DifficultyStep({ category, onBack, onContinue }: DifficultyProps
           Build deck
         </button>
       </div>
-    </main>
+    </>
   )
 }
