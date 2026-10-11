@@ -93,7 +93,15 @@ def _ensure_user_words(
         if word.id not in existing_ids
     ]
     if missing:
-        UserWord.objects.bulk_create(missing)
+        # Concurrent session builds can race on the same missing words; ignore
+        # uniqueness conflicts so both requests still succeed.
+        UserWord.objects.bulk_create(missing, ignore_conflicts=True)
+
+
+def _overdue_shuffle_key(row: UserWord, *, today: date) -> float:
+    """Bias older-due words toward the front while keeping order random-ish."""
+    due = row.due_on if row.due_on is not None else date.min
+    return -((today - due).days + random.random() * 7)
 
 
 def build_session(
@@ -102,7 +110,11 @@ def build_session(
     category: Category,
     difficulties: list[str],
 ) -> StudySession:
-    """Build a shuffled queue for due words in category × difficulty bands."""
+    """Build a shuffled queue for due words in category × difficulty bands.
+
+    TODO: add custom Sentry tracing around session build; this path can get
+    expensive as vocabulary and user_word rows grow.
+    """
     levels = hsk_levels_for_difficulties(difficulties)
     words = list(
         Word.objects.filter(
@@ -125,8 +137,8 @@ def build_session(
     if not due_rows:
         raise EmptySessionError()
 
+    due_rows.sort(key=lambda row: _overdue_shuffle_key(row, today=today))
     cards = [_card_from_user_word(row) for row in due_rows]
-    random.shuffle(cards)
     return StudySession(
         category=category,
         difficulties=list(difficulties),

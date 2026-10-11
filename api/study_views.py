@@ -105,6 +105,7 @@ def create_session(request: Request) -> Response:
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def rate_card(request: Request) -> Response:
+    # TODO: add custom Sentry tracing once available; this path must stay fast.
     serializer = RateCardSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 

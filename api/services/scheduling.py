@@ -67,10 +67,9 @@ def rate_user_word(
 
     with transaction.atomic():
         try:
-            row = (
-                UserWord.objects.select_for_update()
-                .select_related("word")
-                .get(user=user, word_id=word_id)
+            row = UserWord.objects.select_for_update().get(
+                user=user,
+                word_id=word_id,
             )
         except UserWord.DoesNotExist as exc:
             raise UserWordNotFoundError from exc

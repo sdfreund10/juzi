@@ -168,11 +168,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Scheduling — streak ladder and mode unlock threshold (word-level easy_count)
 
 # Maps minimum easy_streak → days until next due. Highest matching floor wins.
+# Ladder: 1 → 1 day, 3–5 → 3 days, 6–9 → 7 days, 10+ → 14 days.
 SCHEDULING_STREAK_INTERVALS: list[tuple[int, int]] = [
     (1, 1),
-    (3, 2),
+    (3, 3),
     (6, 7),
-    (12, 14),
+    (10, 14),
 ]
 SCHEDULING_UNLOCK_EASY_COUNT = 5
 
