@@ -37,3 +37,4 @@ The most important quality of written code is simplicity and readability. Write 
 
 - Keep changes focused and explain meaningful tradeoffs.
 - Verify changes with relevant checks when the task calls for verification; report what was run and any limits.
+- Read and maintain [`.agents/Memories.md`](.agents/Memories.md) (local only, gitignored) for project-specific lessons from code reviews and pushback on prior work.

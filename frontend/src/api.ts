@@ -118,3 +118,43 @@ export function login(email: string, password: string): Promise<AuthUser> {
 export function logout(): Promise<AuthState> {
   return apiRequest<AuthState>('/api/auth/logout/', { method: 'POST' })
 }
+
+export type Category = {
+  id: number
+  name: string
+  beginner_count: number
+  intermediate_count: number
+  advanced_count: number
+}
+
+export type Difficulty = 'beginner' | 'intermediate' | 'advanced'
+
+export type StudyCard = {
+  word_id: number
+  mode: string
+  prompt: string
+  answer_chinese: string
+  answer_pinyin: string
+  answer_english: string
+}
+
+export type StudySession = {
+  category: { id: number; name: string }
+  difficulties: Difficulty[]
+  total: number
+  cards: StudyCard[]
+}
+
+export function fetchCategories(): Promise<Category[]> {
+  return apiRequest<Category[]>('/api/categories/')
+}
+
+export function createSession(
+  categoryId: number,
+  difficulties: Difficulty[],
+): Promise<StudySession> {
+  return apiRequest<StudySession>('/api/sessions/', {
+    method: 'POST',
+    body: { category_id: categoryId, difficulties },
+  })
+}

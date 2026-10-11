@@ -1,76 +1,59 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect } from 'preact/hooks'
 import './app.css'
-import { ApiError, fetchMe, type AuthUser } from './api'
+import { AuthProvider, useAuth } from './auth'
 import { Decks } from './decks'
+import { DifficultyStep } from './difficulty'
 import { Login } from './login'
-
-type Screen = 'loading' | 'login' | 'decks'
+import { navigate } from './routes'
+import { SessionFooter } from './sessionFooter'
+import { Study } from './study'
+import { useRoute } from './useRoute'
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>('loading')
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [bootError, setBootError] = useState<string | null>(null)
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  )
+}
+
+function AppShell() {
+  const { ready, user, bootError, setUser } = useAuth()
+  const route = useRoute()
 
   useEffect(() => {
-    let cancelled = false
-
-    async function boot() {
-      try {
-        const me = await fetchMe()
-        if (cancelled) return
-        if (me.authenticated) {
-          setUser(me)
-          setScreen('decks')
-        } else {
-          setUser(null)
-          setScreen('login')
-        }
-      } catch (err) {
-        if (cancelled) return
-        if (err instanceof ApiError && err.status === 401) {
-          setUser(null)
-          setScreen('login')
-          return
-        }
-        setBootError(err instanceof Error ? err.message : 'Failed to reach API')
-        setScreen('login')
-      }
+    if (ready && !user && route.name !== 'home') {
+      navigate({ name: 'home' }, { replace: true })
     }
+  }, [ready, user, route.name])
 
-    void boot()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (screen === 'loading') {
+  if (!ready) {
     return (
       <main class="app">
-        <p class="muted">Loading…</p>
+        <p class="building-status">Loading…</p>
       </main>
     )
   }
 
-  if (screen === 'login' || !user) {
-    return (
-      <Login
-        bootError={bootError}
-        onSuccess={(next) => {
-          setBootError(null)
-          setUser(next)
-          setScreen('decks')
-        }}
-      />
-    )
+  if (!user) {
+    return <Login bootError={bootError} onSuccess={setUser} />
   }
 
+  const isStudy = route.name === 'session'
+
   return (
-    <Decks
-      user={user}
-      onSignedOut={() => {
-        setUser(null)
-        setScreen('login')
-      }}
-    />
+    <main class={`app${isStudy ? ' study' : ''}`}>
+      {route.name === 'session-new' ? (
+        <DifficultyStep categoryId={route.categoryId} />
+      ) : isStudy ? (
+        <Study
+          categoryId={route.categoryId}
+          difficulties={route.difficulties}
+        />
+      ) : (
+        <Decks />
+      )}
+      <SessionFooter />
+    </main>
   )
 }
