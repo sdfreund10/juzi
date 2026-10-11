@@ -23,13 +23,13 @@ export function Decks() {
         </p>
       )}
 
-      {categories === null ? (
+      {categories === null && !error ? (
         <p class="subtitle">Loading decks…</p>
-      ) : categories.length === 0 ? (
+      ) : categories !== null && categories.length === 0 ? (
         <section class="panel">
           <p>No decks yet. Seed vocabulary to get started.</p>
         </section>
-      ) : (
+      ) : categories !== null ? (
         <section class="list" aria-label="Decks">
           {categories.map((category) => {
             const total = wordCount(category)
@@ -52,7 +52,7 @@ export function Decks() {
             )
           })}
         </section>
-      )}
+      ) : null}
     </>
   )
 }

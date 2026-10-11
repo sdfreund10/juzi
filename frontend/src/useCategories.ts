@@ -33,7 +33,7 @@ export function useCategories(): {
           return
         }
         setError('Could not load decks. Try again.')
-        setCategories([])
+        setCategories(null)
       }
     }
 
@@ -58,7 +58,7 @@ export function useCategory(categoryId: number): {
   return {
     category,
     ready,
-    missing: ready && category === null,
+    missing: ready && error === null && category === null,
     error,
   }
 }

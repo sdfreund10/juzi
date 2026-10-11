@@ -20,7 +20,7 @@ type StudyProps = {
 }
 
 export function Study({ categoryId, difficulties }: StudyProps) {
-  const { category, ready, missing } = useCategory(categoryId)
+  const { category, ready, missing, error: categoryError } = useCategory(categoryId)
   const [session, setSession] = useState<StudySession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [empty, setEmpty] = useState(false)
@@ -34,7 +34,7 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   }, [missing])
 
   useEffect(() => {
-    if (!ready || missing) return
+    if (!ready || missing || categoryError) return
 
     let cancelled = false
     setSession(null)
@@ -72,7 +72,27 @@ export function Study({ categoryId, difficulties }: StudyProps) {
     return () => {
       cancelled = true
     }
-  }, [ready, missing, categoryId, difficultyKey])
+  }, [ready, missing, categoryError, categoryId, difficultyKey])
+
+  if (categoryError) {
+    return (
+      <>
+        <h1 class="title">Building deck</h1>
+        <p class="error" role="alert" aria-live="polite">
+          {categoryError}
+        </p>
+        <div class="picker-actions">
+          <button
+            type="button"
+            class="cta"
+            onClick={() => navigate({ name: 'home' }, { replace: true })}
+          >
+            Back
+          </button>
+        </div>
+      </>
+    )
+  }
 
   if (!ready || !category) {
     return <p class="building-status">Loading…</p>

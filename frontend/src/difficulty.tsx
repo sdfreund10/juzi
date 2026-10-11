@@ -28,6 +28,26 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
     }
   }, [missing])
 
+  if (error) {
+    return (
+      <>
+        <div class="title-bar">
+          <h1 class="title">Difficulty</h1>
+          <button
+            type="button"
+            class="text-btn"
+            onClick={() => navigate({ name: 'home' })}
+          >
+            Back
+          </button>
+        </div>
+        <p class="error" role="alert" aria-live="polite">
+          {error}
+        </p>
+      </>
+    )
+  }
+
   if (!ready || !category) {
     return <p class="building-status">Loading…</p>
   }
@@ -68,12 +88,6 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
         </button>
       </div>
       <p class="subtitle">{selectedCategory.name}</p>
-
-      {error && (
-        <p class="error" role="alert" aria-live="polite">
-          {error}
-        </p>
-      )}
 
       <section class="difficulty-grid" aria-label="Difficulty levels">
         {OPTIONS.map((opt) => {

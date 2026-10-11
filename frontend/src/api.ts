@@ -121,10 +121,10 @@ export function logout(): Promise<AuthState> {
 
 export type Category = {
   id: number
-  name: string,
-  beginner_count: number,
-  intermediate_count: number,
-  advanced_count: number,
+  name: string
+  beginner_count: number
+  intermediate_count: number
+  advanced_count: number
 }
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced'
@@ -139,7 +139,7 @@ export type StudyCard = {
 }
 
 export type StudySession = {
-  category: Category
+  category: { id: number; name: string }
   difficulties: Difficulty[]
   total: number
   cards: StudyCard[]

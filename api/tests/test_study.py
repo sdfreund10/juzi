@@ -116,7 +116,37 @@ def test_categories_lists_topic_decks_only(
     response = client.get(reverse("categories"), **headers)
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == [{"id": topic_food.id, "name": topic_food.name}]
+    assert response.json() == [
+        {
+            "id": topic_food.id,
+            "name": topic_food.name,
+            "beginner_count": 0,
+            "intermediate_count": 0,
+            "advanced_count": 0,
+        }
+    ]
+
+
+@pytest.mark.django_db
+def test_categories_includes_difficulty_counts(
+    client: APIClient,
+    user: User,
+    topic_food: Category,
+    seeded_words: dict[str, Word],
+) -> None:
+    headers = _login(client, user)
+    response = client.get(reverse("categories"), **headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == [
+        {
+            "id": topic_food.id,
+            "name": topic_food.name,
+            "beginner_count": 1,
+            "intermediate_count": 1,
+            "advanced_count": 1,
+        }
+    ]
 
 
 @pytest.mark.django_db
@@ -149,6 +179,7 @@ def test_create_session_filters_difficulty_bands(
     assert response.status_code == status.HTTP_200_OK
     body = response.json()
     assert body["category"] == {"id": topic_food.id, "name": topic_food.name}
+    assert "beginner_count" not in body["category"]
     assert body["difficulties"] == ["beginner", "advanced"]
     assert body["total"] == 2
     word_ids = {card["word_id"] for card in body["cards"]}

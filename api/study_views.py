@@ -12,20 +12,22 @@ from api.services.categories import list_topic_categories
 from api.services.sessions import EmptySessionError, StudySession, build_session
 
 
-def _category_payload(category: Category) -> dict:
-    # Counts are annotated on list queries; session create may pass a bare Category.
+def _category_list_payload(category: Category) -> dict:
     return {
         "id": category.id,
         "name": category.name,
-        "beginner_count": getattr(category, "beginner_count", 0),
-        "intermediate_count": getattr(category, "intermediate_count", 0),
-        "advanced_count": getattr(category, "advanced_count", 0),
+        "beginner_count": category.beginner_count,
+        "intermediate_count": category.intermediate_count,
+        "advanced_count": category.advanced_count,
     }
 
 
 def _session_payload(session: StudySession) -> dict:
     return {
-        "category": _category_payload(session.category),
+        "category": {
+            "id": session.category.id,
+            "name": session.category.name,
+        },
         "difficulties": session.difficulties,
         "total": session.total,
         "cards": [
@@ -45,7 +47,9 @@ def _session_payload(session: StudySession) -> dict:
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def categories(request: Request) -> Response:
-    return Response([_category_payload(category) for category in list_topic_categories()])
+    return Response(
+        [_category_list_payload(category) for category in list_topic_categories()]
+    )
 
 
 @api_view(["POST"])
