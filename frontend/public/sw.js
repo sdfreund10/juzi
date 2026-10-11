@@ -58,12 +58,15 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone()
-          caches.open(CACHE).then((cache) => cache.put('/', copy))
+.then(async (response) => {
+          if (response.ok) {
+            const copy = response.clone()
+            const cache = await caches.open(CACHE)
+            await cache.put('/', copy)
+          }
           return response
         })
-        .catch(() => caches.match('/') || caches.match('/index.html')),
+.catch(async () => (await caches.match('/')) ?? caches.match('/index.html')),
     )
     return
   }
