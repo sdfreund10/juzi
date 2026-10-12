@@ -73,7 +73,7 @@ function AppShell() {
       ) : (
         <Decks />
       )}
-      <SessionFooter />
+      {route.name === 'home' && <SessionFooter />}
     </main>
   )
 }
