@@ -35,7 +35,7 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
       <>
         <Brand />
         <div class="title-bar">
-          <h1 class="title">Difficulty</h1>
+          <h1 class="title">Select Difficulty Level(s)</h1>
           <button
             type="button"
             class="text-btn"
@@ -88,7 +88,7 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
     <>
       <Brand />
       <div class="title-bar">
-        <h1 class="title">Difficulty</h1>
+        <h1 class="title">Select Difficulty Level(s)</h1>
         <button
           type="button"
           class="text-btn"
