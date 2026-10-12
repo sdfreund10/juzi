@@ -1,3 +1,4 @@
+import { reportApiFailure } from './monitoring'
 import { showToast } from './toast'
 
 export class ApiError extends Error {
@@ -93,6 +94,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
     })
   } catch (err) {
+    reportApiFailure(method, path)
     if (options.toast) {
       showToast('Could not reach the server.')
     }
@@ -100,6 +102,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
+    if (response.status >= 500) reportApiFailure(method, path, response.status)
     let message = 'Request failed'
     try {
       message = messageFromErrorBody(await response.json())
