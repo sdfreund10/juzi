@@ -53,7 +53,7 @@ function AppShell() {
       ) : (
         <Decks />
       )}
-      {!isStudy && <SessionFooter />}
+      {route.name === 'home' && <SessionFooter />}
     </main>
   )
 }
