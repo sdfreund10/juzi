@@ -1,3 +1,5 @@
+import { showToast } from './toast'
+
 export class ApiError extends Error {
   status: number
 
@@ -28,6 +30,8 @@ export type AuthState =
 type RequestOptions = {
   method?: string
   body?: unknown
+  /** Skip the failure toast when the caller shows its own error UI. */
+  quiet?: boolean
 }
 
 function messageFromErrorBody(data: unknown): string {
@@ -80,12 +84,20 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
-  const response = await fetch(path, {
-    method,
-    headers,
-    credentials: 'same-origin',
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  })
+  let response: Response
+  try {
+    response = await fetch(path, {
+      method,
+      headers,
+      credentials: 'same-origin',
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    })
+  } catch (err) {
+    if (!options.quiet) {
+      showToast('Could not reach the server.')
+    }
+    throw err
+  }
 
   if (!response.ok) {
     let message = 'Request failed'
@@ -93,6 +105,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       message = messageFromErrorBody(await response.json())
     } catch {
       // ignore non-JSON error bodies
+    }
+    if (!options.quiet) {
+      showToast(message)
     }
     throw new ApiError(response.status, message)
   }
@@ -105,13 +120,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 }
 
 export function fetchMe(): Promise<AuthState> {
-  return apiRequest<AuthState>('/api/auth/me/')
+  return apiRequest<AuthState>('/api/auth/me/', { quiet: true })
 }
 
 export function login(email: string, password: string): Promise<AuthUser> {
   return apiRequest<AuthUser>('/api/auth/login/', {
     method: 'POST',
     body: { email, password },
+    quiet: true,
   })
 }
 
@@ -149,7 +165,7 @@ export type StudySession = {
 }
 
 export function fetchCategories(): Promise<Category[]> {
-  return apiRequest<Category[]>('/api/categories/')
+  return apiRequest<Category[]>('/api/categories/', { quiet: true })
 }
 
 export function createSession(
@@ -159,6 +175,7 @@ export function createSession(
   return apiRequest<StudySession>('/api/sessions/', {
     method: 'POST',
     body: { category_id: categoryId, difficulties },
+    quiet: true,
   })
 }
 

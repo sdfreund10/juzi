@@ -7,12 +7,14 @@ import { Login } from './login'
 import { navigate } from './routes'
 import { SessionFooter } from './sessionFooter'
 import { Study } from './study'
+import { ToastHost } from './toast'
 import { useRoute } from './useRoute'
 
 export function App() {
   return (
     <AuthProvider>
       <AppShell />
+      <ToastHost />
     </AuthProvider>
   )
 }
