@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { Category, Difficulty } from './api'
+import { Brand } from './brand'
 import { navigate } from './routes'
 import { useCategory } from './useCategories'
 
@@ -31,6 +32,7 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
   if (error) {
     return (
       <>
+        <Brand />
         <div class="title-bar">
           <h1 class="title">Difficulty</h1>
           <button
@@ -49,7 +51,12 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
   }
 
   if (!ready || !category) {
-    return <p class="building-status">Loading…</p>
+    return (
+      <>
+        <Brand />
+        <p class="building-status">Loading…</p>
+      </>
+    )
   }
 
   const selectedCategory = category
@@ -77,6 +84,7 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
 
   return (
     <>
+      <Brand />
       <div class="title-bar">
         <h1 class="title">Difficulty</h1>
         <button
@@ -120,7 +128,7 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
           disabled={selected.size === 0}
           onClick={submit}
         >
-          Build deck
+          Start studying
         </button>
       </div>
     </>

@@ -60,7 +60,7 @@ Pytest uses `juzi_test` (`POSTGRES_TEST_DB`) and reuses it across runs (`--reuse
 cd frontend && npm install && npm run build && cd ..
 uv sync
 uv run python manage.py migrate
-uv run python manage.py createsuperuser   # once: use the same email for Username and Email
+make seed-users   # DEBUG only: admin@test.com / ux-agent@test.com
 uv run python manage.py collectstatic --noinput
 uv run python manage.py runserver
 ```
@@ -113,8 +113,8 @@ uv run scripts/prep_cards.py
 make seed-hsk
 # If the local file is unavailable, set HSK_PREPPED_CARDS_URL in .env
 
-# Create a superuser, then add the second account in /admin/
-uv run python manage.py createsuperuser
+# Seed local login accounts (DEBUG only; refuses when DJANGO_DEBUG is false)
+make seed-users
 
 # Rebuild SPA after frontend changes (for Django-served mode)
 cd frontend && npm run build

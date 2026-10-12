@@ -1,3 +1,5 @@
+import { showToast } from './toast'
+
 export class ApiError extends Error {
   status: number
 
@@ -28,6 +30,8 @@ export type AuthState =
 type RequestOptions = {
   method?: string
   body?: unknown
+  /** Toast the failure. Off by default so screens with their own error UI stay silent. */
+  toast?: boolean
 }
 
 function messageFromErrorBody(data: unknown): string {
@@ -80,12 +84,20 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
-  const response = await fetch(path, {
-    method,
-    headers,
-    credentials: 'same-origin',
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  })
+  let response: Response
+  try {
+    response = await fetch(path, {
+      method,
+      headers,
+      credentials: 'same-origin',
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    })
+  } catch (err) {
+    if (options.toast) {
+      showToast('Could not reach the server.')
+    }
+    throw err
+  }
 
   if (!response.ok) {
     let message = 'Request failed'
@@ -93,6 +105,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       message = messageFromErrorBody(await response.json())
     } catch {
       // ignore non-JSON error bodies
+    }
+    if (options.toast) {
+      showToast(message)
     }
     throw new ApiError(response.status, message)
   }
@@ -102,6 +117,19 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   return (await response.json()) as T
+}
+
+export async function checkHealth(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/health/', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    return response.ok
+  } catch {
+    return false
+  }
 }
 
 export function fetchMe(): Promise<AuthState> {
@@ -169,5 +197,6 @@ export function rateCard(wordId: number, grade: CardGrade): Promise<void> {
   return apiRequest('/api/ratings/', {
     method: 'POST',
     body: { word_id: wordId, grade },
+    toast: true,
   })
 }

@@ -1,4 +1,4 @@
-.PHONY: makemigrations migrate showmigrations seed-hsk
+.PHONY: makemigrations migrate showmigrations seed-hsk seed-users
 
 makemigrations:
 	uv run python manage.py makemigrations
@@ -11,3 +11,6 @@ showmigrations:
 
 seed-hsk:
 	uv run python manage.py seed_hsk
+
+seed-users:
+	uv run python manage.py seed_users

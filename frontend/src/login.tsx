@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { ApiError, login, type AuthUser } from './api'
+import { Brand } from './brand'
 
 type LoginProps = {
   onSuccess: (user: AuthUser) => void
@@ -39,6 +40,7 @@ export function Login({ onSuccess, bootError = null }: LoginProps) {
 
   return (
     <main class="app">
+      <Brand />
       <h1 class="title">Sign in</h1>
       <p class="lede">Sign in to continue studying.</p>
 
