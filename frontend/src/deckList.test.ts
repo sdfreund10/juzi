@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import type { Category } from './api'
-import { decksMatchingName, recentlyPracticedDecks } from './deckList'
+import {
+  PINNED_DECK_IDS_KEY,
+  decksMatchingName,
+  pinnedDecks,
+  readPinnedDeckIds,
+  recentlyPracticedDecks,
+  togglePinnedDeckId,
+  writePinnedDeckIds,
+} from './deckList'
 
 function category(
   partial: Partial<Category> & Pick<Category, 'id' | 'name'>,
@@ -13,6 +21,10 @@ function category(
     ...partial,
   }
 }
+
+afterEach(() => {
+  localStorage.removeItem(PINNED_DECK_IDS_KEY)
+})
 
 describe('decksMatchingName', () => {
   const decks = [
@@ -63,5 +75,36 @@ describe('recentlyPracticedDecks', () => {
     expect(recentlyPracticedDecks(decks).map((row) => row.id)).toEqual([
       3, 5, 4,
     ])
+  })
+})
+
+describe('pinned deck ids', () => {
+  it('reads and writes integer ids from storage', () => {
+    writePinnedDeckIds([3, 1])
+    expect(readPinnedDeckIds()).toEqual([3, 1])
+  })
+
+  it('ignores invalid storage values', () => {
+    localStorage.setItem(PINNED_DECK_IDS_KEY, 'not-json')
+    expect(readPinnedDeckIds()).toEqual([])
+    localStorage.setItem(
+      PINNED_DECK_IDS_KEY,
+      JSON.stringify(['1', 2.5, null, 4]),
+    )
+    expect(readPinnedDeckIds()).toEqual([4])
+  })
+
+  it('toggles an id in the pinned list', () => {
+    expect(togglePinnedDeckId([1, 2], 3)).toEqual([1, 2, 3])
+    expect(togglePinnedDeckId([1, 2, 3], 2)).toEqual([1, 3])
+  })
+
+  it('resolves pinned decks in pin order', () => {
+    const decks = [
+      category({ id: 1, name: 'Food' }),
+      category({ id: 2, name: 'Travel' }),
+      category({ id: 3, name: 'Numbers' }),
+    ]
+    expect(pinnedDecks(decks, [3, 9, 1]).map((row) => row.id)).toEqual([3, 1])
   })
 })
