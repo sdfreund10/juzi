@@ -1,7 +1,7 @@
 :root {
   --bg: #fafaf7;
   --ink: #1e2024;
-  --muted: #7a808a;
+  --muted: #666b73;
   --chip: #eef0f2;
   --line: #d9dce0;
   --pin: #2f5bd9;
@@ -100,7 +100,7 @@ body {
   gap: 6px 10px;
   font-size: 11px;
   line-height: 1.3;
-  color: #a0a5ad;
+  color: var(--muted);
 }
 
 .session-email {
