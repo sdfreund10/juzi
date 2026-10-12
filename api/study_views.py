@@ -74,10 +74,7 @@ def _user_word_payload(
 @permission_classes([IsAuthenticated])
 def categories(request: Request) -> Response:
     return Response(
-        [
-            _category_list_payload(category)
-            for category in list_topic_categories(user=request.user)
-        ]
+        [_category_list_payload(category) for category in list_topic_categories(user=request.user)]
     )
 
 
