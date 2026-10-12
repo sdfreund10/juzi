@@ -15,6 +15,7 @@ export function Decks() {
 
   return (
     <>
+      <p class="brand">juzi</p>
       <h1 class="title">Choose a deck</h1>
 
       {error && (

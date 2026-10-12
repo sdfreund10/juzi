@@ -39,6 +39,7 @@ export function Login({ onSuccess, bootError = null }: LoginProps) {
 
   return (
     <main class="app">
+      <p class="brand">juzi</p>
       <h1 class="title">Sign in</h1>
       <p class="lede">Sign in to continue studying.</p>
 
