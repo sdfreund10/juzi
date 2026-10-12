@@ -43,20 +43,42 @@
           border-right: 0;
         }
       }
+      #app .masthead {
+        padding: 12px 20px;
+        border-bottom: 1px solid #d9dce0;
+      }
       #app .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
         margin: 0;
-        padding: 20px 20px 0;
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 600;
-        line-height: 1.2;
-        letter-spacing: 0.01em;
+        line-height: 1;
+        letter-spacing: -0.01em;
+      }
+      #app .brand-mark {
+        display: block;
+        width: 28px;
+        height: 28px;
       }
     </style>
   </head>
   <body>
     <div id="app">
       <main class="app">
-        <p class="brand">juzi</p>
+        <header class="masthead">
+          <p class="brand">
+            <img
+              class="brand-mark"
+              src="/favicon.svg"
+              alt=""
+              width="28"
+              height="28"
+            />
+            juzi
+          </p>
+        </header>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

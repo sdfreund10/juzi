@@ -63,18 +63,28 @@ body {
   }
 }
 
+.masthead {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
-  padding: 20px 20px 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.01em;
+  line-height: 1;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
-.brand + .title {
-  padding-top: 10px;
+.brand-mark {
+  display: block;
+  width: 28px;
+  height: 28px;
+  flex: none;
 }
 
 .title {
@@ -83,6 +93,15 @@ body {
   font-size: 22px;
   font-weight: 500;
   line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.masthead + .title {
+  padding-top: 28px;
+  padding-bottom: 4px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
 }
 
 .title-bar {

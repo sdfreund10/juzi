@@ -1,6 +1,7 @@
 import { useEffect } from 'preact/hooks'
 import './app.css'
 import { AuthProvider, useAuth } from './auth'
+import { Brand } from './brand'
 import { Decks } from './decks'
 import { DifficultyStep } from './difficulty'
 import { Login } from './login'
@@ -30,7 +31,7 @@ function AppShell() {
   if (!ready) {
     return (
       <main class="app">
-        <p class="brand">juzi</p>
+        <Brand />
       </main>
     )
   }
