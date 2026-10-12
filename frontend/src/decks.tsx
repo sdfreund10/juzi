@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import type { Category } from './api'
 import {
+  bandCountsLabel,
   decksMatchingName,
   pinnedDecks,
   readPinnedDeckIds,
@@ -11,14 +12,6 @@ import {
 import { navigate } from './routes'
 import { useCategories } from './useCategories'
 
-function wordCount(category: Category): number {
-  return (
-    category.beginner_count +
-    category.intermediate_count +
-    category.advanced_count
-  )
-}
-
 function DeckRow({
   category,
   pinned,
@@ -28,7 +21,6 @@ function DeckRow({
   pinned: boolean
   onTogglePin: (id: number) => void
 }) {
-  const total = wordCount(category)
   return (
     <div class="row-group">
       <button
@@ -49,9 +41,7 @@ function DeckRow({
       >
         <span class="g">
           <b>{category.name}</b>
-          <span class="s">
-            {total === 1 ? '1 word' : `${total} words`}
-          </span>
+          <span class="s">{bandCountsLabel(category)}</span>
         </span>
       </button>
     </div>
