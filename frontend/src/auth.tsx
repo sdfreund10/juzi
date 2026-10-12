@@ -1,11 +1,12 @@
 import { createContext, type ComponentChildren } from 'preact'
 import { useContext, useEffect, useState } from 'preact/hooks'
-import { ApiError, fetchMe, type AuthUser } from './api'
+import { ApiError, checkHealth, fetchMe, type AuthUser } from './api'
 
 type AuthContextValue = {
   ready: boolean
   user: AuthUser | null
   bootError: string | null
+  serviceUnavailable: boolean
   setUser: (user: AuthUser) => void
   clearUser: () => void
 }
@@ -16,6 +17,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   const [ready, setReady] = useState(false)
   const [user, setUserState] = useState<AuthUser | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
+  const [serviceUnavailable, setServiceUnavailable] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -28,6 +30,13 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
       } catch (err) {
         if (cancelled) return
         if (err instanceof ApiError && err.status === 401) {
+          setUserState(null)
+          return
+        }
+        const healthy = await checkHealth()
+        if (cancelled) return
+        if (!healthy) {
+          setServiceUnavailable(true)
           setUserState(null)
           return
         }
@@ -46,6 +55,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
 
   function setUser(next: AuthUser) {
     setBootError(null)
+    setServiceUnavailable(false)
     setUserState(next)
   }
 
@@ -54,7 +64,9 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   }
 
   return (
-    <AuthContext.Provider value={{ ready, user, bootError, setUser, clearUser }}>
+    <AuthContext.Provider
+      value={{ ready, user, bootError, serviceUnavailable, setUser, clearUser }}
+    >
       {children}
     </AuthContext.Provider>
   )
