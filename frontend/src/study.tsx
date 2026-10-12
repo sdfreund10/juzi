@@ -126,8 +126,8 @@ function StudySessionView({ session }: { session: StudySession }) {
     )
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
-    void rateCard(wordId, hard ? 'hard' : 'easy').catch((err: unknown) => {
-      console.error('Failed to persist card grade', err)
+    void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
+      // Toast comes from apiRequest. Keep the drill moving.
     })
   }
 
