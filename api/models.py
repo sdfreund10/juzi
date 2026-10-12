@@ -12,11 +12,10 @@ class Word(models.Model):
     pinyin = models.CharField(max_length=128)
     english_basic = models.CharField(max_length=255)
     hsk_level = models.IntegerField(default=0)
-    # Future enhancement: add example sentences for the word.
-    # example_sentence_traditional = models.CharField(max_length=255, default="")
-    # example_sentence_simplified = models.CharField(max_length=255, default="")
-    # example_sentence_pinyin = models.CharField(max_length=255, default="")
-    # example_sentence_english = models.CharField(max_length=255, default="")
+    example_sentence_traditional = models.CharField(max_length=255, default="")
+    example_sentence_simplified = models.CharField(max_length=255, default="")
+    example_sentence_pinyin = models.CharField(max_length=255, default="")
+    example_sentence_english = models.CharField(max_length=255, default="")
 
     class Meta:
         ordering = ["chinese"]

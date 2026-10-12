@@ -74,6 +74,9 @@ def seeded_words(topic_food: Category, hsk_one: Category) -> dict[str, Word]:
         pinyin="ài",
         english_basic="to love",
         hsk_level=1,
+        example_sentence_traditional="我愛喝茶。",
+        example_sentence_pinyin="Wǒ ài hē chá.",
+        example_sentence_english="I like to drink tea.",
     )
     intermediate = Word.objects.create(
         chinese="圖書館",
@@ -186,6 +189,15 @@ def test_create_session_filters_difficulty_bands(
     assert word_ids == {seeded_words["beginner"].id, seeded_words["advanced"].id}
     assert all(card["mode"] in UserWord.Mode.values for card in body["cards"])
     assert all(card["prompt"] for card in body["cards"])
+    by_word = {card["word_id"]: card for card in body["cards"]}
+    love = by_word[seeded_words["beginner"].id]
+    assert love["example_chinese"] == "我愛喝茶。"
+    assert love["example_pinyin"] == "Wǒ ài hē chá."
+    assert love["example_english"] == "I like to drink tea."
+    library = by_word[seeded_words["advanced"].id]
+    assert library["example_chinese"] == ""
+    assert library["example_pinyin"] == ""
+    assert library["example_english"] == ""
 
 
 @pytest.mark.django_db
