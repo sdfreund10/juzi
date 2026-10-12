@@ -89,8 +89,27 @@ jobs:
       - name: Vitest
         run: npm test
 
-      - name: Typecheck & build
+      - name: Typecheck & build (PR)
+        if: github.ref != 'refs/heads/main'
         run: npm run build
+
+      - name: Build production release and upload Sentry maps
+        if: github.ref == 'refs/heads/main'
+        env:
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          VITE_SENTRY_RELEASE: ${{ github.sha }}
+          SENTRY_UPLOAD: ${{ vars.VITE_SENTRY_DSN != '' && 'true' || 'false' }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: juzi-frontend
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: npm run build
+
+      - name: Check production artifact contains no source maps
+        run: |
+          if find dist -name '*.map' -print -quit | read -r; then
+            echo 'Source maps must not be included in the deploy artifact' >&2
+            exit 1
+          fi
 
       - name: Upload SPA artifact
         uses: actions/upload-artifact@v4
@@ -138,7 +157,7 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
           script: |
-            bash /var/www/juzi/deploy/deploy.sh
+            EXPECTED_RELEASE='${{ github.sha }}' bash /var/www/juzi/deploy/deploy.sh
 
       - name: Cleanup SSH key
         if: always()

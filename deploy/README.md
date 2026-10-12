@@ -202,3 +202,8 @@ sudo usermod -s /bin/bash juzi
 | `juzi.service` | systemd unit for gunicorn |
 | `nginx-juzi.conf` | HTTP reverse proxy (certbot adds SSL) |
 | `deploy.sh` | pull → sync → migrate → collectstatic → restart (expects `frontend/dist` already present) |
+
+## Error and performance monitoring
+
+See [Sentry setup and verification](sentry.md) for project DSNs, CI secrets,
+droplet configuration, slowdown alerts, and live acceptance checks.
