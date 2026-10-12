@@ -29,11 +29,13 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--page);
 }
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .zh {
@@ -43,8 +45,10 @@ body {
 .app {
   width: min(390px, 100%);
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
-  padding: 0 0 2.5rem;
+  padding: 0 0 calc(2.5rem + env(safe-area-inset-bottom, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: var(--bg);
   border-left: 1px solid #c9ccd2;
   border-right: 1px solid #c9ccd2;
@@ -92,7 +96,7 @@ body {
   padding: 28px 20px 8px;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 6px 10px;
   font-size: 11px;
   line-height: 1.3;
@@ -110,7 +114,8 @@ body {
 .link-btn {
   appearance: none;
   margin: 0;
-  padding: 0;
+  min-height: 44px;
+  padding: 12px 4px;
   border: 0;
   background: none;
   color: var(--pin);
@@ -119,6 +124,7 @@ body {
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .link-btn:disabled {
@@ -128,14 +134,16 @@ body {
 
 .text-btn {
   appearance: none;
-  margin: 20px 8px 0 0;
-  padding: 6px 10px;
+  margin: 12px 8px 0 0;
+  min-height: 44px;
+  padding: 12px 14px;
   border: 0;
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .link-btn:focus-visible,
@@ -162,6 +170,7 @@ body {
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-height: 48px;
   padding: 14px 0;
   border: 0;
   border-bottom: 1px solid var(--line);
@@ -170,6 +179,7 @@ body {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .row .g {
@@ -231,6 +241,7 @@ body {
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-height: 48px;
   padding: 14px 0;
   border: 0;
   border-bottom: 1px solid var(--line);
@@ -239,6 +250,7 @@ body {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .difficulty-option .g {
@@ -283,12 +295,14 @@ body {
   font: inherit;
   font-size: 15px;
   font-weight: 500;
+  min-height: 44px;
   padding: 12px 22px;
   border-radius: 12px;
   border: 0;
   background: var(--ink);
   color: var(--bg);
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .cta:disabled,
@@ -302,7 +316,8 @@ body {
   background: transparent;
   color: var(--muted);
   border: 0;
-  padding: 6px 10px;
+  min-height: 44px;
+  padding: 12px 14px;
   font-size: 13px;
   font-weight: 400;
   border-radius: 8px;
@@ -315,12 +330,14 @@ body {
   color: var(--muted);
 }
 
-/* Study — phone-like full column */
+/* Study — phone-like full column; chrome owns safe-area insets */
 .app.study {
   position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: 0;
   padding-bottom: 0;
 }
 
@@ -330,6 +347,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   user-select: none;
 }
 
@@ -343,10 +361,11 @@ body {
 
 .reveal-target {
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .study-top {
-  padding: 18px 20px;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 20px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -446,7 +465,8 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 120px;
+  height: calc(120px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
 }
 
@@ -465,6 +485,7 @@ body {
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .grade-zone small {
