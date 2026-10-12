@@ -53,7 +53,7 @@ function AppShell() {
       ) : (
         <Decks />
       )}
-      <SessionFooter />
+      {!isStudy && <SessionFooter />}
     </main>
   )
 }
