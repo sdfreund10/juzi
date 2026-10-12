@@ -61,10 +61,3 @@ export function pinnedDecks(
   })
 }
 
-export function bandCountsLabel(category: Category): string {
-  return (
-    `Beginner ${category.beginner_count}` +
-    ` · Intermediate ${category.intermediate_count}` +
-    ` · Advanced ${category.advanced_count}`
-  )
-}

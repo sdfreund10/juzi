@@ -2,7 +2,6 @@ import { useState } from 'preact/hooks'
 import type { Category } from './api'
 import { Brand } from './brand'
 import {
-  bandCountsLabel,
   decksMatchingName,
   pinnedDecks,
   readPinnedDeckIds,
@@ -26,15 +25,6 @@ function DeckRow({
     <div class="row-group">
       <button
         type="button"
-        class={`pin-btn${pinned ? ' pinned' : ''}`}
-        aria-label={pinned ? `Unpin ${category.name}` : `Pin ${category.name}`}
-        aria-pressed={pinned}
-        onClick={() => onTogglePin(category.id)}
-      >
-        {pinned ? 'Pinned' : 'Pin'}
-      </button>
-      <button
-        type="button"
         class="row"
         onClick={() =>
           navigate({ name: 'session-new', categoryId: category.id })
@@ -42,8 +32,27 @@ function DeckRow({
       >
         <span class="g">
           <b>{category.name}</b>
-          <span class="s">{bandCountsLabel(category)}</span>
         </span>
+      </button>
+      <button
+        type="button"
+        class={`pin-btn${pinned ? ' pinned' : ''}`}
+        aria-label={pinned ? `Unpin ${category.name}` : `Pin ${category.name}`}
+        aria-pressed={pinned}
+        onClick={() => onTogglePin(category.id)}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9 3h6l-1 7 4 4v2H6v-2l4-4-1-7Z" />
+          <path d="M12 16v5" />
+        </svg>
       </button>
     </div>
   )
@@ -62,8 +71,22 @@ function DeckSection({
 }) {
   if (categories.length === 0) return null
   return (
-    <section class="list" aria-label={label}>
-      <h2 class="list-heading">{label}</h2>
+    <details class="list deck-section" open>
+      <summary class="list-heading">
+        <h2>{label}</h2>
+        <svg
+          class="section-chevron"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </summary>
       {categories.map((category) => (
         <DeckRow
           key={category.id}
@@ -72,7 +95,7 @@ function DeckSection({
           onTogglePin={onTogglePin}
         />
       ))}
-    </section>
+    </details>
   )
 }
 
@@ -123,10 +146,22 @@ export function Decks() {
       ) : categories !== null ? (
         <>
           <label class="deck-search">
-            <span class="deck-search-label">Search</span>
+            <svg
+              class="deck-search-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m16 16 4 4" />
+            </svg>
             <input
               type="search"
               name="deck-search"
+              aria-label="Search decks"
               placeholder="Search decks"
               value={query}
               onInput={(e) =>

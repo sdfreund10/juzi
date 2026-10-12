@@ -70,7 +70,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) — UI and API share one ori
 - Health: `GET /api/health/`
 - Auth: `GET /api/auth/me/`, `POST /api/auth/login/`, `POST /api/auth/logout/` (email + password; session cookie)
 
-### 4. Frontend HMR (optional, local only)
+### 4. Frontend watch build (optional, local only)
 
 Keep Django running on `:8000`, then:
 
@@ -79,7 +79,7 @@ cd frontend
 npm run dev
 ```
 
-Vite on [http://localhost:5173](http://localhost:5173) proxies `/api` to Django. Use this for day-to-day UI work; use the same-origin Django server when testing session cookies.
+That runs `vite build --watch` in development mode and rewrites `frontend/dist` on each change, so WhiteNoise on [http://127.0.0.1:8000](http://127.0.0.1:8000) picks up updates (refresh the browser; no HMR). For Vite’s HMR server instead, use `npm run dev:hmr` on [http://localhost:5173](http://localhost:5173) (proxies `/api` to Django).
 
 ## Production
 

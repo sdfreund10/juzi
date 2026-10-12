@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { Category } from './api'
 import {
   PINNED_DECK_IDS_KEY,
-  bandCountsLabel,
   decksMatchingName,
   pinnedDecks,
   readPinnedDeckIds,
@@ -110,19 +109,4 @@ describe('pinned deck ids', () => {
   })
 })
 
-describe('bandCountsLabel', () => {
-  it('labels beginner, intermediate, and advanced counts', () => {
-    expect(
-      bandCountsLabel(
-        category({
-          id: 1,
-          name: 'Food',
-          beginner_count: 12,
-          intermediate_count: 8,
-          advanced_count: 3,
-        }),
-      ),
-    ).toBe('Beginner 12 · Intermediate 8 · Advanced 3')
-  })
-})
 
