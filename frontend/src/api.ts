@@ -136,6 +136,9 @@ export type StudyCard = {
   answer_chinese: string
   answer_pinyin: string
   answer_english: string
+  example_chinese: string
+  example_pinyin: string
+  example_english: string
 }
 
 export type StudySession = {

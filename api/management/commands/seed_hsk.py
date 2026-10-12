@@ -72,6 +72,24 @@ def parse_cards(data: Any) -> list[dict[str, Any]]:
         if not isinstance(excluded, bool):
             raise CommandError(f"cards[{index}].exclude must be a boolean")
 
+        example_fields = (
+            "example_sentence_traditional",
+            "example_sentence_simplified",
+            "example_sentence_pinyin",
+            "example_sentence_english",
+        )
+        examples: dict[str, str] = {}
+        for field in example_fields:
+            raw = row.get(field, "")
+            if raw is None:
+                raw = ""
+            if not isinstance(raw, str):
+                raise CommandError(f"cards[{index}].{field} must be a string")
+            value = raw.strip()
+            if len(value) > 255:
+                raise CommandError(f"cards[{index}].{field} exceeds 255 characters")
+            examples[field] = value
+
         parsed.append(
             {
                 "hsk_level": level,
@@ -81,6 +99,7 @@ def parse_cards(data: Any) -> list[dict[str, Any]]:
                 "english_basic": english_basic,
                 "categories": categories,
                 "exclude": excluded,
+                **examples,
             }
         )
     return parsed
@@ -148,6 +167,10 @@ def seed_word_batch(
             simplified=row["simplified"],
             english_basic=row["english_basic"],
             hsk_level=row["hsk_level"],
+            example_sentence_traditional=row["example_sentence_traditional"],
+            example_sentence_simplified=row["example_sentence_simplified"],
+            example_sentence_pinyin=row["example_sentence_pinyin"],
+            example_sentence_english=row["example_sentence_english"],
         )
         for key, row in cards_by_key.items()
         if key not in words_by_key
@@ -163,28 +186,30 @@ def seed_word_batch(
 
     # New words were added to words_by_key during the re-fetch above.
     new_keys = {(word.chinese, word.pinyin) for word in new_words}
+    update_fields = [
+        "simplified",
+        "english_basic",
+        "hsk_level",
+        "example_sentence_traditional",
+        "example_sentence_simplified",
+        "example_sentence_pinyin",
+        "example_sentence_english",
+    ]
     updated: list[Word] = []
     updated_count = 0
     for key, row in cards_by_key.items():
         word = words_by_key[key]
         if key not in new_keys:
             changed = False
-            if word.simplified != row["simplified"]:
-                word.simplified = row["simplified"]
-                changed = True
-            if word.english_basic != row["english_basic"]:
-                word.english_basic = row["english_basic"]
-                changed = True
-            if word.hsk_level != row["hsk_level"]:
-                word.hsk_level = row["hsk_level"]
-                changed = True
+            for field in update_fields:
+                if getattr(word, field) != row[field]:
+                    setattr(word, field, row[field])
+                    changed = True
             if changed:
                 updated_count += 1
                 updated.append(word)
     if updated:
-        Word.objects.bulk_update(
-            updated, ["simplified", "english_basic", "hsk_level"], batch_size=BATCH_SIZE
-        )
+        Word.objects.bulk_update(updated, update_fields, batch_size=BATCH_SIZE)
 
     word_ids = {key: words_by_key[key].id for key in cards_by_key}
     links_to_add = {

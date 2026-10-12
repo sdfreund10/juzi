@@ -39,6 +39,9 @@ def _session_payload(session: StudySession) -> dict:
                 "answer_chinese": card.answer_chinese,
                 "answer_pinyin": card.answer_pinyin,
                 "answer_english": card.answer_english,
+                "example_chinese": card.example_chinese,
+                "example_pinyin": card.example_pinyin,
+                "example_english": card.example_english,
             }
             for card in session.cards
         ],

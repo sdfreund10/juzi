@@ -14,6 +14,8 @@ import {
   cardReveal,
   gradeEasy,
   gradeHard,
+  highlightHeadword,
+  type DisplayBlock,
   type DisplayLine,
 } from './studyCard'
 import { useCategory } from './useCategories'
@@ -29,32 +31,84 @@ type StudyProps = {
   difficulties: Difficulty[]
 }
 
-function lineClass(line: DisplayLine, role: 'prompt' | 'answer'): string {
-  const parts = [role === 'prompt' ? 'prompt-line' : 'answer-line', line.kind]
+function lineClass(
+  line: DisplayLine,
+  face: 'prompt' | 'answer',
+  blockRole: DisplayBlock['role'],
+): string {
+  const parts = [
+    face === 'prompt' ? 'prompt-line' : 'answer-line',
+    line.kind,
+  ]
   if (line.kind === 'chinese') parts.push('zh')
+  if (blockRole === 'example') parts.push('example')
   return parts.join(' ')
 }
 
-function DisplayLines({
-  lines,
-  role,
+function LineText({
+  line,
+  blockRole,
+  headword,
 }: {
-  lines: DisplayLine[]
-  role: 'prompt' | 'answer'
+  line: DisplayLine
+  blockRole: DisplayBlock['role']
+  headword: string
 }) {
-  const paired = role === 'prompt' && lines.length === 2
-  const linesBody = lines.map((line) => (
-    <p key={`${line.kind}-${line.text}`} class={lineClass(line, role)}>
-      {line.text}
-    </p>
-  ))
-  return (
-    <div class={role === 'prompt' ? 'prompt-block' : 'answer'}>
-      {paired ? <div class="prompt-pair">{linesBody}</div> : linesBody}
-    </div>
+  if (blockRole !== 'example' || line.kind !== 'chinese') {
+    return line.text
+  }
+  return highlightHeadword(line.text, headword).map((segment, index) =>
+    segment.focus ? (
+      <span key={`${index}-${segment.text}`} class="example-focus">
+        {segment.text}
+      </span>
+    ) : (
+      <span key={`${index}-${segment.text}`}>{segment.text}</span>
+    ),
   )
 }
 
+function DisplayBlocks({
+  blocks,
+  face,
+  headword,
+}: {
+  blocks: DisplayBlock[]
+  face: 'prompt' | 'answer'
+  headword: string
+}) {
+  return (
+    <div class={face === 'prompt' ? 'prompt-block' : 'answer'}>
+      {blocks.map((block) => {
+        const paired =
+          block.role === 'word' &&
+          block.lines.length === 2 &&
+          block.lines[0]?.kind === 'chinese' &&
+          block.lines[1]?.kind === 'pinyin'
+        const linesBody = block.lines.map((line) => (
+          <p
+            key={`${block.role}-${line.kind}-${line.text}`}
+            class={lineClass(line, face, block.role)}
+          >
+            <LineText
+              line={line}
+              blockRole={block.role}
+              headword={headword}
+            />
+          </p>
+        ))
+        return (
+          <div
+            key={`${block.role}-${block.lines.map((l) => l.text).join('|')}`}
+            class={`card-block card-block-${block.role}`}
+          >
+            {paired ? <div class="prompt-pair">{linesBody}</div> : linesBody}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
@@ -65,8 +119,9 @@ function StudySessionView({ session }: { session: StudySession }) {
   }
 
   const modeLabel = MODE_LABELS[card.mode] ?? card.mode
-  const promptLines = cardPrompt(card)
-  const revealLines = cardReveal(card)
+  const promptBlocks = cardPrompt(card)
+  const revealBlocks = cardReveal(card)
+  const headword = card.answer_chinese
 
   function onGrade(hard: boolean) {
     const wordId = card.word_id
@@ -98,8 +153,16 @@ function StudySessionView({ session }: { session: StudySession }) {
       {revealed ? (
         <>
           <div class="study-body">
-            <DisplayLines lines={promptLines} role="prompt" />
-            <DisplayLines lines={revealLines} role="answer" />
+            <DisplayBlocks
+              blocks={promptBlocks}
+              face="prompt"
+              headword={headword}
+            />
+            <DisplayBlocks
+              blocks={revealBlocks}
+              face="answer"
+              headword={headword}
+            />
           </div>
           <div class="grade-zones" aria-label="Grade card">
             <button
@@ -133,7 +196,11 @@ function StudySessionView({ session }: { session: StudySession }) {
             }
           }}
         >
-          <DisplayLines lines={promptLines} role="prompt" />
+          <DisplayBlocks
+            blocks={promptBlocks}
+            face="prompt"
+            headword={headword}
+          />
           <p class="hint">Tap anywhere to reveal</p>
         </div>
       )}

@@ -32,6 +32,9 @@ class SessionCard:
     answer_chinese: str
     answer_pinyin: str
     answer_english: str
+    example_chinese: str
+    example_pinyin: str
+    example_english: str
 
 
 @dataclass(frozen=True)
@@ -70,6 +73,9 @@ def _card_from_user_word(user_word: UserWord) -> SessionCard:
         answer_chinese=word.chinese,
         answer_pinyin=word.pinyin,
         answer_english=word.english_basic,
+        example_chinese=word.example_sentence_traditional,
+        example_pinyin=word.example_sentence_pinyin,
+        example_english=word.example_sentence_english,
     )
 
 

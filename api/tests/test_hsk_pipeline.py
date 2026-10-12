@@ -158,6 +158,10 @@ def test_seed_hsk_from_cards_file(tmp_path: Path) -> None:
             "chinese": "愛",
             "pinyin": "ài",
             "english_basic": "to love",
+            "example_sentence_traditional": "我愛喝茶。",
+            "example_sentence_simplified": "我爱喝茶。",
+            "example_sentence_pinyin": "Wǒ ài hē chá.",
+            "example_sentence_english": "I like to drink tea.",
         },
         {
             "hsk_level": 2,
@@ -177,10 +181,19 @@ def test_seed_hsk_from_cards_file(tmp_path: Path) -> None:
     love = Word.objects.get(chinese="愛", pinyin="ài")
     assert love.simplified == "爱"
     assert love.english_basic == "to love"
+    assert love.example_sentence_traditional == "我愛喝茶。"
+    assert love.example_sentence_simplified == "我爱喝茶。"
+    assert love.example_sentence_pinyin == "Wǒ ài hē chá."
+    assert love.example_sentence_english == "I like to drink tea."
     assert WordCategory.objects.filter(word=love, category__name="HSK 1").exists()
     brother = Word.objects.get(chinese="哥哥", pinyin="gē ge")
+    assert brother.example_sentence_traditional == ""
     assert WordCategory.objects.filter(word=brother, category__name="HSK 2").exists()
 
+    cards[0]["example_sentence_english"] = "I love drinking tea."
+    path.write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
     call_command("seed_hsk", "--file", str(path))
     assert Word.objects.count() == 2
     assert WordCategory.objects.count() == 2
+    love.refresh_from_db()
+    assert love.example_sentence_english == "I love drinking tea."
