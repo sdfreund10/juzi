@@ -144,10 +144,7 @@ export function login(email: string, password: string): Promise<AuthUser> {
 }
 
 export function logout(): Promise<AuthState> {
-  return apiRequest<AuthState>('/api/auth/logout/', {
-    method: 'POST',
-    toast: true,
-  })
+  return apiRequest<AuthState>('/api/auth/logout/', { method: 'POST' })
 }
 
 export type Category = {
