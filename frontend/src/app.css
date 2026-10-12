@@ -1,3 +1,4 @@
+
 :root {
   --bg: #fafaf7;
   --ink: #1e2024;
@@ -242,9 +243,11 @@ body {
   gap: 12px;
   width: 100%;
   min-height: 48px;
-  padding: 14px 0;
+  padding: 14px 0 14px 10px;
   border: 0;
   border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
   background: none;
   color: inherit;
   font: inherit;
@@ -263,12 +266,8 @@ body {
 }
 
 .difficulty-option.selected {
-  box-shadow: inset 0 0 0 1px var(--ink);
-  border-radius: 10px;
-  border-bottom-color: transparent;
-  padding-left: 10px;
-  padding-right: 10px;
-  margin: 4px -10px;
+  border-left-color: var(--ink);
+  border-right-color: var(--ink);
 }
 
 .difficulty-option b {
@@ -284,6 +283,10 @@ body {
 
 .picker-actions {
   padding: 24px 20px 0;
+}
+
+.picker-actions .cta {
+  width: 100%;
 }
 
 .cta,

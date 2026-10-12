@@ -120,7 +120,7 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
           disabled={selected.size === 0}
           onClick={submit}
         >
-          Build deck
+          Start studying
         </button>
       </div>
     </>
