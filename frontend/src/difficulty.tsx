@@ -96,7 +96,6 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
         </button>
       </div>
       <p class="subtitle">{selectedCategory.name}</p>
-      <p class="subtitle">Choose one or more levels.</p>
 
       <section class="difficulty-grid" aria-label="Difficulty levels">
         {OPTIONS.map((opt) => {
