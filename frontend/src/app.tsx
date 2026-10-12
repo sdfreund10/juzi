@@ -32,6 +32,7 @@ function AppShell() {
     return (
       <main class="app">
         <Brand />
+        <p class="building-status">Loading…</p>
       </main>
     )
   }
