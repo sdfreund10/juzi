@@ -1,4 +1,6 @@
+import { useState } from 'preact/hooks'
 import type { Category } from './api'
+import { decksMatchingName } from './deckList'
 import { navigate } from './routes'
 import { useCategories } from './useCategories'
 
@@ -10,8 +12,33 @@ function wordCount(category: Category): number {
   )
 }
 
+function DeckRow({ category }: { category: Category }) {
+  const total = wordCount(category)
+  return (
+    <button
+      type="button"
+      class="row"
+      onClick={() =>
+        navigate({ name: 'session-new', categoryId: category.id })
+      }
+    >
+      <span class="g">
+        <b>{category.name}</b>
+        <span class="s">
+          {total === 1 ? '1 word' : `${total} words`}
+        </span>
+      </span>
+    </button>
+  )
+}
+
 export function Decks() {
   const { categories, error } = useCategories()
+  const [query, setQuery] = useState('')
+
+  const visible =
+    categories === null ? null : decksMatchingName(categories, query)
+  const searching = query.trim().length > 0
 
   return (
     <>
@@ -30,28 +57,32 @@ export function Decks() {
           <p>No decks yet. Seed vocabulary to get started.</p>
         </section>
       ) : categories !== null ? (
-        <section class="list" aria-label="Decks">
-          {categories.map((category) => {
-            const total = wordCount(category)
-            return (
-              <button
-                key={category.id}
-                type="button"
-                class="row"
-                onClick={() =>
-                  navigate({ name: 'session-new', categoryId: category.id })
-                }
-              >
-                <span class="g">
-                  <b>{category.name}</b>
-                  <span class="s">
-                    {total === 1 ? '1 word' : `${total} words`}
-                  </span>
-                </span>
-              </button>
-            )
-          })}
-        </section>
+        <>
+          <label class="deck-search">
+            <span class="deck-search-label">Search</span>
+            <input
+              type="search"
+              name="deck-search"
+              placeholder="Search decks"
+              value={query}
+              onInput={(e) =>
+                setQuery((e.target as HTMLInputElement).value)
+              }
+            />
+          </label>
+
+          {visible !== null && visible.length === 0 ? (
+            <p class="subtitle">
+              {searching ? 'No decks match.' : 'No decks yet.'}
+            </p>
+          ) : (
+            <section class="list" aria-label="Decks">
+              {visible?.map((category) => (
+                <DeckRow key={category.id} category={category} />
+              ))}
+            </section>
+          )}
+        </>
       ) : null}
     </>
   )

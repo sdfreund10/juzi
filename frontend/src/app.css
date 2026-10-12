@@ -159,6 +159,28 @@ body {
   outline-offset: 2px;
 }
 
+.deck-search {
+  display: grid;
+  gap: 0.35rem;
+  margin: 8px 20px 0;
+}
+
+.deck-search-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.deck-search input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
 .list {
   margin: 12px 20px 0;
   border-top: 1px solid var(--line);
