@@ -153,6 +153,7 @@ export type Category = {
   beginner_count: number
   intermediate_count: number
   advanced_count: number
+  last_practiced_at: string | null
 }
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced'

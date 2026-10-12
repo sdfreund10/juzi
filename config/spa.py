@@ -9,6 +9,6 @@ def spa(request: HttpRequest) -> HttpResponse:
     index = Path(settings.FRONTEND_DIST) / "index.html"
     if not index.is_file():
         raise Http404(
-            "Frontend build not found. Run `npm run build` in frontend/ then restart Django."
+            "Frontend build not found. Run `npm run build` or `npm run dev` in frontend/."
         )
     return FileResponse(index.open("rb"), content_type="text/html")
