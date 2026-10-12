@@ -30,7 +30,7 @@ function AppShell() {
   if (!ready) {
     return (
       <main class="app">
-        <p class="building-status">Loading…</p>
+        <p class="brand">juzi</p>
       </main>
     )
   }
