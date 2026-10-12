@@ -20,6 +20,9 @@ def _category_list_payload(category: Category) -> dict:
         "beginner_count": category.beginner_count,
         "intermediate_count": category.intermediate_count,
         "advanced_count": category.advanced_count,
+        "last_practiced_at": (
+            category.last_practiced_at.isoformat() if category.last_practiced_at else None
+        ),
     }
 
 
@@ -70,7 +73,12 @@ def _user_word_payload(
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def categories(request: Request) -> Response:
-    return Response([_category_list_payload(category) for category in list_topic_categories()])
+    return Response(
+        [
+            _category_list_payload(category)
+            for category in list_topic_categories(user=request.user)
+        ]
+    )
 
 
 @api_view(["POST"])

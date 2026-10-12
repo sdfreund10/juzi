@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { Category } from './api'
-import { decksMatchingName } from './deckList'
+import { decksMatchingName, recentlyPracticedDecks } from './deckList'
 import { navigate } from './routes'
 import { useCategories } from './useCategories'
 
@@ -32,13 +32,35 @@ function DeckRow({ category }: { category: Category }) {
   )
 }
 
+function DeckSection({
+  label,
+  categories,
+}: {
+  label: string
+  categories: Category[]
+}) {
+  if (categories.length === 0) return null
+  return (
+    <section class="list" aria-label={label}>
+      <h2 class="list-heading">{label}</h2>
+      {categories.map((category) => (
+        <DeckRow key={category.id} category={category} />
+      ))}
+    </section>
+  )
+}
+
 export function Decks() {
   const { categories, error } = useCategories()
   const [query, setQuery] = useState('')
 
+  const searching = query.trim().length > 0
   const visible =
     categories === null ? null : decksMatchingName(categories, query)
-  const searching = query.trim().length > 0
+  const recent =
+    visible === null || searching
+      ? []
+      : recentlyPracticedDecks(visible)
 
   return (
     <>
@@ -75,12 +97,20 @@ export function Decks() {
             <p class="subtitle">
               {searching ? 'No decks match.' : 'No decks yet.'}
             </p>
-          ) : (
+          ) : searching ? (
             <section class="list" aria-label="Decks">
               {visible?.map((category) => (
                 <DeckRow key={category.id} category={category} />
               ))}
             </section>
+          ) : (
+            <>
+              <DeckSection label="Recent" categories={recent} />
+              <DeckSection
+                label={recent.length > 0 ? 'All decks' : 'Decks'}
+                categories={visible ?? []}
+              />
+            </>
           )}
         </>
       ) : null}

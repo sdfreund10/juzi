@@ -126,6 +126,7 @@ def test_categories_lists_topic_decks_only(
             "beginner_count": 0,
             "intermediate_count": 0,
             "advanced_count": 0,
+            "last_practiced_at": None,
         }
     ]
 
@@ -148,6 +149,48 @@ def test_categories_includes_difficulty_counts(
             "beginner_count": 1,
             "intermediate_count": 1,
             "advanced_count": 1,
+            "last_practiced_at": None,
+        }
+    ]
+
+
+@pytest.mark.django_db
+def test_categories_includes_per_user_last_practiced_at(
+    client: APIClient,
+    user: User,
+    topic_food: Category,
+    seeded_words: dict[str, Word],
+) -> None:
+    other = _make_user(email="bob@example.com", password="s3cret-bob")
+    practiced_at = timezone.now() - timedelta(hours=2)
+    UserWord.objects.create(
+        user=user,
+        word=seeded_words["beginner"],
+        last_practiced_at=practiced_at,
+    )
+    UserWord.objects.create(
+        user=user,
+        word=seeded_words["advanced"],
+        last_practiced_at=practiced_at - timedelta(days=1),
+    )
+    UserWord.objects.create(
+        user=other,
+        word=seeded_words["intermediate"],
+        last_practiced_at=timezone.now(),
+    )
+
+    headers = _login(client, user)
+    response = client.get(reverse("categories"), **headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == [
+        {
+            "id": topic_food.id,
+            "name": topic_food.name,
+            "beginner_count": 1,
+            "intermediate_count": 1,
+            "advanced_count": 1,
+            "last_practiced_at": practiced_at.isoformat(),
         }
     ]
 
