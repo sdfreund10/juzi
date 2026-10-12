@@ -1,5 +1,5 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { finishSessionTiming, startSessionTiming, withSessionTiming } from './monitoring'
-import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
 import {
   ApiError,
   createSession,
@@ -115,9 +115,14 @@ function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
   const [progress, setProgress] = useState(emptyProgress)
+  const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
   const done = !card
+
+  useLayoutEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0
+  }, [card, revealed])
 
   function onGrade(hard: boolean) {
     if (!card) return
@@ -128,7 +133,7 @@ function StudySessionView({ session }: { session: StudySession }) {
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
     void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
-      // Toast comes from apiRequest. Keep the drill moving.
+      // rateCard shows the failure toast. Keep the drill moving.
     })
   }
 
@@ -159,10 +164,18 @@ function StudySessionView({ session }: { session: StudySession }) {
       </div>
 
       {done ? (
-        <CaughtUp />
+        <div class="study-body">
+          <CaughtUp />
+        </div>
       ) : revealed ? (
         <>
-          <div class="study-body">
+          <div
+            class="study-body"
+            ref={bodyRef}
+            role="region"
+            aria-label="Study card"
+            tabIndex={0}
+          >
             <DisplayBlocks
               blocks={cardPrompt(card)}
               face="prompt"
@@ -196,6 +209,7 @@ function StudySessionView({ session }: { session: StudySession }) {
       ) : (
         <div
           class="study-body reveal-target"
+          ref={bodyRef}
           onClick={() => setRevealed(true)}
           role="button"
           tabIndex={0}

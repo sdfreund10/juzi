@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiRequest, checkHealth, login } from './api'
+import { ApiError, apiRequest, checkHealth, login, rateCard } from './api'
 import { setToastHandler } from './toast'
 
 afterEach(() => {
@@ -143,6 +143,31 @@ describe('apiRequest', () => {
 
     await expect(apiRequest('/api/auth/me/')).rejects.toBeInstanceOf(ApiError)
     expect(toasts).toEqual([])
+  })
+})
+
+describe('rateCard', () => {
+  it.each([
+    [401, 'Your session expired. Sign in again to save progress.'],
+    [500, 'Couldn’t save your progress. You can keep studying.'],
+  ])('shows learner-facing copy for HTTP %i without a duplicate toast', async (status, message) => {
+    const toasts: string[] = []
+    setToastHandler((toast) => toasts.push(toast))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      jsonResponse(status, { detail: 'Internal API wording' }),
+    ))
+
+    await expect(rateCard(1, 'easy')).rejects.toMatchObject({ status })
+    expect(toasts).toEqual([message])
+  })
+
+  it('explains a network failure without promising a later sync', async () => {
+    const toasts: string[] = []
+    setToastHandler((message) => toasts.push(message))
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    await expect(rateCard(1, 'hard')).rejects.toThrow('Failed to fetch')
+    expect(toasts).toEqual(['Couldn’t save your progress. You can keep studying.'])
   })
 })
 

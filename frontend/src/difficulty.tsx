@@ -130,7 +130,9 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
           disabled={selected.size === 0}
           onClick={submit}
         >
-          Start studying
+          {selected.size > 1
+            ? `Start studying · ${selected.size} levels`
+            : 'Start studying'}
         </button>
       </div>
     </>

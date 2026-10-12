@@ -196,10 +196,18 @@ export function createSession(
 
 export type CardGrade = 'hard' | 'easy'
 
-export function rateCard(wordId: number, grade: CardGrade): Promise<void> {
-  return apiRequest('/api/ratings/', {
-    method: 'POST',
-    body: { word_id: wordId, grade },
-    toast: true,
-  })
+export async function rateCard(wordId: number, grade: CardGrade): Promise<void> {
+  try {
+    await apiRequest('/api/ratings/', {
+      method: 'POST',
+      body: { word_id: wordId, grade },
+    })
+  } catch (err) {
+    showToast(
+      err instanceof ApiError && err.status === 401
+        ? 'Your session expired. Sign in again to save progress.'
+        : 'Couldn’t save your progress. You can keep studying.',
+    )
+    throw err
+  }
 }
