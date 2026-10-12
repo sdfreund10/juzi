@@ -112,6 +112,7 @@ function DisplayBlocks({
 function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
+  const [grading, setGrading] = useState(false)
 
   const card = queue[0]
   if (!card) {
@@ -123,13 +124,18 @@ function StudySessionView({ session }: { session: StudySession }) {
   const revealBlocks = cardReveal(card)
   const headword = card.answer_chinese
 
-  function onGrade(hard: boolean) {
-    const wordId = card.word_id
-    setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
-    setRevealed(false)
-    void rateCard(wordId, hard ? 'hard' : 'easy').catch((err: unknown) => {
-      console.error('Failed to persist card grade', err)
-    })
+  async function onGrade(hard: boolean) {
+    if (grading) return
+    setGrading(true)
+    try {
+      await rateCard(card.word_id, hard ? 'hard' : 'easy')
+      setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
+      setRevealed(false)
+    } catch {
+      // Toast comes from apiRequest; keep the card so the learner can retry.
+    } finally {
+      setGrading(false)
+    }
   }
 
   return (
@@ -168,7 +174,8 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone hard"
-              onClick={() => onGrade(true)}
+              disabled={grading}
+              onClick={() => void onGrade(true)}
             >
               Hard
               <small>back soon</small>
@@ -176,7 +183,8 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone easy"
-              onClick={() => onGrade(false)}
+              disabled={grading}
+              onClick={() => void onGrade(false)}
             >
               Easy
               <small>later</small>
