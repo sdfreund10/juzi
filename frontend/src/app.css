@@ -286,6 +286,10 @@ body {
   padding: 24px 20px 0;
 }
 
+.picker-actions .cta {
+  width: 100%;
+}
+
 .cta,
 .btn {
   appearance: none;
