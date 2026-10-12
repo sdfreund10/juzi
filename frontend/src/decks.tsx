@@ -1,4 +1,5 @@
 import type { Category } from './api'
+import { Brand } from './brand'
 import { navigate } from './routes'
 import { useCategories } from './useCategories'
 
@@ -15,6 +16,7 @@ export function Decks() {
 
   return (
     <>
+      <Brand />
       <h1 class="title">Choose a deck</h1>
 
       {error && (

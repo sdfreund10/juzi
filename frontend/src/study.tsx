@@ -136,13 +136,23 @@ function StudySessionView({ session }: { session: StudySession }) {
       <div class="study-top">
         <StudyProgress total={session.total} progress={progress} />
         <div class="study-top-bar">
-          <span class="study-category">{session.category.name}</span>
+          <p class="study-category">
+            <img
+              class="brand-mark study-mark"
+              src="/favicon.svg"
+              alt=""
+              width="22"
+              height="22"
+            />
+            <span class="study-category-name">{session.category.name}</span>
+          </p>
           <button
             type="button"
-            class="text-btn"
+            class="text-btn study-close"
+            aria-label="Exit"
             onClick={() => navigate({ name: 'home' })}
           >
-            Exit
+            ×
           </button>
         </div>
       </div>

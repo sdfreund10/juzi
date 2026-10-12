@@ -1,7 +1,7 @@
 /* App-shell cache only. Never cache /api or /admin. */
-const CACHE = 'juzi-shell-v1'
+const CACHE = 'juzi-shell-v2'
 
-const PRECACHE = ['/', '/index.html', '/site.webmanifest', '/favicon.svg']
+const PRECACHE = ['/site.webmanifest', '/favicon.svg']
 
 function isApiOrAdmin(url) {
   return url.pathname.startsWith('/api') || url.pathname.startsWith('/admin')
