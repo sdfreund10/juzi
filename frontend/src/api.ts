@@ -30,8 +30,8 @@ export type AuthState =
 type RequestOptions = {
   method?: string
   body?: unknown
-  /** Skip the failure toast when the caller shows its own error UI. */
-  quiet?: boolean
+  /** Toast the failure. Off by default so screens with their own error UI stay silent. */
+  toast?: boolean
 }
 
 function messageFromErrorBody(data: unknown): string {
@@ -93,7 +93,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
     })
   } catch (err) {
-    if (!options.quiet) {
+    if (options.toast) {
       showToast('Could not reach the server.')
     }
     throw err
@@ -106,7 +106,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     } catch {
       // ignore non-JSON error bodies
     }
-    if (!options.quiet) {
+    if (options.toast) {
       showToast(message)
     }
     throw new ApiError(response.status, message)
@@ -133,19 +133,21 @@ export async function checkHealth(): Promise<boolean> {
 }
 
 export function fetchMe(): Promise<AuthState> {
-  return apiRequest<AuthState>('/api/auth/me/', { quiet: true })
+  return apiRequest<AuthState>('/api/auth/me/')
 }
 
 export function login(email: string, password: string): Promise<AuthUser> {
   return apiRequest<AuthUser>('/api/auth/login/', {
     method: 'POST',
     body: { email, password },
-    quiet: true,
   })
 }
 
 export function logout(): Promise<AuthState> {
-  return apiRequest<AuthState>('/api/auth/logout/', { method: 'POST' })
+  return apiRequest<AuthState>('/api/auth/logout/', {
+    method: 'POST',
+    toast: true,
+  })
 }
 
 export type Category = {
@@ -178,7 +180,7 @@ export type StudySession = {
 }
 
 export function fetchCategories(): Promise<Category[]> {
-  return apiRequest<Category[]>('/api/categories/', { quiet: true })
+  return apiRequest<Category[]>('/api/categories/')
 }
 
 export function createSession(
@@ -188,7 +190,6 @@ export function createSession(
   return apiRequest<StudySession>('/api/sessions/', {
     method: 'POST',
     body: { category_id: categoryId, difficulties },
-    quiet: true,
   })
 }
 
@@ -198,5 +199,6 @@ export function rateCard(wordId: number, grade: CardGrade): Promise<void> {
   return apiRequest('/api/ratings/', {
     method: 'POST',
     body: { word_id: wordId, grade },
+    toast: true,
   })
 }

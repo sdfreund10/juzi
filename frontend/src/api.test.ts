@@ -116,9 +116,9 @@ describe('apiRequest', () => {
       vi.fn().mockResolvedValue(jsonResponse(500, { detail: 'Server error' })),
     )
 
-    await expect(apiRequest('/api/ratings/', { method: 'POST', body: {} })).rejects.toBeInstanceOf(
-      ApiError,
-    )
+    await expect(
+      apiRequest('/api/ratings/', { method: 'POST', body: {}, toast: true }),
+    ).rejects.toBeInstanceOf(ApiError)
     expect(toasts).toEqual(['Server error'])
   })
 
@@ -127,13 +127,13 @@ describe('apiRequest', () => {
     setToastHandler((message) => toasts.push(message))
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
-    await expect(apiRequest('/api/ratings/', { method: 'POST', body: {} })).rejects.toThrow(
-      'Failed to fetch',
-    )
+    await expect(
+      apiRequest('/api/ratings/', { method: 'POST', body: {}, toast: true }),
+    ).rejects.toThrow('Failed to fetch')
     expect(toasts).toEqual(['Could not reach the server.'])
   })
 
-  it('skips the toast when quiet is set', async () => {
+  it('does not toast by default', async () => {
     const toasts: string[] = []
     setToastHandler((message) => toasts.push(message))
     vi.stubGlobal(
@@ -141,9 +141,7 @@ describe('apiRequest', () => {
       vi.fn().mockResolvedValue(jsonResponse(500, { detail: 'Server error' })),
     )
 
-    await expect(
-      apiRequest('/api/auth/me/', { quiet: true }),
-    ).rejects.toBeInstanceOf(ApiError)
+    await expect(apiRequest('/api/auth/me/')).rejects.toBeInstanceOf(ApiError)
     expect(toasts).toEqual([])
   })
 })

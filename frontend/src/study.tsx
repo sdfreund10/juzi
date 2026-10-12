@@ -113,28 +113,22 @@ function DisplayBlocks({
 function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
-  const [grading, setGrading] = useState(false)
   const [progress, setProgress] = useState(emptyProgress)
 
   const card = queue[0]
   const done = !card
 
-  async function onGrade(hard: boolean) {
-    if (!card || grading) return
+  function onGrade(hard: boolean) {
+    if (!card) return
     const wordId = card.word_id
-    setGrading(true)
-    try {
-      await rateCard(wordId, hard ? 'hard' : 'easy')
-      setProgress((prev) =>
-        hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
-      )
-      setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
-      setRevealed(false)
-    } catch {
-      // Toast comes from apiRequest; keep the card so the learner can retry.
-    } finally {
-      setGrading(false)
-    }
+    setProgress((prev) =>
+      hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
+    )
+    setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
+    setRevealed(false)
+    void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
+      // Toast comes from apiRequest. Keep the drill moving.
+    })
   }
 
   return (
@@ -173,8 +167,7 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone hard"
-              disabled={grading}
-              onClick={() => void onGrade(true)}
+              onClick={() => onGrade(true)}
             >
               Hard
               <small>back soon</small>
@@ -182,8 +175,7 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone easy"
-              disabled={grading}
-              onClick={() => void onGrade(false)}
+              onClick={() => onGrade(false)}
             >
               Easy
               <small>later</small>
