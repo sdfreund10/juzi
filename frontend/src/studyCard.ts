@@ -143,7 +143,10 @@ export function cardReveal(card: StudyCard): DisplayBlock[] {
       if (example) {
         blocks.push({
           role: 'example',
-          lines: [{ text: card.example_chinese, kind: 'chinese' }],
+          lines: [
+            { text: card.example_chinese, kind: 'chinese' },
+            { text: card.example_pinyin, kind: 'pinyin' },
+          ],
         })
       }
       return blocks

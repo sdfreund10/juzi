@@ -76,7 +76,10 @@ describe('cardPrompt / cardReveal', () => {
       },
       {
         role: 'example',
-        lines: [{ text: '圖書館很大。', kind: 'chinese' }],
+        lines: [
+          { text: '圖書館很大。', kind: 'chinese' },
+          { text: 'Túshūguǎn hěn dà.', kind: 'pinyin' },
+        ],
       },
     ])
   })
