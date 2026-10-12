@@ -18,6 +18,12 @@ import {
   type DisplayBlock,
   type DisplayLine,
 } from './studyCard'
+import {
+  StudyProgress,
+  emptyProgress,
+  recordEasy,
+  recordHard,
+} from './studyProgress'
 import { useCategory } from './useCategories'
 
 type StudyProps = {
@@ -103,45 +109,11 @@ function DisplayBlocks({
     </div>
   )
 }
-type SittingGrade = 'easy' | 'hard'
-
-function SittingProgress({
-  total,
-  grades,
-  done,
-}: {
-  total: number
-  grades: SittingGrade[]
-  done: boolean
-}) {
-  const segments = Array.from({ length: total }, (_, index) => {
-    if (done) return 'easy' as const
-    return grades[index] ?? null
-  })
-
-  return (
-    <div
-      class={`study-progress${done ? ' done' : ''}`}
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={total}
-      aria-valuenow={done ? total : Math.min(grades.length, total)}
-      aria-label={done ? 'Sitting complete' : 'Sitting progress'}
-    >
-      {segments.map((grade, index) => (
-        <span
-          key={index}
-          class={`study-progress-segment${grade ? ` ${grade}` : ''}`}
-        />
-      ))}
-    </div>
-  )
-}
 
 function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
-  const [grades, setGrades] = useState<SittingGrade[]>([])
+  const [progress, setProgress] = useState(emptyProgress)
 
   const card = queue[0]
   const done = !card
@@ -149,7 +121,9 @@ function StudySessionView({ session }: { session: StudySession }) {
   function onGrade(hard: boolean) {
     if (!card) return
     const wordId = card.word_id
-    setGrades((prev) => [...prev, hard ? 'hard' : 'easy'])
+    setProgress((prev) =>
+      hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
+    )
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
     void rateCard(wordId, hard ? 'hard' : 'easy').catch((err: unknown) => {
@@ -160,21 +134,17 @@ function StudySessionView({ session }: { session: StudySession }) {
   return (
     <div class={`study-shell${revealed && !done ? ' revealed' : ''}`}>
       <div class="study-top">
-        <div class="study-top-main">
+        <StudyProgress total={session.total} progress={progress} />
+        <div class="study-top-bar">
           <span class="study-category">{session.category.name}</span>
-          <SittingProgress
-            total={session.total}
-            grades={grades}
-            done={done}
-          />
+          <button
+            type="button"
+            class="text-btn"
+            onClick={() => navigate({ name: 'home' })}
+          >
+            Exit
+          </button>
         </div>
-        <button
-          type="button"
-          class="text-btn"
-          onClick={() => navigate({ name: 'home' })}
-        >
-          Exit
-        </button>
       </div>
 
       {done ? (
@@ -192,40 +162,6 @@ function StudySessionView({ session }: { session: StudySession }) {
               face="answer"
               headword={card.answer_chinese}
             />
-            <button
-              type="button"
-              class="copy-chinese"
-              aria-label="Copy Chinese"
-              onClick={() => {
-                void navigator.clipboard.writeText(card.answer_chinese)
-              }}
-            >
-              <svg
-                class="copy-chinese-icon"
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                aria-hidden="true"
-              >
-                <rect
-                  x="8"
-                  y="8"
-                  width="12"
-                  height="12"
-                  rx="2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M4 16V6a2 2 0 0 1 2-2h10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
           </div>
           <div class="grade-zones" aria-label="Grade card">
             <button
