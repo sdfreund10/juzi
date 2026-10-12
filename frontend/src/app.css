@@ -471,6 +471,33 @@ body {
   padding: 0 16px;
 }
 
+.copy-chinese {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16px auto 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: auto;
+}
+
+.copy-chinese:hover,
+.copy-chinese:focus-visible {
+  color: var(--ink);
+}
+
+.copy-chinese-icon {
+  display: block;
+}
+
 .answer-line {
   margin: 0;
   font-size: 34px;

@@ -192,6 +192,40 @@ function StudySessionView({ session }: { session: StudySession }) {
               face="answer"
               headword={card.answer_chinese}
             />
+            <button
+              type="button"
+              class="copy-chinese"
+              aria-label="Copy Chinese"
+              onClick={() => {
+                void navigator.clipboard.writeText(card.answer_chinese)
+              }}
+            >
+              <svg
+                class="copy-chinese-icon"
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                aria-hidden="true"
+              >
+                <rect
+                  x="8"
+                  y="8"
+                  width="12"
+                  height="12"
+                  rx="2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M4 16V6a2 2 0 0 1 2-2h10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
           </div>
           <div class="grade-zones" aria-label="Grade card">
             <button
