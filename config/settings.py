@@ -33,6 +33,8 @@ if sentry_dsn := os.getenv("SENTRY_DSN"):
         environment="development" if DEBUG else "production",
         release=os.getenv("SENTRY_RELEASE"),
         traces_sample_rate=0.0 if DEBUG else 1.0,
+        send_default_pii=False,
+        max_request_body_size="never",
     )
 
 
