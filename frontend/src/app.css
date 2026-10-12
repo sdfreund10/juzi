@@ -434,6 +434,7 @@ body {
 }
 
 .prompt-line.english {
+  padding-inline: 12px;
   font-size: 40px;
 }
 
@@ -448,6 +449,7 @@ body {
 }
 
 .prompt-line.example.english {
+  padding-inline: 12px;
   font-size: 20px;
 }
 
@@ -470,6 +472,10 @@ body {
 
 .answer-line + .answer-line {
   margin-top: 4px;
+}
+
+.answer-line.english {
+  padding-inline: 12px;
 }
 
 .answer-line.pinyin {
