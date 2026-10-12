@@ -26,6 +26,15 @@ git fetch --prune origin
 git checkout "$BRANCH"
 git reset --hard "origin/${BRANCH}"
 
+RELEASE="$(git rev-parse HEAD)"
+if [[ -n "${EXPECTED_RELEASE:-}" && "$RELEASE" != "$EXPECTED_RELEASE" ]]; then
+  echo "error: checkout does not match the frontend release; refusing to deploy." >&2
+  exit 1
+fi
+# systemd reads this separately so every Gunicorn worker reports the deployed SHA.
+printf 'SENTRY_RELEASE=%s\n' "$RELEASE" > "$APP_DIR/.sentry-release.env"
+export SENTRY_RELEASE="$RELEASE"
+
 echo "==> Syncing Python deps"
 uv sync --locked --no-dev
 

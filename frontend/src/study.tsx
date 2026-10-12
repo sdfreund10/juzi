@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'preact/hooks'
+import { finishSessionTiming, startSessionTiming, withSessionTiming } from './monitoring'
+import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
 import {
   ApiError,
   createSession,
@@ -223,6 +224,17 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   const [error, setError] = useState<string | null>(null)
   const [empty, setEmpty] = useState(false)
 
+  useLayoutEffect(() => {
+    startSessionTiming()
+    return () => finishSessionTiming('cancelled')
+  }, [categoryId, difficulties.join(',')])
+
+  useLayoutEffect(() => {
+    if (session) finishSessionTiming('ready')
+    else if (empty) finishSessionTiming('empty')
+    else if (error || categoryError || missing) finishSessionTiming('failed')
+  }, [session, empty, error, categoryError, missing])
+
   const difficultyKey = difficulties.join(',')
 
   useEffect(() => {
@@ -241,7 +253,7 @@ export function Study({ categoryId, difficulties }: StudyProps) {
 
     async function build() {
       try {
-        const next = await createSession(categoryId, difficulties)
+        const next = await withSessionTiming(() => createSession(categoryId, difficulties))
         if (cancelled) return
         if (next.cards.length === 0) {
           setEmpty(true)

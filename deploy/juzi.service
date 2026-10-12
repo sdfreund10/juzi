@@ -9,6 +9,7 @@ User=juzi
 Group=juzi
 WorkingDirectory=/var/www/juzi
 EnvironmentFile=/etc/juzi.env
+EnvironmentFile=-/var/www/juzi/.sentry-release.env
 ExecStart=/var/www/juzi/.venv/bin/gunicorn \
     --workers 3 \
     --bind 127.0.0.1:8000 \

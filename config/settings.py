@@ -9,6 +9,8 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 
+from config.monitoring import initialize_sentry
+
 # Ensure WhiteNoise/Django serve the web app manifest with the correct type.
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
@@ -16,6 +18,7 @@ mimetypes.add_type("application/manifest+json", ".webmanifest")
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+initialize_sentry()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
