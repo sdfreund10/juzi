@@ -119,6 +119,19 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T
 }
 
+export async function checkHealth(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/health/', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
 export function fetchMe(): Promise<AuthState> {
   return apiRequest<AuthState>('/api/auth/me/', { quiet: true })
 }

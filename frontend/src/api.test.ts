@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiRequest, login } from './api'
+import { ApiError, apiRequest, checkHealth, login } from './api'
 import { setToastHandler } from './toast'
 
 afterEach(() => {
@@ -145,5 +145,33 @@ describe('apiRequest', () => {
       apiRequest('/api/auth/me/', { quiet: true }),
     ).rejects.toBeInstanceOf(ApiError)
     expect(toasts).toEqual([])
+  })
+})
+
+describe('checkHealth', () => {
+  it('returns true when /api/health/ is ok', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, { status: 'ok', service: 'juzi', database: 'connected' }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(checkHealth()).resolves.toBe(true)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/health/',
+      expect.objectContaining({ method: 'GET', credentials: 'same-origin' }),
+    )
+  })
+
+  it('returns false when /api/health/ fails or is unreachable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(500, { status: 'error', service: 'juzi', database: 'disconnected' }),
+      ),
+    )
+    await expect(checkHealth()).resolves.toBe(false)
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    await expect(checkHealth()).resolves.toBe(false)
   })
 })
