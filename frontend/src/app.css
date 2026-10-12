@@ -1,3 +1,4 @@
+
 :root {
   --bg: #fafaf7;
   --ink: #1e2024;
@@ -246,6 +247,7 @@ body {
   border: 0;
   border-bottom: 1px solid var(--line);
   border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
   background: none;
   color: inherit;
   font: inherit;
@@ -265,6 +267,7 @@ body {
 
 .difficulty-option.selected {
   border-left-color: var(--ink);
+  border-right-color: var(--ink);
 }
 
 .difficulty-option b {
