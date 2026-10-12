@@ -129,6 +129,7 @@ function StudySessionView({ session }: { session: StudySession }) {
     <div class={`study-shell${revealed ? ' revealed' : ''}`}>
       <div class="study-top">
         <div class="study-top-main">
+          <span class="study-category">{session.category.name}</span>
           <span class="muted">
             {queue.length} / {session.total}
           </span>
