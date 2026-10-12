@@ -377,8 +377,10 @@ body {
 
 .study-top-main {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  flex: 1;
   min-width: 0;
 }
 
@@ -388,6 +390,30 @@ body {
   white-space: nowrap;
   font-size: 13px;
   font-weight: 500;
+}
+
+.study-progress {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  max-width: 220px;
+  height: 4px;
+}
+
+.study-progress-segment {
+  flex: 1;
+  min-width: 0;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.study-progress-segment.easy,
+.study-progress.done .study-progress-segment {
+  background: var(--easy-ink);
+}
+
+.study-progress-segment.hard {
+  background: var(--hard-ink);
 }
 
 .prompt-block {

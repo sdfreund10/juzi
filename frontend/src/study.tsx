@@ -103,21 +103,53 @@ function DisplayBlocks({
     </div>
   )
 }
+type SittingGrade = 'easy' | 'hard'
+
+function SittingProgress({
+  total,
+  grades,
+  done,
+}: {
+  total: number
+  grades: SittingGrade[]
+  done: boolean
+}) {
+  const segments = Array.from({ length: total }, (_, index) => {
+    if (done) return 'easy' as const
+    return grades[index] ?? null
+  })
+
+  return (
+    <div
+      class={`study-progress${done ? ' done' : ''}`}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={done ? total : Math.min(grades.length, total)}
+      aria-label={done ? 'Sitting complete' : 'Sitting progress'}
+    >
+      {segments.map((grade, index) => (
+        <span
+          key={index}
+          class={`study-progress-segment${grade ? ` ${grade}` : ''}`}
+        />
+      ))}
+    </div>
+  )
+}
+
 function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
+  const [grades, setGrades] = useState<SittingGrade[]>([])
 
   const card = queue[0]
-  if (!card) {
-    return <CaughtUp />
-  }
-
-  const promptBlocks = cardPrompt(card)
-  const revealBlocks = cardReveal(card)
-  const headword = card.answer_chinese
+  const done = !card
 
   function onGrade(hard: boolean) {
+    if (!card) return
     const wordId = card.word_id
+    setGrades((prev) => [...prev, hard ? 'hard' : 'easy'])
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
     void rateCard(wordId, hard ? 'hard' : 'easy').catch((err: unknown) => {
@@ -126,13 +158,15 @@ function StudySessionView({ session }: { session: StudySession }) {
   }
 
   return (
-    <div class={`study-shell${revealed ? ' revealed' : ''}`}>
+    <div class={`study-shell${revealed && !done ? ' revealed' : ''}`}>
       <div class="study-top">
         <div class="study-top-main">
           <span class="study-category">{session.category.name}</span>
-          <span class="muted">
-            {queue.length} / {session.total}
-          </span>
+          <SittingProgress
+            total={session.total}
+            grades={grades}
+            done={done}
+          />
         </div>
         <button
           type="button"
@@ -143,18 +177,20 @@ function StudySessionView({ session }: { session: StudySession }) {
         </button>
       </div>
 
-      {revealed ? (
+      {done ? (
+        <CaughtUp />
+      ) : revealed ? (
         <>
           <div class="study-body">
             <DisplayBlocks
-              blocks={promptBlocks}
+              blocks={cardPrompt(card)}
               face="prompt"
-              headword={headword}
+              headword={card.answer_chinese}
             />
             <DisplayBlocks
-              blocks={revealBlocks}
+              blocks={cardReveal(card)}
               face="answer"
-              headword={headword}
+              headword={card.answer_chinese}
             />
           </div>
           <div class="grade-zones" aria-label="Grade card">
@@ -190,9 +226,9 @@ function StudySessionView({ session }: { session: StudySession }) {
           }}
         >
           <DisplayBlocks
-            blocks={promptBlocks}
+            blocks={cardPrompt(card)}
             face="prompt"
-            headword={headword}
+            headword={card.answer_chinese}
           />
           <p class="hint">Tap anywhere to reveal</p>
         </div>
