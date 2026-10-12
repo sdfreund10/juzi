@@ -97,9 +97,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env:
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
-          VITE_SENTRY_ENVIRONMENT: production
           VITE_SENTRY_RELEASE: ${{ github.sha }}
-          VITE_SENTRY_TRACES_SAMPLE_RATE: ${{ vars.VITE_SENTRY_TRACES_SAMPLE_RATE || '1' }}
           SENTRY_UPLOAD: ${{ vars.VITE_SENTRY_DSN != '' && 'true' || 'false' }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: juzi-frontend

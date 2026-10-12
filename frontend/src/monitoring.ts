@@ -7,23 +7,11 @@ export function initializeMonitoring(): void {
   const apiOrigin = window.location.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   Sentry.init({
     dsn,
-    environment: import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
+    environment: import.meta.env.MODE,
     release: import.meta.env.VITE_SENTRY_RELEASE,
-    tracesSampleRate: Number(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE ?? '1'),
-    dataCollection: {
-      userInfo: false,
-      cookies: false,
-      httpHeaders: false,
-      httpBodies: [],
-      urlQueryParams: false,
-      stackFrameVariables: false,
-      databaseQueryData: false,
-    },
-    // Keep transactions available alongside spans for performance investigation.
-    traceLifecycle: 'static',
+    tracesSampleRate: import.meta.env.PROD ? 1 : 0,
     tracePropagationTargets: [/^\/api\//, new RegExp(`^${apiOrigin}/api/`)],
-    integrations: (defaults) => [
-      ...defaults.filter((integration) => integration.name !== 'Breadcrumbs'),
+    integrations: [
       Sentry.browserTracingIntegration({
         shouldCreateSpanForRequest: (url) => {
           const request = new URL(url, window.location.origin)
@@ -32,12 +20,6 @@ export function initializeMonitoring(): void {
         },
       }),
     ],
-    beforeSend(event) {
-      delete event.user
-      delete event.request
-      delete event.breadcrumbs
-      return event
-    },
   })
 }
 
@@ -51,6 +33,9 @@ export function reportApiFailure(method: string, path: string, status?: number):
   })
 }
 
+// Measure Start studying → navigation/category loading → session request → first
+// card committed to the DOM. Failed, empty, and cancelled attempts end separately.
+// Starting again at Study mount also covers bookmarked session URLs.
 let sessionSpan: Sentry.Span | undefined
 
 export function startSessionTiming(): void {

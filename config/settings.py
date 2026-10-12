@@ -7,9 +7,8 @@ import os
 from pathlib import Path
 
 import dj_database_url
+import sentry_sdk
 from dotenv import load_dotenv
-
-from config.monitoring import initialize_sentry
 
 # Ensure WhiteNoise/Django serve the web app manifest with the correct type.
 mimetypes.add_type("application/manifest+json", ".webmanifest")
@@ -17,8 +16,6 @@ mimetypes.add_type("application/manifest+json", ".webmanifest")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-
-initialize_sentry()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -29,6 +26,15 @@ SECRET_KEY = os.getenv(
 )
 
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes"}
+
+if sentry_dsn := os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        environment="development" if DEBUG else "production",
+        release=os.getenv("SENTRY_RELEASE"),
+        traces_sample_rate=0.0 if DEBUG else 1.0,
+    )
+
 
 ALLOWED_HOSTS = [
     host.strip()
