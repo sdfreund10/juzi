@@ -42,7 +42,7 @@ export function highlightHeadword(
 
 function hasExample(card: StudyCard): boolean {
   return Boolean(
-    card.example_chinese || card.example_pinyin || card.example_english,
+    card.example_chinese && card.example_pinyin && card.example_english,
   )
 }
 
