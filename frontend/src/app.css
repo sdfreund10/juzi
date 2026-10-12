@@ -382,15 +382,6 @@ body {
   min-width: 0;
 }
 
-.chip {
-  background: var(--chip);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 4px 12px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .prompt-block {
   margin: 56px 0 0;
   padding: 0 16px;
