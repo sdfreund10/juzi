@@ -3,6 +3,7 @@ import { finishSessionTiming, startSessionTiming, withSessionTiming } from './mo
 import {
   ApiError,
   createSession,
+  flagWord,
   rateCard,
   type Difficulty,
   type StudyCard,
@@ -115,6 +116,8 @@ function DisplayBlocks({
 function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
+  const [flagged, setFlagged] = useState(false)
+  const [confirmFlag, setConfirmFlag] = useState(false)
   const [progress, setProgress] = useState(emptyProgress)
   const bodyRef = useRef<HTMLDivElement>(null)
 
@@ -125,6 +128,11 @@ function StudySessionView({ session }: { session: StudySession }) {
     if (bodyRef.current) bodyRef.current.scrollTop = 0
   }, [card, revealed])
 
+  useEffect(() => {
+    setFlagged(false)
+    setConfirmFlag(false)
+  }, [card?.word_id])
+
   function onGrade(hard: boolean) {
     if (!card) return
     const wordId = card.word_id
@@ -133,9 +141,26 @@ function StudySessionView({ session }: { session: StudySession }) {
     )
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
+    setConfirmFlag(false)
     void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
       // rateCard shows the failure toast. Keep the drill moving.
     })
+  }
+
+  function onFlag() {
+    if (!card || flagged) return
+    setConfirmFlag(true)
+  }
+
+  function onConfirmFlag() {
+    if (!card || flagged) return
+    const wordId = card.word_id
+    setConfirmFlag(false)
+    void flagWord(wordId)
+      .then(() => setFlagged(true))
+      .catch(() => {
+        // flagWord shows the failure toast.
+      })
   }
 
   return (
@@ -177,6 +202,22 @@ function StudySessionView({ session }: { session: StudySession }) {
             aria-label="Study card"
             tabIndex={0}
           >
+            <button
+              type="button"
+              class="study-flag"
+              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
+              aria-pressed={flagged}
+              disabled={flagged}
+              onClick={onFlag}
+            >
+              <img
+                class="study-flag-icon"
+                src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
+                alt=""
+                width="14"
+                height="14"
+              />
+            </button>
             <DisplayBlocks
               blocks={cardPrompt(card)}
               face="prompt"
@@ -206,6 +247,33 @@ function StudySessionView({ session }: { session: StudySession }) {
               <small>later</small>
             </button>
           </div>
+          {confirmFlag ? (
+            <div
+              class="study-flag-confirm"
+              role="dialog"
+              aria-modal="true"
+              aria-describedby="flag-confirm-copy"
+            >
+              <div class="study-flag-confirm-panel">
+                <p id="flag-confirm-copy">
+                  This will notify the team there may be a problem with this
+                  study card.
+                </p>
+                <div class="study-flag-confirm-actions">
+                  <button
+                    type="button"
+                    class="btn ghost"
+                    onClick={() => setConfirmFlag(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button type="button" class="btn" onClick={onConfirmFlag}>
+                    Flag
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : (
         <div

@@ -68,7 +68,10 @@ admin.site.register(User, EmailUserAdmin)
 
 @admin.register(Word)
 class WordAdmin(admin.ModelAdmin):
-    list_display = ("chinese", "simplified", "pinyin", "english_basic")
+    list_display = ("chinese", "simplified", "pinyin", "english_basic", "flagged_by")
+    list_filter = ("flagged_by",)
+    list_select_related = ("flagged_by",)
+    autocomplete_fields = ("flagged_by",)
     search_fields = ("chinese", "simplified", "pinyin", "english_basic")
 
 

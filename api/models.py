@@ -16,6 +16,13 @@ class Word(models.Model):
     example_sentence_simplified = models.CharField(max_length=255, default="")
     example_sentence_pinyin = models.CharField(max_length=255, default="")
     example_sentence_english = models.CharField(max_length=255, default="")
+    flagged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="flagged_words",
+    )
 
     class Meta:
         ordering = ["chinese"]

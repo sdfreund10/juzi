@@ -211,3 +211,20 @@ export async function rateCard(wordId: number, grade: CardGrade): Promise<void> 
     throw err
   }
 }
+
+export async function flagWord(wordId: number): Promise<void> {
+  try {
+    await apiRequest('/api/word-flags/', {
+      method: 'POST',
+      body: { word_id: wordId },
+    })
+    showToast('Marked for review')
+  } catch (err) {
+    showToast(
+      err instanceof ApiError && err.status === 401
+        ? 'Your session expired. Sign in again.'
+        : 'Couldn’t flag this card. Try again.',
+    )
+    throw err
+  }
+}

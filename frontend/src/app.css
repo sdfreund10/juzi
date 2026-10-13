@@ -734,6 +734,75 @@ body {
   color: var(--muted);
 }
 
+.study-flag {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  z-index: 1;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.study-flag:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.study-flag:focus-visible {
+  outline: 2px solid var(--pin);
+  outline-offset: 2px;
+}
+
+.study-flag-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.study-flag-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+
+.study-flag-confirm-panel {
+  width: min(100%, 320px);
+  padding: 20px 18px 16px;
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+.study-flag-confirm-panel p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.study-flag-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 16px;
+}
+
 .grade-zones {
   flex-shrink: 0;
   height: calc(120px + env(safe-area-inset-bottom, 0px));

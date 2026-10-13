@@ -51,7 +51,7 @@ export function Login({ onSuccess, bootError = null }: LoginProps) {
             ref={emailRef}
             type="email"
             name="email"
-            autocomplete="username"
+            autocomplete="email"
             required
             value={email}
             onInput={(e) => setEmail((e.target as HTMLInputElement).value)}

@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .auth_views import login_view, logout_view, me
-from .study_views import categories, create_session, rate_card
+from .study_views import categories, create_session, flag_word, rate_card
 from .views import health
 
 urlpatterns = [
@@ -12,4 +12,5 @@ urlpatterns = [
     path("categories/", categories, name="categories"),
     path("sessions/", create_session, name="sessions-create"),
     path("ratings/", rate_card, name="ratings-create"),
+    path("word-flags/", flag_word, name="word-flags-create"),
 ]

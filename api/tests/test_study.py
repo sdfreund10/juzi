@@ -325,3 +325,88 @@ def test_create_session_rejects_unknown_difficulty(
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+def test_flag_word_requires_authentication(
+    client: APIClient,
+    seeded_words: dict[str, Word],
+) -> None:
+    headers = _csrf_headers(client)
+    response = client.post(
+        reverse("word-flags-create"),
+        {"word_id": seeded_words["beginner"].id},
+        format="json",
+        **headers,
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_flag_word_sets_flagged_by(
+    client: APIClient,
+    user: User,
+    seeded_words: dict[str, Word],
+) -> None:
+    word = seeded_words["beginner"]
+    headers = _login(client, user)
+    response = client.post(
+        reverse("word-flags-create"),
+        {"word_id": word.id},
+        format="json",
+        **headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    word.refresh_from_db()
+    assert word.flagged_by_id == user.id
+
+
+@pytest.mark.django_db
+def test_flag_word_keeps_first_reporter(
+    client: APIClient,
+    user: User,
+    seeded_words: dict[str, Word],
+) -> None:
+    word = seeded_words["beginner"]
+    first = user
+    second = _make_user(email="bob@example.com", password="s3cret-bob")
+
+    headers = _login(client, first)
+    assert (
+        client.post(
+            reverse("word-flags-create"),
+            {"word_id": word.id},
+            format="json",
+            **headers,
+        ).status_code
+        == status.HTTP_200_OK
+    )
+
+    headers = _login(client, second, password="s3cret-bob")
+    response = client.post(
+        reverse("word-flags-create"),
+        {"word_id": word.id},
+        format="json",
+        **headers,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    word.refresh_from_db()
+    assert word.flagged_by_id == first.id
+
+
+@pytest.mark.django_db
+def test_flag_word_missing_word(
+    client: APIClient,
+    user: User,
+) -> None:
+    headers = _login(client, user)
+    response = client.post(
+        reverse("word-flags-create"),
+        {"word_id": 999_999},
+        format="json",
+        **headers,
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Word not found."}

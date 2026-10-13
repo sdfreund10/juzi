@@ -45,3 +45,7 @@ class RateCardSerializer(serializers.Serializer):
         if grade not in KNOWN_GRADES:
             raise serializers.ValidationError(f"Unknown grade: {value}. Expected hard or easy.")
         return grade
+
+
+class FlagWordSerializer(serializers.Serializer):
+    word_id = serializers.IntegerField(min_value=1)

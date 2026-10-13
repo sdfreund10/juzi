@@ -6,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from api.models import Category, UserWord
-from api.serializers import CreateSessionSerializer, RateCardSerializer
+from api.models import Category, UserWord, Word
+from api.serializers import CreateSessionSerializer, FlagWordSerializer, RateCardSerializer
 from api.services.categories import list_topic_categories
 from api.services.scheduling import UserWordNotFoundError, rate_user_word
 from api.services.sessions import EmptySessionError, StudySession, build_session
@@ -137,3 +137,24 @@ def rate_card(request: Request) -> Response:
         ),
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def flag_word(request: Request) -> Response:
+    serializer = FlagWordSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        word = Word.objects.get(pk=serializer.validated_data["word_id"])
+    except Word.DoesNotExist:
+        return Response(
+            {"detail": "Word not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if word.flagged_by_id is None:
+        word.flagged_by = request.user
+        word.save(update_fields=["flagged_by"])
+
+    return Response({}, status=status.HTTP_200_OK)
