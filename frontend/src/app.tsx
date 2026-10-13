@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth'
 import { Brand } from './brand'
 import { Decks } from './decks'
 import { DifficultyStep } from './difficulty'
+import { Install } from './install'
 import { Login } from './login'
 import { navigate } from './routes'
 import { SessionFooter } from './sessionFooter'
@@ -72,6 +73,8 @@ function AppShell() {
           categoryId={route.categoryId}
           difficulties={route.difficulties}
         />
+      ) : route.name === 'install' ? (
+        <Install />
       ) : (
         <Decks />
       )}

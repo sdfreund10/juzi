@@ -6,6 +6,7 @@ const DIFFICULTY_SET = new Set<string>(DIFFICULTY_ORDER)
 
 export type Route =
   | { name: 'home' }
+  | { name: 'install' }
   | { name: 'session-new'; categoryId: number }
   | { name: 'session'; categoryId: number; difficulties: Difficulty[] }
 
@@ -28,6 +29,7 @@ export function parseDifficulties(slug: string): Difficulty[] | null {
 export function parsePath(pathname: string): Route {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/') return { name: 'home' }
+  if (path === '/install') return { name: 'install' }
 
   const match = path.match(/^\/category\/(\d+)\/sessions\/([^/]+)$/)
   if (!match) return { name: 'home' }
@@ -50,6 +52,8 @@ export function pathFor(route: Route): string {
   switch (route.name) {
     case 'home':
       return '/'
+    case 'install':
+      return '/install'
     case 'session-new':
       return `/category/${route.categoryId}/sessions/new`
     case 'session':
