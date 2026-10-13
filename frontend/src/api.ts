@@ -1,3 +1,4 @@
+import { reportApiFailure } from './monitoring'
 import { showToast } from './toast'
 
 export class ApiError extends Error {
@@ -93,6 +94,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
     })
   } catch (err) {
+    reportApiFailure(method, path)
     if (options.toast) {
       showToast('Could not reach the server.')
     }
@@ -100,6 +102,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
+    if (response.status >= 500) reportApiFailure(method, path, response.status)
     let message = 'Request failed'
     try {
       message = messageFromErrorBody(await response.json())
@@ -193,10 +196,18 @@ export function createSession(
 
 export type CardGrade = 'hard' | 'easy'
 
-export function rateCard(wordId: number, grade: CardGrade): Promise<void> {
-  return apiRequest('/api/ratings/', {
-    method: 'POST',
-    body: { word_id: wordId, grade },
-    toast: true,
-  })
+export async function rateCard(wordId: number, grade: CardGrade): Promise<void> {
+  try {
+    await apiRequest('/api/ratings/', {
+      method: 'POST',
+      body: { word_id: wordId, grade },
+    })
+  } catch (err) {
+    showToast(
+      err instanceof ApiError && err.status === 401
+        ? 'Your session expired. Sign in again to save progress.'
+        : 'Couldn’t save your progress. You can keep studying.',
+    )
+    throw err
+  }
 }

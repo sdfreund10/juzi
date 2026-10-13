@@ -1,3 +1,4 @@
+import { startSessionTiming } from './monitoring'
 import { useEffect, useState } from 'preact/hooks'
 import type { Category, Difficulty } from './api'
 import { Brand } from './brand'
@@ -75,6 +76,7 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
 
   function submit() {
     if (selected.size === 0) return
+    startSessionTiming()
     navigate({
       name: 'session',
       categoryId: selectedCategory.id,
@@ -128,7 +130,9 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
           disabled={selected.size === 0}
           onClick={submit}
         >
-          Start studying
+          {selected.size > 1
+            ? `Start studying · ${selected.size} levels`
+            : 'Start studying'}
         </button>
       </div>
     </>

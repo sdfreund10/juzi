@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
+import { finishSessionTiming, startSessionTiming, withSessionTiming } from './monitoring'
 import {
   ApiError,
   createSession,
@@ -115,9 +116,14 @@ function StudySessionView({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
   const [progress, setProgress] = useState(emptyProgress)
+  const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
   const done = !card
+
+  useLayoutEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0
+  }, [card, revealed])
 
   function onGrade(hard: boolean) {
     if (!card) return
@@ -128,7 +134,7 @@ function StudySessionView({ session }: { session: StudySession }) {
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
     void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
-      // Toast comes from apiRequest. Keep the drill moving.
+      // rateCard shows the failure toast. Keep the drill moving.
     })
   }
 
@@ -159,10 +165,18 @@ function StudySessionView({ session }: { session: StudySession }) {
       </div>
 
       {done ? (
-        <CaughtUp />
+        <div class="study-body">
+          <CaughtUp />
+        </div>
       ) : revealed ? (
         <>
-          <div class="study-body">
+          <div
+            class="study-body"
+            ref={bodyRef}
+            role="region"
+            aria-label="Study card"
+            tabIndex={0}
+          >
             <DisplayBlocks
               blocks={cardPrompt(card)}
               face="prompt"
@@ -196,6 +210,7 @@ function StudySessionView({ session }: { session: StudySession }) {
       ) : (
         <div
           class="study-body reveal-target"
+          ref={bodyRef}
           onClick={() => setRevealed(true)}
           role="button"
           tabIndex={0}
@@ -224,6 +239,17 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   const [error, setError] = useState<string | null>(null)
   const [empty, setEmpty] = useState(false)
 
+  useLayoutEffect(() => {
+    startSessionTiming()
+    return () => finishSessionTiming('cancelled')
+  }, [categoryId, difficulties.join(',')])
+
+  useLayoutEffect(() => {
+    if (session) finishSessionTiming('ready')
+    else if (empty) finishSessionTiming('empty')
+    else if (error || categoryError || missing) finishSessionTiming('failed')
+  }, [session, empty, error, categoryError, missing])
+
   const difficultyKey = difficulties.join(',')
 
   useEffect(() => {
@@ -242,7 +268,7 @@ export function Study({ categoryId, difficulties }: StudyProps) {
 
     async function build() {
       try {
-        const next = await createSession(categoryId, difficulties)
+        const next = await withSessionTiming(() => createSession(categoryId, difficulties))
         if (cancelled) return
         if (next.cards.length === 0) {
           setEmpty(true)
