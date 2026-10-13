@@ -7,6 +7,7 @@ import {
   type StudyCard,
   type StudySession,
 } from './api'
+import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
 import { navigate } from './routes'
 import {
@@ -139,7 +140,7 @@ function StudySessionView({ session }: { session: StudySession }) {
           <p class="study-category">
             <img
               class="brand-mark study-mark"
-              src="/favicon.svg"
+              src={brandMarkSrc}
               alt=""
               width="22"
               height="22"
