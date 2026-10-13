@@ -1,4 +1,4 @@
-type NavigatorStandalone = Navigator & { standalone?: boolean }
+type StandaloneNavigator = { standalone?: boolean }
 
 /** True for iPhone/iPad/iPod, including iPadOS that reports as Mac. */
 export function isIosDevice(
@@ -10,7 +10,7 @@ export function isIosDevice(
 
 /** True when running as an installed Home Screen / PWA window. */
 export function isStandaloneDisplay(
-  nav: NavigatorStandalone = navigator,
+  nav: StandaloneNavigator = navigator as StandaloneNavigator,
   media: Pick<MediaQueryList, 'matches'> | null = typeof matchMedia === 'function'
     ? matchMedia('(display-mode: standalone)')
     : null,

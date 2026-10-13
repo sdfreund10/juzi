@@ -49,20 +49,14 @@ describe('isIosDevice', () => {
 
 describe('isStandaloneDisplay', () => {
   it('is true when navigator.standalone is set', () => {
-    expect(
-      isStandaloneDisplay({ standalone: true } as Navigator, { matches: false }),
-    ).toBe(true)
+    expect(isStandaloneDisplay({ standalone: true }, { matches: false })).toBe(true)
   })
 
   it('is true when display-mode is standalone', () => {
-    expect(
-      isStandaloneDisplay({} as Navigator, { matches: true }),
-    ).toBe(true)
+    expect(isStandaloneDisplay({}, { matches: true })).toBe(true)
   })
 
   it('is false in a normal browser tab', () => {
-    expect(
-      isStandaloneDisplay({ standalone: false } as Navigator, { matches: false }),
-    ).toBe(false)
+    expect(isStandaloneDisplay({ standalone: false }, { matches: false })).toBe(false)
   })
 })
