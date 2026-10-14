@@ -138,7 +138,7 @@ def build_session(
     due_rows = list(
         UserWord.objects.filter(user=user, word_id__in=word_ids)
         .filter(Q(due_on__isnull=True) | Q(due_on__lte=today))
-        .select_related("word")
+        .select_related("word", "user__learner")
     )
     if not due_rows:
         raise EmptySessionError()

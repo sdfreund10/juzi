@@ -9,6 +9,7 @@ import { Login } from './login'
 import { navigate } from './routes'
 import { SessionFooter } from './sessionFooter'
 import { Study } from './study'
+import { StudyLevelStep } from './studyLevel'
 import { ToastHost } from './toast'
 import { useRoute } from './useRoute'
 
@@ -60,6 +61,14 @@ function AppShell() {
 
   if (!user) {
     return <Login bootError={bootError} onSuccess={setUser} />
+  }
+
+  if (user.study_level === null) {
+    return (
+      <main class="app">
+        <StudyLevelStep />
+      </main>
+    )
   }
 
   const isStudy = route.name === 'session'

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from api.models import Learner
 from api.services.scheduling import KNOWN_GRADES
 from api.services.sessions import KNOWN_DIFFICULTIES
 
@@ -11,6 +12,10 @@ class LoginSerializer(serializers.Serializer):
     def validate_email(self, value: str) -> str:
         # Store/lookup emails in lowercase so unique=True is case-safe.
         return value.strip().lower()
+
+
+class StudyLevelSerializer(serializers.Serializer):
+    study_level = serializers.ChoiceField(choices=Learner.StudyLevel.choices)
 
 
 class CreateSessionSerializer(serializers.Serializer):

@@ -8,7 +8,7 @@ from django.contrib.auth.models import AbstractBaseUser
 from django.db import transaction
 from django.utils import timezone
 
-from api.models import UserWord
+from api.models import Learner, UserWord
 
 GRADE_HARD = "hard"
 GRADE_EASY = "easy"
@@ -51,8 +51,39 @@ def unlocked_modes_for_count(easy_count: int) -> tuple[str, ...]:
     return tuple(modes)
 
 
+def study_level_for(user: AbstractBaseUser) -> str | None:
+    try:
+        return user.learner.study_level
+    except Learner.DoesNotExist:
+        return None
+
+
+def easy_count_floor(study_level: str | None, hsk_level: int) -> int:
+    """Minimum easy_count implied by the learner's study level for this HSK band."""
+    if study_level is None or study_level == Learner.StudyLevel.NOVICE:
+        return 0
+
+    # Imported here to avoid a circular import with sessions.
+    from api.services.sessions import DIFFICULTY_LEVELS
+
+    threshold: int = settings.SCHEDULING_UNLOCK_EASY_COUNT
+    early = hsk_level in DIFFICULTY_LEVELS["beginner"]
+
+    if study_level == Learner.StudyLevel.INTERMEDIATE:
+        return threshold if early else 0
+    if study_level == Learner.StudyLevel.ADVANCED:
+        return 2 * threshold if early else threshold
+    if study_level == Learner.StudyLevel.SUPERIOR:
+        return 2 * threshold
+    return 0
+
+
 def unlocked_modes_for_row(user_word: UserWord) -> tuple[str, ...]:
-    return unlocked_modes_for_count(user_word.easy_count)
+    floor = easy_count_floor(
+        study_level_for(user_word.user),
+        user_word.word.hsk_level,
+    )
+    return unlocked_modes_for_count(max(user_word.easy_count, floor))
 
 
 def rate_user_word(
@@ -67,9 +98,13 @@ def rate_user_word(
 
     with transaction.atomic():
         try:
-            row = UserWord.objects.select_for_update().get(
-                user=user,
-                word_id=word_id,
+            row = (
+                UserWord.objects.select_for_update(of=("self",))
+                .select_related("word", "user__learner")
+                .get(
+                    user=user,
+                    word_id=word_id,
+                )
             )
         except UserWord.DoesNotExist as exc:
             raise UserWordNotFoundError from exc

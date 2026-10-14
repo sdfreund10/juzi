@@ -69,6 +69,31 @@ class WordCategory(models.Model):
         return f"{self.category_id}:{self.word_id}"
 
 
+class Learner(models.Model):
+    """Per-user study preferences outside of per-word progress."""
+
+    class StudyLevel(models.TextChoices):
+        NOVICE = "novice", "Novice"
+        INTERMEDIATE = "intermediate", "Intermediate"
+        ADVANCED = "advanced", "Advanced"
+        SUPERIOR = "superior", "Superior"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="learner",
+    )
+    study_level = models.CharField(
+        max_length=20,
+        choices=StudyLevel.choices,
+        null=True,
+        blank=True,
+    )
+
+    def __str__(self) -> str:
+        return f"{self.user_id}:{self.study_level or 'unset'}"
+
+
 class UserWord(models.Model):
     """Per-user practice state for a vocabulary word (all quiz modes share one row)."""
 

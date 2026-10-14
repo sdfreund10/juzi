@@ -38,7 +38,8 @@ Confirmed:
 - Product name is **juzi**. The local folder name `chengzi` is not the brand.
 - Vocabulary is traditional Chinese, with tone-marked pinyin and a basic English gloss.
 - Practice modes: `pinyin_to_en`, `en_to_zh`, `zh_to_en`.
-- Per-user, per-word progress (`UserWord`: `easy_streak`, `easy_count`, `due_on`, `last_practiced_at`). Quiz mode for a session card is chosen randomly among modes unlocked from `easy_count` milestones.
+- Per-user, per-word progress (`UserWord`: `easy_streak`, `easy_count`, `due_on`, `last_practiced_at`). Quiz mode for a session card is chosen randomly among modes unlocked from `easy_count` milestones, raised by an optional one-time `Learner.study_level` floor (ACTFL Novice / Intermediate / Advanced / Superior) that depends on the word’s HSK band.
+- Learners who have not chosen a study level are asked once after sign-in before decks open. There is no in-app editor afterward; admin can correct the choice.
 - Scheduling: hard resets streak and sets due today; easy advances streak/count and schedules by the streak ladder in settings. Session = due words in the chosen category × difficulty bands, one card per word.
 - Accounts are admin-provisioned (email + password, stored lowercase). No public registration.
 - App chrome stays in English. Chinese appears as study content, not UI language.

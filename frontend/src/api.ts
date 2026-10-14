@@ -16,9 +16,12 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+export type StudyLevel = 'novice' | 'intermediate' | 'advanced' | 'superior'
+
 export type AuthUser = {
   authenticated: true
   email: string
+  study_level: StudyLevel | null
 }
 
 export type AuthState =
@@ -26,6 +29,7 @@ export type AuthState =
   | {
       authenticated: false
       email: null
+      study_level: null
     }
 
 type RequestOptions = {
@@ -148,6 +152,13 @@ export function login(email: string, password: string): Promise<AuthUser> {
 
 export function logout(): Promise<AuthState> {
   return apiRequest<AuthState>('/api/auth/logout/', { method: 'POST' })
+}
+
+export function setStudyLevel(studyLevel: StudyLevel): Promise<AuthUser> {
+  return apiRequest<AuthUser>('/api/auth/study-level/', {
+    method: 'POST',
+    body: { study_level: studyLevel },
+  })
 }
 
 export type Category = {
