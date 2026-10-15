@@ -18,9 +18,8 @@ from api.services.scheduling import (
     UserWordNotFoundError,
     interval_days_for_streak,
     rate_user_word,
-    unlocked_modes_for_count,
 )
-from api.services.sessions import EmptySessionError, build_session
+from api.services.sessions import EmptySessionError, _unlocked_modes_for_count, build_session
 
 User = get_user_model()
 
@@ -119,26 +118,13 @@ def test_interval_days_for_streak(streak: int, expected_days: int) -> None:
     [
         (0, (UserWord.Mode.PINYIN_TO_EN,)),
         (4, (UserWord.Mode.PINYIN_TO_EN,)),
-        (
-            5,
-            (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH),
-        ),
-        (
-            9,
-            (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH),
-        ),
-        (
-            10,
-            (
-                UserWord.Mode.PINYIN_TO_EN,
-                UserWord.Mode.EN_TO_ZH,
-                UserWord.Mode.ZH_TO_EN,
-            ),
-        ),
+        (5, (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH)),
+        (9, (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH)),
+        (10, (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH, UserWord.Mode.ZH_TO_EN)),
     ],
 )
 def test_unlocked_modes_for_count(easy_count: int, expected: tuple[str, ...]) -> None:
-    assert unlocked_modes_for_count(easy_count) == expected
+    assert _unlocked_modes_for_count(easy_count) == expected
 
 
 @pytest.mark.django_db
@@ -151,8 +137,7 @@ def test_rate_hard_resets_streak_keeps_count(user: User, words: dict[str, Word])
         easy_count=7,
         due_on=today + timedelta(days=3),
     )
-
-    result = rate_user_word(
+    rate_user_word(
         user=user,
         word_id=row.word_id,
         grade=GRADE_HARD,
@@ -163,7 +148,6 @@ def test_rate_hard_resets_streak_keeps_count(user: User, words: dict[str, Word])
     assert row.easy_count == 7
     assert row.due_on == today
     assert row.last_practiced_at is not None
-    assert result.newly_unlocked_modes == ()
 
 
 @pytest.mark.django_db
@@ -177,7 +161,7 @@ def test_rate_easy_advances_streak_count_and_due(user: User, words: dict[str, Wo
         due_on=today,
     )
 
-    result = rate_user_word(
+    rate_user_word(
         user=user,
         word_id=row.word_id,
         grade=GRADE_EASY,
@@ -188,63 +172,6 @@ def test_rate_easy_advances_streak_count_and_due(user: User, words: dict[str, Wo
     assert row.easy_count == 1
     assert row.due_on == today + timedelta(days=1)
     assert row.last_practiced_at is not None
-    assert result.unlocked_modes == (UserWord.Mode.PINYIN_TO_EN,)
-
-
-@pytest.mark.django_db
-def test_rate_easy_unlocks_en_to_zh_at_threshold(user: User, words: dict[str, Word]) -> None:
-    today = timezone.localdate()
-    row = UserWord.objects.create(
-        user=user,
-        word=words["beginner"],
-        easy_streak=4,
-        easy_count=4,
-        due_on=today,
-    )
-
-    result = rate_user_word(
-        user=user,
-        word_id=row.word_id,
-        grade=GRADE_EASY,
-    )
-
-    row.refresh_from_db()
-    assert row.easy_count == 5
-    assert result.unlocked_modes == (
-        UserWord.Mode.PINYIN_TO_EN,
-        UserWord.Mode.EN_TO_ZH,
-    )
-    assert result.newly_unlocked_modes == (UserWord.Mode.EN_TO_ZH,)
-
-
-@pytest.mark.django_db
-def test_rate_easy_unlocks_zh_to_en_at_double_threshold(
-    user: User,
-    words: dict[str, Word],
-) -> None:
-    today = timezone.localdate()
-    row = UserWord.objects.create(
-        user=user,
-        word=words["beginner"],
-        easy_streak=9,
-        easy_count=9,
-        due_on=today,
-    )
-
-    result = rate_user_word(
-        user=user,
-        word_id=row.word_id,
-        grade=GRADE_EASY,
-    )
-
-    row.refresh_from_db()
-    assert row.easy_count == 10
-    assert result.unlocked_modes == (
-        UserWord.Mode.PINYIN_TO_EN,
-        UserWord.Mode.EN_TO_ZH,
-        UserWord.Mode.ZH_TO_EN,
-    )
-    assert result.newly_unlocked_modes == (UserWord.Mode.ZH_TO_EN,)
 
 
 @pytest.mark.django_db
@@ -302,7 +229,6 @@ def test_build_session_one_card_per_word_and_unlocked_mode(
     card = session.cards[0]
     assert card.word_id == words["beginner"].id
     assert card.mode == UserWord.Mode.ZH_TO_EN
-    assert card.prompt == words["beginner"].chinese
 
 
 @pytest.mark.django_db
@@ -367,8 +293,6 @@ def test_rate_endpoint_happy_path(
     assert body["user_word"]["word_id"] == words["beginner"].id
     assert body["user_word"]["easy_streak"] == 1
     assert body["user_word"]["easy_count"] == 1
-    assert body["unlocked_modes"] == [UserWord.Mode.PINYIN_TO_EN]
-    assert body["newly_unlocked_modes"] == []
 
 
 @pytest.mark.django_db

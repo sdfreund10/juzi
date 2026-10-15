@@ -47,7 +47,7 @@ it('finishes only after the first card is committed to the DOM', async () => {
   await act(async () => {
     resolveResponse(new Response(JSON.stringify({
       category: { id: 1, name: 'Test deck' }, difficulties: ['beginner'], total: 1,
-      cards: [{ word_id: 1, mode: 'pinyin_to_english', prompt: 'first-card-prompt',
+      cards: [{ word_id: 1, mode: 'pinyin_to_en',
         answer_chinese: 'private-content', answer_pinyin: 'pinyin', answer_english: 'answer',
         example_chinese: '', example_pinyin: '', example_english: '' }],
     })))
@@ -56,7 +56,7 @@ it('finishes only after the first card is committed to the DOM', async () => {
   await Sentry.flush()
   expect(transactions).toHaveLength(1)
   expect(transactions[0].contexts?.trace?.data?.['study.outcome']).toBe('ready')
-  expect(renderedAtEnd[0]).toContain('first-card-prompt')
+  expect(renderedAtEnd[0]).toContain('private-content')
   expect(JSON.stringify(transactions)).not.toContain('private-content')
 })
 

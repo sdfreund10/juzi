@@ -12,7 +12,6 @@ function card(overrides: Partial<StudyCard> = {}): StudyCard {
   return {
     word_id: 1,
     mode: 'pinyin_to_en',
-    prompt: 'túshūguǎn',
     answer_chinese: '圖書館',
     answer_pinyin: 'túshūguǎn',
     answer_english: 'library',

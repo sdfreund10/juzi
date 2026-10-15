@@ -231,7 +231,6 @@ def test_create_session_filters_difficulty_bands(
     word_ids = {card["word_id"] for card in body["cards"]}
     assert word_ids == {seeded_words["beginner"].id, seeded_words["advanced"].id}
     assert all(card["mode"] in UserWord.Mode.values for card in body["cards"])
-    assert all(card["prompt"] for card in body["cards"])
     by_word = {card["word_id"]: card for card in body["cards"]}
     love = by_word[seeded_words["beginner"].id]
     assert love["example_chinese"] == "我愛喝茶。"
