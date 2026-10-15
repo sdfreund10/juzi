@@ -734,32 +734,45 @@ body {
   color: var(--muted);
 }
 
-.study-flag {
-  position: absolute;
-  top: 4px;
-  left: 8px;
-  z-index: 1;
+.study-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.study-action {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin: 0;
-  min-width: 28px;
-  min-height: 28px;
-  padding: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  gap: 6px;
+  padding: 10px;
   border: 0;
   border-radius: 6px;
   background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
   cursor: pointer;
   touch-action: manipulation;
 }
 
-.study-flag:disabled {
+.study-action:disabled {
   cursor: default;
-  opacity: 1;
+  opacity: 0.45;
 }
 
-.study-flag:focus-visible {
+.study-action:hover:not(:disabled) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.study-action:focus-visible {
   outline: 2px solid var(--pin);
   outline-offset: 2px;
 }

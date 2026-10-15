@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import TypedDict
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
+from django.core import signing
 from django.db import transaction
 from django.utils import timezone
 
@@ -16,6 +18,20 @@ KNOWN_GRADES = frozenset({GRADE_HARD, GRADE_EASY})
 
 class UserWordNotFoundError(Exception):
     """No UserWord exists for this user and word."""
+
+
+class InvalidUndoTokenError(Exception):
+    """The undo token cannot restore this learner's progress."""
+
+
+class ProgressSnapshot(TypedDict):
+    easy_streak: int
+    easy_count: int
+    due_on: str | None
+    last_practiced_at: str | None
+
+
+UNDO_TOKEN_SALT = "api.rating-undo"
 
 
 def interval_days_for_streak(streak: int) -> int:
@@ -37,7 +53,7 @@ def rate_user_word(
     user: AbstractBaseUser,
     word_id: int,
     grade: str,
-):
+) -> tuple[UserWord, str]:
     """Apply hard/easy to the user's word row."""
     today = timezone.localdate()
     now = timezone.now()
@@ -50,6 +66,8 @@ def rate_user_word(
             )
         except UserWord.DoesNotExist as exc:
             raise UserWordNotFoundError from exc
+
+        previous = progress_snapshot(row)
 
         if grade == GRADE_HARD:
             row.due_on = today
@@ -70,4 +88,46 @@ def rate_user_word(
                 "last_practiced_at",
             ]
         )
-        return row
+        return row, _undo_token(user=user, word_id=word_id, previous=previous)
+
+
+def progress_snapshot(row: UserWord) -> ProgressSnapshot:
+    return {
+        "easy_streak": row.easy_streak,
+        "easy_count": row.easy_count,
+        "due_on": row.due_on.isoformat() if row.due_on else None,
+        "last_practiced_at": row.last_practiced_at.isoformat() if row.last_practiced_at else None,
+    }
+
+
+def _undo_token(*, user: AbstractBaseUser, word_id: int, previous: ProgressSnapshot) -> str:
+    return signing.dumps(
+        {"user_id": user.pk, "word_id": word_id, "previous": previous},
+        salt=UNDO_TOKEN_SALT,
+        compress=True,
+    )
+
+
+def undo_rating(*, user: AbstractBaseUser, undo_token: str) -> None:
+    try:
+        payload = signing.loads(
+            undo_token,
+            salt=UNDO_TOKEN_SALT,
+        )
+        previous = payload["previous"]
+        if payload["user_id"] != user.pk:
+            raise InvalidUndoTokenError
+    except (signing.BadSignature, KeyError, TypeError, ValueError) as exc:
+        raise InvalidUndoTokenError from exc
+
+    with transaction.atomic():
+        try:
+            row = UserWord.objects.select_for_update().get(user=user, word_id=payload["word_id"])
+        except UserWord.DoesNotExist as exc:
+            raise InvalidUndoTokenError from exc
+
+        row.easy_streak = previous["easy_streak"]
+        row.easy_count = previous["easy_count"]
+        row.due_on = previous["due_on"]
+        row.last_practiced_at = previous["last_practiced_at"]
+        row.save(update_fields=["easy_streak", "easy_count", "due_on", "last_practiced_at"])

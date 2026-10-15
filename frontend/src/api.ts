@@ -195,12 +195,13 @@ export function createSession(
 
 export type CardGrade = 'hard' | 'easy'
 
-export async function rateCard(wordId: number, grade: CardGrade): Promise<void> {
+export async function rateCard(wordId: number, grade: CardGrade): Promise<string> {
   try {
-    await apiRequest('/api/ratings/', {
+    const result = await apiRequest<{ undo_token: string }>('/api/ratings/', {
       method: 'POST',
       body: { word_id: wordId, grade },
     })
+    return result.undo_token
   } catch (err) {
     showToast(
       err instanceof ApiError && err.status === 401
@@ -209,6 +210,13 @@ export async function rateCard(wordId: number, grade: CardGrade): Promise<void> 
     )
     throw err
   }
+}
+
+export function undoRating(undoToken: string): Promise<void> {
+  return apiRequest('/api/ratings/undo/', {
+    method: 'POST',
+    body: { undo_token: undoToken },
+  })
 }
 
 export async function flagWord(wordId: number): Promise<void> {

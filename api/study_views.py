@@ -7,9 +7,19 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from api.models import Category, UserWord, Word
-from api.serializers import CreateSessionSerializer, FlagWordSerializer, RateCardSerializer
+from api.serializers import (
+    CreateSessionSerializer,
+    FlagWordSerializer,
+    RateCardSerializer,
+    UndoRatingSerializer,
+)
 from api.services.categories import list_topic_categories
-from api.services.scheduling import UserWordNotFoundError, rate_user_word
+from api.services.scheduling import (
+    InvalidUndoTokenError,
+    UserWordNotFoundError,
+    rate_user_word,
+    undo_rating,
+)
 from api.services.sessions import EmptySessionError, StudySession, build_session
 
 
@@ -113,7 +123,7 @@ def rate_card(request: Request) -> Response:
     serializer.is_valid(raise_exception=True)
 
     try:
-        result = rate_user_word(
+        result, undo_token = rate_user_word(
             user=request.user,
             word_id=serializer.validated_data["word_id"],
             grade=serializer.validated_data["grade"],
@@ -125,9 +135,24 @@ def rate_card(request: Request) -> Response:
         )
 
     return Response(
-        _user_word_payload(result),
+        {**_user_word_payload(result), "undo_token": undo_token},
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def undo_card_rating(request: Request) -> Response:
+    serializer = UndoRatingSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        undo_rating(user=request.user, undo_token=serializer.validated_data["undo_token"])
+    except InvalidUndoTokenError:
+        return Response(
+            {"detail": "This rating can’t be undone."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(["POST"])

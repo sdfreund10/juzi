@@ -5,6 +5,7 @@ import {
   createSession,
   flagWord,
   rateCard,
+  undoRating,
   type Difficulty,
   type StudyCard,
   type StudySession,
@@ -26,12 +27,20 @@ import {
   emptyProgress,
   recordEasy,
   recordHard,
+  type SessionProgress,
 } from './studyProgress'
+import { showToast } from './toast'
 import { useCategory } from './useCategories'
 
 type StudyProps = {
   categoryId: number
   difficulties: Difficulty[]
+}
+
+type RatingCheckpoint = {
+  queue: StudyCard[]
+  progress: SessionProgress
+  savedRating: Promise<string>
 }
 
 function lineClass(
@@ -119,6 +128,10 @@ function StudySessionView({ session }: { session: StudySession }) {
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
   const [progress, setProgress] = useState(emptyProgress)
+  const [checkpoint, setCheckpoint] = useState<RatingCheckpoint | null>(null)
+  const [undoing, setUndoing] = useState(false)
+  const undoInFlight = useRef(false)
+  const pendingSave = useRef<Promise<unknown>>(Promise.resolve())
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
@@ -134,26 +147,54 @@ function StudySessionView({ session }: { session: StudySession }) {
   }, [card?.word_id])
 
   function onGrade(hard: boolean) {
-    if (!card) return
+    if (!card || !revealed || undoInFlight.current) return
     const wordId = card.word_id
+    const savedRating = pendingSave.current.then(() => rateCard(wordId, hard ? 'hard' : 'easy'))
+    // Keep saves ordered without making the learner wait before the next card.
+    pendingSave.current = savedRating.catch(() => {
+      // An unconfirmed save cannot be undone. Keep any newer checkpoint intact.
+      setCheckpoint((current) => current?.savedRating === savedRating ? null : current)
+    })
+    setCheckpoint({ queue, progress, savedRating })
     setProgress((prev) =>
       hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
     )
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
     setConfirmFlag(false)
-    void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
-      // rateCard shows the failure toast. Keep the drill moving.
-    })
+  }
+
+  async function onUndo() {
+    if (!checkpoint || undoInFlight.current) return
+    undoInFlight.current = true
+    setUndoing(true)
+    setConfirmFlag(false)
+    try {
+      // rateCard already explains save failures; do not offer an undo retry for one.
+      const undoToken = await checkpoint.savedRating.catch(() => null)
+      if (!undoToken) return
+      await undoRating(undoToken)
+      setQueue(checkpoint.queue)
+      setProgress(checkpoint.progress)
+      setRevealed(true)
+      setCheckpoint(null)
+    } catch (err) {
+      showToast(
+        'Couldn’t undo the rating. Try again.',
+      )
+    } finally {
+      undoInFlight.current = false
+      setUndoing(false)
+    }
   }
 
   function onFlag() {
-    if (!card || flagged) return
+    if (!card || flagged || undoInFlight.current) return
     setConfirmFlag(true)
   }
 
   function onConfirmFlag() {
-    if (!card || flagged) return
+    if (!card || flagged || undoInFlight.current) return
     const wordId = card.word_id
     setConfirmFlag(false)
     void flagWord(wordId)
@@ -189,6 +230,49 @@ function StudySessionView({ session }: { session: StudySession }) {
         </div>
       </div>
 
+      <div class="study-actions" role="group" aria-label="Card actions">
+        <button
+          type="button"
+          class="study-action study-undo"
+          aria-label="Undo last rating"
+          disabled={!checkpoint || undoing}
+          onClick={onUndo}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 4 4 9l5 5M4 9h10a6 6 0 0 1 0 12h-3" />
+          </svg>
+          {undoing ? 'Undoing…' : 'Undo'}
+        </button>
+        {revealed && !done ? (
+          <button
+            type="button"
+            class="study-action study-flag"
+            aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
+            aria-pressed={flagged}
+            disabled={flagged || undoing}
+            onClick={onFlag}
+          >
+            <img
+              class="study-flag-icon"
+              src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
+              alt=""
+              width="14"
+              height="14"
+            />
+          </button>
+        ) : null}
+      </div>
+
       {done ? (
         <div class="study-body">
           <CaughtUp />
@@ -202,22 +286,6 @@ function StudySessionView({ session }: { session: StudySession }) {
             aria-label="Study card"
             tabIndex={0}
           >
-            <button
-              type="button"
-              class="study-flag"
-              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
-              aria-pressed={flagged}
-              disabled={flagged}
-              onClick={onFlag}
-            >
-              <img
-                class="study-flag-icon"
-                src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
-                alt=""
-                width="14"
-                height="14"
-              />
-            </button>
             <DisplayBlocks
               blocks={cardPrompt(card)}
               face="prompt"
@@ -233,6 +301,7 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone hard"
+              disabled={undoing}
               onClick={() => onGrade(true)}
             >
               Hard
@@ -241,6 +310,7 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone easy"
+              disabled={undoing}
               onClick={() => onGrade(false)}
             >
               Easy

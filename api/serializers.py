@@ -47,5 +47,9 @@ class RateCardSerializer(serializers.Serializer):
         return grade
 
 
+class UndoRatingSerializer(serializers.Serializer):
+    undo_token = serializers.CharField()
+
+
 class FlagWordSerializer(serializers.Serializer):
     word_id = serializers.IntegerField(min_value=1)
