@@ -5,11 +5,13 @@ import { Brand } from './brand'
 import { navigate } from './routes'
 
 const OPTIONS: { id: ProficiencyLevel; label: string; detail: string }[] = [
-  { id: 'novice', label: 'Novice', detail: 'HSK 1–2' },
-  { id: 'intermediate', label: 'Intermediate', detail: 'HSK 3–4' },
-  { id: 'advanced', label: 'Advanced', detail: 'HSK 5–6' },
-  { id: 'expert', label: 'Expert', detail: 'HSK 7' },
+  { id: 'novice', label: 'Novice', detail: 'Start from the beginning.' },
+  { id: 'intermediate', label: 'Intermediate', detail: 'Unlock English-to-Chinese cards for some words.' },
+  { id: 'advanced', label: 'Advanced', detail: 'Unlock character-only cards for some words.' },
+  { id: 'expert', label: 'Expert', detail: 'Unlock all cards for every word.' },
 ]
+
+const FIELD_NAME = 'proficiency_level'
 
 export function ProficiencyStep() {
   const { user, setUser } = useAuth()
@@ -41,7 +43,7 @@ export function ProficiencyStep() {
     }
   }
 
-  function select(level: ProficiencyLevel) {
+  function onRadioChange(level: ProficiencyLevel) {
     if (submitting) return
     setError(null)
     setSelected(level)
@@ -51,7 +53,7 @@ export function ProficiencyStep() {
     <>
       <Brand />
       <div class="title-bar">
-        <h1 class="title">
+        <h1 class="title" id="proficiency-title">
           {isEdit ? 'Change proficiency level' : 'Select your proficiency level'}
         </h1>
         {isEdit && (
@@ -61,32 +63,40 @@ export function ProficiencyStep() {
             onClick={() => navigate({ name: 'home' })}
             disabled={submitting}
           >
-            Back
+            Home
           </button>
         )}
       </div>
       <p class="lede">Selecting a higher level will unlock harder study modes.</p>
 
-      <section class="difficulty-grid" aria-label="Proficiency level">
+      <fieldset
+        class="proficiency-field"
+        disabled={submitting}
+        aria-labelledby="proficiency-title"
+      >
+        <legend class="proficiency-legend">Proficiency level</legend>
         {OPTIONS.map((opt) => {
           const isSelected = selected === opt.id
           return (
-            <button
+            <label
               key={opt.id}
-              type="button"
-              class={`difficulty-option${isSelected ? ' selected' : ''}`}
-              disabled={submitting}
-              aria-pressed={isSelected}
-              onClick={() => select(opt.id)}
+              class={`proficiency-option${isSelected ? ' selected' : ''}`}
             >
+              <input
+                type="radio"
+                name={FIELD_NAME}
+                value={opt.id}
+                checked={isSelected}
+                onChange={() => onRadioChange(opt.id)}
+              />
               <span class="g">
                 <b>{opt.label}</b>
                 <span class="s">{opt.detail}</span>
               </span>
-            </button>
+            </label>
           )
         })}
-      </section>
+      </fieldset>
 
       <div class="picker-actions">
         <button

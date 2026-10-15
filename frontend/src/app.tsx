@@ -48,7 +48,7 @@ function AppShell() {
 
   useEffect(() => {
     if (!ready || !user || serviceUnavailable) return
-    if (user.proficiency_level === null && route.name !== 'proficiency') {
+    if (user.proficiency_level === null && route.name === 'home') {
       navigate({ name: 'proficiency' }, { replace: true })
     }
   }, [ready, user, serviceUnavailable, route.name])
@@ -70,7 +70,7 @@ function AppShell() {
     return <Login bootError={bootError} onSuccess={setUser} />
   }
 
-  if (user.proficiency_level === null && route.name !== 'proficiency') {
+  if (user.proficiency_level === null && route.name === 'home') {
     return (
       <main class="app">
         <Brand />
