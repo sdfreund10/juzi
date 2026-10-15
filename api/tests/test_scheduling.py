@@ -19,7 +19,7 @@ from api.services.scheduling import (
     interval_days_for_streak,
     rate_user_word,
 )
-from api.services.sessions import EmptySessionError, build_session
+from api.services.sessions import EmptySessionError, _unlocked_modes_for_count, build_session
 
 User = get_user_model()
 
@@ -111,6 +111,20 @@ def words(topic: Category) -> dict[str, Word]:
 )
 def test_interval_days_for_streak(streak: int, expected_days: int) -> None:
     assert interval_days_for_streak(streak) == expected_days
+
+
+@pytest.mark.parametrize(
+    ("easy_count", "expected"),
+    [
+        (0, (UserWord.Mode.PINYIN_TO_EN,)),
+        (4, (UserWord.Mode.PINYIN_TO_EN,)),
+        (5, (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH)),
+        (9, (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH)),
+        (10, (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH, UserWord.Mode.ZH_TO_EN)),
+    ],
+)
+def test_unlocked_modes_for_count(easy_count: int, expected: tuple[str, ...]) -> None:
+    assert _unlocked_modes_for_count(easy_count) == expected
 
 
 @pytest.mark.django_db

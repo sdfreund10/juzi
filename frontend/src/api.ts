@@ -164,7 +164,6 @@ export type Difficulty = 'beginner' | 'intermediate' | 'advanced'
 export type StudyCard = {
   word_id: number
   mode: string
-  prompt: string
   answer_chinese: string
   answer_pinyin: string
   answer_english: string
