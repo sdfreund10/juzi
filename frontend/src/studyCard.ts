@@ -105,7 +105,7 @@ export function cardPrompt(card: StudyCard): DisplayBlock[] {
       return [
         {
           role: 'word',
-          lines: [{ text: card.prompt, kind: 'english' }],
+          lines: [{ text: card.example_chinese, kind: 'chinese' }],
         },
       ]
   }

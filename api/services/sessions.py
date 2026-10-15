@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from api.models import Category, UserWord, Word
-from api.services.scheduling import unlocked_modes_for_row
+from django.conf import settings
 
 DIFFICULTY_LEVELS: dict[str, frozenset[int]] = {
     "beginner": frozenset({1, 2, 3}),
@@ -62,14 +62,23 @@ def _prompt_for_mode(word: Word, mode: str) -> str:
         return word.english_basic
     return word.chinese
 
+def _unlocked_modes_for_count(easy_count: int) -> tuple[str, ...]:
+    """Derive which study modes are available from word-level easy_count."""
+    threshold: int = settings.SCHEDULING_UNLOCK_EASY_COUNT
+    modes: list[str] = [UserWord.Mode.PINYIN_TO_EN]
+    if easy_count >= threshold:
+        modes.append(UserWord.Mode.EN_TO_ZH)
+    if easy_count >= 2 * threshold:
+        modes.append(UserWord.Mode.ZH_TO_EN)
+    return tuple(modes)
 
 def _card_from_user_word(user_word: UserWord) -> SessionCard:
     word = user_word.word
-    mode = random.choice(unlocked_modes_for_row(user_word))
+    mode = random.choice(_unlocked_modes_for_count(user_word.easy_count))
     return SessionCard(
         word_id=word.id,
         mode=mode,
-        prompt=_prompt_for_mode(word, mode),
+        prompt=_prompt_for_mode(word, mode), # may be unused
         answer_chinese=word.chinese,
         answer_pinyin=word.pinyin,
         answer_english=word.english_basic,

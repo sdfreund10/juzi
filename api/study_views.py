@@ -51,9 +51,7 @@ def _session_payload(session: StudySession) -> dict:
     }
 
 
-def _user_word_payload(
-    user_word: UserWord, *, unlocked_modes: tuple[str, ...], newly_unlocked_modes: tuple[str, ...]
-) -> dict:
+def _user_word_payload(user_word: UserWord) -> dict:
     return {
         "user_word": {
             "id": user_word.id,
@@ -65,8 +63,6 @@ def _user_word_payload(
                 user_word.last_practiced_at.isoformat() if user_word.last_practiced_at else None
             ),
         },
-        "unlocked_modes": list(unlocked_modes),
-        "newly_unlocked_modes": list(newly_unlocked_modes),
     }
 
 
@@ -130,11 +126,7 @@ def rate_card(request: Request) -> Response:
         )
 
     return Response(
-        _user_word_payload(
-            result.user_word,
-            unlocked_modes=result.unlocked_modes,
-            newly_unlocked_modes=result.newly_unlocked_modes,
-        ),
+        _user_word_payload(result),
         status=status.HTTP_200_OK,
     )
 
