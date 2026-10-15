@@ -28,7 +28,6 @@ class EmptySessionError(Exception):
 class SessionCard:
     word_id: int
     mode: str
-    prompt: str
     answer_chinese: str
     answer_pinyin: str
     answer_english: str
@@ -54,14 +53,6 @@ def hsk_levels_for_difficulties(difficulties: list[str]) -> set[int]:
         levels.update(DIFFICULTY_LEVELS[key])
     return levels
 
-
-def _prompt_for_mode(word: Word, mode: str) -> str:
-    if mode == UserWord.Mode.PINYIN_TO_EN:
-        return word.pinyin
-    if mode == UserWord.Mode.EN_TO_ZH:
-        return word.english_basic
-    return word.chinese
-
 def _unlocked_modes_for_count(easy_count: int) -> tuple[str, ...]:
     """Derive which study modes are available from word-level easy_count."""
     threshold: int = settings.SCHEDULING_UNLOCK_EASY_COUNT
@@ -78,7 +69,6 @@ def _card_from_user_word(user_word: UserWord) -> SessionCard:
     return SessionCard(
         word_id=word.id,
         mode=mode,
-        prompt=_prompt_for_mode(word, mode), # may be unused
         answer_chinese=word.chinese,
         answer_pinyin=word.pinyin,
         answer_english=word.english_basic,

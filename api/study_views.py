@@ -38,7 +38,6 @@ def _session_payload(session: StudySession) -> dict:
             {
                 "word_id": card.word_id,
                 "mode": card.mode,
-                "prompt": card.prompt,
                 "answer_chinese": card.answer_chinese,
                 "answer_pinyin": card.answer_pinyin,
                 "answer_english": card.answer_english,
