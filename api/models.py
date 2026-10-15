@@ -103,3 +103,28 @@ class UserWord(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id}:{self.word_id}"
+
+
+class Learner(models.Model):
+    """Per-user learner state."""
+
+    class ProficiencyLevel(models.TextChoices):
+        NOVICE = "novice", "Novice"
+        INTERMEDIATE = "intermediate", "Intermediate"
+        ADVANCED = "advanced", "Advanced"
+        EXPERT = "expert", "Expert"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="learner",
+    )
+    proficiency_level = models.CharField(
+        max_length=20,
+        choices=ProficiencyLevel.choices,
+        null=True,
+        blank=True,
+    )
+
+    def __str__(self) -> str:
+        return f"{self.user_id}:{self.proficiency_level or 'unset'}"

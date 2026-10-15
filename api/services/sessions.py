@@ -9,15 +9,8 @@ from django.contrib.auth.models import AbstractBaseUser
 from django.db.models import Q
 from django.utils import timezone
 
-from api.models import Category, UserWord, Word
-
-DIFFICULTY_LEVELS: dict[str, frozenset[int]] = {
-    "beginner": frozenset({1, 2, 3}),
-    "intermediate": frozenset({4, 5}),
-    "advanced": frozenset({6, 7}),
-}
-
-KNOWN_DIFFICULTIES = frozenset(DIFFICULTY_LEVELS)
+from api.models import Category, Learner, UserWord, Word
+from api.services.difficulty import hsk_levels_for_difficulties
 
 
 class EmptySessionError(Exception):
@@ -47,27 +40,54 @@ class StudySession:
         return len(self.cards)
 
 
-def hsk_levels_for_difficulties(difficulties: list[str]) -> set[int]:
-    levels: set[int] = set()
-    for key in difficulties:
-        levels.update(DIFFICULTY_LEVELS[key])
-    return levels
-
-
-def _unlocked_modes_for_count(easy_count: int) -> tuple[str, ...]:
+def _unlocked_modes_for_level(study_level: int) -> tuple[str, ...]:
     """Derive which study modes are available from word-level easy_count."""
     threshold: int = settings.SCHEDULING_UNLOCK_EASY_COUNT
     modes: list[str] = [UserWord.Mode.PINYIN_TO_EN]
-    if easy_count >= threshold:
+    if study_level >= threshold:
         modes.append(UserWord.Mode.EN_TO_ZH)
-    if easy_count >= 2 * threshold:
+    if study_level >= 2 * threshold:
         modes.append(UserWord.Mode.ZH_TO_EN)
     return tuple(modes)
 
 
-def _card_from_user_word(user_word: UserWord) -> SessionCard:
+def _study_level_for_proficiency(proficiency: Learner.ProficiencyLevel, hsk_level: int) -> int:
+    if not proficiency:
+        return 0
+
+    threshold: int = settings.SCHEDULING_UNLOCK_EASY_COUNT
+    # novices start with nothing unlocked
+    if proficiency == Learner.ProficiencyLevel.NOVICE:
+        return 0
+
+    # intermediate learners get the english-to-chinese mode unlocked for early HSK levels
+    if proficiency == Learner.ProficiencyLevel.INTERMEDIATE:
+        if hsk_level <= 3:
+            return threshold
+        else:
+            return 0
+
+    # advanced learners get the character only mode unlocked for early HSK and english-to-chinese
+    # for all others levels
+    if proficiency == Learner.ProficiencyLevel.ADVANCED:
+        if hsk_level <= 3:
+            return threshold * 2
+        else:
+            return threshold
+
+    # expert learners get the character only mode unlocked for all levels
+    if proficiency == Learner.ProficiencyLevel.EXPERT:
+        return threshold * 2
+
+
+def _card_from_user_word(user_word: UserWord, proficiency: Learner.ProficiencyLevel) -> SessionCard:
     word = user_word.word
-    mode = random.choice(_unlocked_modes_for_count(user_word.easy_count))
+    study_level = max(
+        _study_level_for_proficiency(proficiency, user_word.word.hsk_level),
+        user_word.easy_count,
+    )
+
+    mode = random.choice(_unlocked_modes_for_level(study_level))
     return SessionCard(
         word_id=word.id,
         mode=mode,
@@ -144,8 +164,12 @@ def build_session(
     if not due_rows:
         raise EmptySessionError()
 
+    try:
+        user_proficiency = user.learner.proficiency_level
+    except Learner.DoesNotExist:
+        user_proficiency = None
     due_rows.sort(key=lambda row: _overdue_shuffle_key(row, today=today))
-    cards = [_card_from_user_word(row) for row in due_rows]
+    cards = [_card_from_user_word(row, user_proficiency) for row in due_rows]
     return StudySession(
         category=category,
         difficulties=list(difficulties),

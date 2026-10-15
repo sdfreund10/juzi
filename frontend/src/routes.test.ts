@@ -8,19 +8,16 @@ import {
 
 describe('difficulty slugs', () => {
   it('serializes in canonical order', () => {
-    expect(serializeDifficulties(['advanced', 'beginner'])).toBe('beginner-advanced')
+    expect(serializeDifficulties(['advanced', 'novice'])).toBe('novice-advanced')
   })
 
   it('parses known slugs', () => {
-    expect(parseDifficulties('beginner-intermediate')).toEqual([
-      'beginner',
-      'intermediate',
-    ])
+    expect(parseDifficulties('novice-intermediate')).toEqual(['novice', 'intermediate'])
   })
 
   it('rejects unknown or duplicate parts', () => {
-    expect(parseDifficulties('expert')).toBeNull()
-    expect(parseDifficulties('beginner-beginner')).toBeNull()
+    expect(parseDifficulties('beginner')).toBeNull()
+    expect(parseDifficulties('novice-novice')).toBeNull()
   })
 })
 
@@ -36,6 +33,11 @@ describe('parsePath / pathFor', () => {
     expect(pathFor({ name: 'install' })).toBe('/install')
   })
 
+  it('round-trips proficiency', () => {
+    expect(parsePath('/proficiency')).toEqual({ name: 'proficiency' })
+    expect(pathFor({ name: 'proficiency' })).toBe('/proficiency')
+  })
+
   it('parses session-new', () => {
     expect(parsePath('/category/12/sessions/new')).toEqual({
       name: 'session-new',
@@ -44,10 +46,10 @@ describe('parsePath / pathFor', () => {
   })
 
   it('parses session with difficulties', () => {
-    expect(parsePath('/category/3/sessions/beginner-advanced')).toEqual({
+    expect(parsePath('/category/3/sessions/novice-advanced')).toEqual({
       name: 'session',
       categoryId: 3,
-      difficulties: ['beginner', 'advanced'],
+      difficulties: ['novice', 'advanced'],
     })
   })
 
