@@ -92,13 +92,6 @@ class UserWord(models.Model):
     due_on = models.DateField(null=True, blank=True)
     last_practiced_at = models.DateTimeField(null=True, blank=True)
 
-    @property
-    def due_date(self) -> datetime:
-        if self.due_on is not None:
-            return self.due_on
-        else:
-            return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-
     class Meta:
         constraints = [
             models.UniqueConstraint(
