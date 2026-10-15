@@ -10,14 +10,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from api.models import Category, UserWord, Word
-
-DIFFICULTY_LEVELS: dict[str, frozenset[int]] = {
-    "beginner": frozenset({1, 2, 3}),
-    "intermediate": frozenset({4, 5}),
-    "advanced": frozenset({6, 7}),
-}
-
-KNOWN_DIFFICULTIES = frozenset(DIFFICULTY_LEVELS)
+from api.services.difficulty import hsk_levels_for_difficulties
 
 
 class EmptySessionError(Exception):
@@ -45,13 +38,6 @@ class StudySession:
     @property
     def total(self) -> int:
         return len(self.cards)
-
-
-def hsk_levels_for_difficulties(difficulties: list[str]) -> set[int]:
-    levels: set[int] = set()
-    for key in difficulties:
-        levels.update(DIFFICULTY_LEVELS[key])
-    return levels
 
 
 def _unlocked_modes_for_count(easy_count: int) -> tuple[str, ...]:

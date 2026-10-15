@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
+from api.services.difficulty import KNOWN_DIFFICULTIES
 from api.services.scheduling import KNOWN_GRADES
-from api.services.sessions import KNOWN_DIFFICULTIES
 
 
 class LoginSerializer(serializers.Serializer):

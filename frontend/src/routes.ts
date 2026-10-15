@@ -1,6 +1,11 @@
 import type { Difficulty } from './api'
 
-export const DIFFICULTY_ORDER: Difficulty[] = ['beginner', 'intermediate', 'advanced']
+export const DIFFICULTY_ORDER: Difficulty[] = [
+  'novice',
+  'intermediate',
+  'advanced',
+  'expert',
+]
 
 const DIFFICULTY_SET = new Set<string>(DIFFICULTY_ORDER)
 

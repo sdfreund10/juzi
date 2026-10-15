@@ -153,13 +153,14 @@ export function logout(): Promise<AuthState> {
 export type Category = {
   id: number
   name: string
-  beginner_count: number
+  novice_count: number
   intermediate_count: number
   advanced_count: number
+  expert_count: number
   last_practiced_at: string | null
 }
 
-export type Difficulty = 'beginner' | 'intermediate' | 'advanced'
+export type Difficulty = 'novice' | 'intermediate' | 'advanced' | 'expert'
 
 export type StudyCard = {
   word_id: number

@@ -67,7 +67,7 @@ def topic(db) -> Category:
 
 @pytest.fixture
 def words(topic: Category) -> dict[str, Word]:
-    beginner = Word.objects.create(
+    novice = Word.objects.create(
         chinese="愛",
         simplified="爱",
         pinyin="ài",
@@ -88,10 +88,10 @@ def words(topic: Category) -> dict[str, Word]:
         english_basic="abstract",
         hsk_level=6,
     )
-    for word in (beginner, intermediate, advanced):
+    for word in (novice, intermediate, advanced):
         WordCategory.objects.create(word=word, category=topic)
     return {
-        "beginner": beginner,
+        "novice": novice,
         "intermediate": intermediate,
         "advanced": advanced,
     }
@@ -132,7 +132,7 @@ def test_rate_hard_resets_streak_keeps_count(user: User, words: dict[str, Word])
     today = timezone.localdate()
     row = UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_streak=4,
         easy_count=7,
         due_on=today + timedelta(days=3),
@@ -155,7 +155,7 @@ def test_rate_easy_advances_streak_count_and_due(user: User, words: dict[str, Wo
     today = timezone.localdate()
     row = UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_streak=0,
         easy_count=0,
         due_on=today,
@@ -179,7 +179,7 @@ def test_rate_missing_user_word_raises(user: User, words: dict[str, Word]) -> No
     with pytest.raises(UserWordNotFoundError):
         rate_user_word(
             user=user,
-            word_id=words["beginner"].id,
+            word_id=words["novice"].id,
             grade=GRADE_EASY,
         )
 
@@ -193,13 +193,13 @@ def test_build_session_lazily_creates_difficulty_scoped_rows(
     session = build_session(
         user=user,
         category=topic,
-        difficulties=["beginner"],
+        difficulties=["novice"],
     )
 
     assert session.total == 1
-    assert session.cards[0].word_id == words["beginner"].id
+    assert session.cards[0].word_id == words["novice"].id
     assert UserWord.objects.filter(user=user).count() == 1
-    row = UserWord.objects.get(user=user, word=words["beginner"])
+    row = UserWord.objects.get(user=user, word=words["novice"])
     assert row.due_on == timezone.localdate()
     assert not UserWord.objects.filter(user=user, word=words["intermediate"]).exists()
     assert not UserWord.objects.filter(user=user, word=words["advanced"]).exists()
@@ -213,7 +213,7 @@ def test_build_session_one_card_per_word_and_unlocked_mode(
 ) -> None:
     UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_count=10,
         due_on=timezone.localdate(),
     )
@@ -222,12 +222,12 @@ def test_build_session_one_card_per_word_and_unlocked_mode(
         session = build_session(
             user=user,
             category=topic,
-            difficulties=["beginner"],
+            difficulties=["novice"],
         )
 
     assert session.total == 1
     card = session.cards[0]
-    assert card.word_id == words["beginner"].id
+    assert card.word_id == words["novice"].id
     assert card.mode == UserWord.Mode.ZH_TO_EN
 
 
@@ -239,7 +239,7 @@ def test_build_session_excludes_future_due(
 ) -> None:
     UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         due_on=timezone.localdate() + timedelta(days=1),
     )
 
@@ -247,7 +247,7 @@ def test_build_session_excludes_future_due(
         build_session(
             user=user,
             category=topic,
-            difficulties=["beginner"],
+            difficulties=["novice"],
         )
 
 
@@ -259,7 +259,7 @@ def test_rate_endpoint_requires_authentication(
     headers = _csrf_headers(client)
     response = client.post(
         reverse("ratings-create"),
-        {"word_id": words["beginner"].id, "grade": "easy"},
+        {"word_id": words["novice"].id, "grade": "easy"},
         format="json",
         **headers,
     )
@@ -275,7 +275,7 @@ def test_rate_endpoint_happy_path(
     today = timezone.localdate()
     UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_streak=0,
         easy_count=0,
         due_on=today,
@@ -283,14 +283,14 @@ def test_rate_endpoint_happy_path(
     headers = _login(client, user)
     response = client.post(
         reverse("ratings-create"),
-        {"word_id": words["beginner"].id, "grade": "easy"},
+        {"word_id": words["novice"].id, "grade": "easy"},
         format="json",
         **headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
     body = response.json()
-    assert body["user_word"]["word_id"] == words["beginner"].id
+    assert body["user_word"]["word_id"] == words["novice"].id
     assert body["user_word"]["easy_streak"] == 1
     assert body["user_word"]["easy_count"] == 1
 
@@ -304,7 +304,7 @@ def test_rate_endpoint_missing_row(
     headers = _login(client, user)
     response = client.post(
         reverse("ratings-create"),
-        {"word_id": words["beginner"].id, "grade": "hard"},
+        {"word_id": words["novice"].id, "grade": "hard"},
         format="json",
         **headers,
     )

@@ -17,9 +17,10 @@ def _category_list_payload(category: Category) -> dict:
     return {
         "id": category.id,
         "name": category.name,
-        "beginner_count": category.beginner_count,
+        "novice_count": category.novice_count,
         "intermediate_count": category.intermediate_count,
         "advanced_count": category.advanced_count,
+        "expert_count": category.expert_count,
         "last_practiced_at": (
             category.last_practiced_at.isoformat() if category.last_practiced_at else None
         ),
