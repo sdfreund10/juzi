@@ -33,6 +33,11 @@ describe('parsePath / pathFor', () => {
     expect(pathFor({ name: 'install' })).toBe('/install')
   })
 
+  it('round-trips proficiency', () => {
+    expect(parsePath('/proficiency')).toEqual({ name: 'proficiency' })
+    expect(pathFor({ name: 'proficiency' })).toBe('/proficiency')
+  })
+
   it('parses session-new', () => {
     expect(parsePath('/category/12/sessions/new')).toEqual({
       name: 'session-new',

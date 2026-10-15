@@ -6,9 +6,17 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from api.serializers import LoginSerializer
+from api.models import Learner
+from api.serializers import LoginSerializer, ProficiencyLevelSerializer
 
 INVALID_CREDENTIALS = {"detail": "Invalid email or password."}
+
+
+def _proficiency_level_for(user) -> str | None:
+    try:
+        return user.learner.proficiency_level
+    except Learner.DoesNotExist:
+        return None
 
 
 def _user_payload(user) -> dict:
@@ -16,6 +24,7 @@ def _user_payload(user) -> dict:
         "authenticated": True,
         # username and email are dual-written to the same login address.
         "email": user.email or user.get_username(),
+        "proficiency_level": _proficiency_level_for(user),
     }
 
 
@@ -26,7 +35,7 @@ def me(request: Request) -> Response:
     """Return the current session user, and ensure the CSRF cookie is set."""
     if request.user.is_authenticated:
         return Response(_user_payload(request.user))
-    return Response({"authenticated": False, "email": None})
+    return Response({"authenticated": False, "email": None, "proficiency_level": None})
 
 
 @api_view(["POST"])
@@ -52,4 +61,19 @@ def login_view(request: Request) -> Response:
 @permission_classes([IsAuthenticated])
 def logout_view(request: Request) -> Response:
     logout(request)
-    return Response({"authenticated": False, "email": None})
+    return Response({"authenticated": False, "email": None, "proficiency_level": None})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def set_proficiency_level(request: Request) -> Response:
+    serializer = ProficiencyLevelSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    level = serializer.validated_data["proficiency_level"]
+
+    learner, _ = Learner.objects.update_or_create(
+        user=request.user,
+        defaults={"proficiency_level": level},
+    )
+    request.user.learner = learner
+    return Response(_user_payload(request.user))

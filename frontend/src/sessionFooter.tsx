@@ -39,7 +39,6 @@ export function SessionFooter() {
         </p>
       )}
       <footer class="session-footer">
-        <span class="session-email">{user.email}</span>
         {showInstallLink && (
           <button
             type="button"
@@ -49,6 +48,13 @@ export function SessionFooter() {
             Add to Home Screen
           </button>
         )}
+        <button
+          type="button"
+          class="link-btn"
+          onClick={() => navigate({ name: 'proficiency' })}
+        >
+          Proficiency level
+        </button>
         <button
           type="button"
           class="link-btn"
