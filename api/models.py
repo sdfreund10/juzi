@@ -104,6 +104,7 @@ class UserWord(models.Model):
     def __str__(self) -> str:
         return f"{self.user_id}:{self.word_id}"
 
+
 class Learner(models.Model):
     """Per-user learner state."""
 

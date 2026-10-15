@@ -50,6 +50,7 @@ def _unlocked_modes_for_level(study_level: int) -> tuple[str, ...]:
         modes.append(UserWord.Mode.ZH_TO_EN)
     return tuple(modes)
 
+
 def _study_level_for_proficiency(proficiency: Learner.ProficiencyLevel, hsk_level: int) -> int:
     if not proficiency:
         return 0
