@@ -5,10 +5,10 @@ import { Brand } from './brand'
 import { navigate } from './routes'
 
 const OPTIONS: { id: ProficiencyLevel; label: string; detail: string }[] = [
-  { id: 'novice', label: 'Novice', detail: 'Start from the beginning.' },
-  { id: 'intermediate', label: 'Intermediate', detail: 'Unlock English-to-Chinese cards for some words.' },
-  { id: 'advanced', label: 'Advanced', detail: 'Unlock character-only cards for some words.' },
-  { id: 'expert', label: 'Expert', detail: 'Unlock all cards for every word.' },
+  { id: 'novice', label: 'Novice', detail: 'Start with pinyin helper on all cards.' },
+  { id: 'intermediate', label: 'Intermediate', detail: 'Adds English-to-Chinese cards for beginner words.' },
+  { id: 'advanced', label: 'Advanced', detail: 'Adds English-to-Chinese cards for all words and character-only prompts for beginner words.' },
+  { id: 'expert', label: 'Expert', detail: 'All card types for all words.' },
 ]
 
 const FIELD_NAME = 'proficiency_level'
