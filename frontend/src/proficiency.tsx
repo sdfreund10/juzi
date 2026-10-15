@@ -14,7 +14,7 @@ const OPTIONS: { id: ProficiencyLevel; label: string; detail: string }[] = [
 const FIELD_NAME = 'proficiency_level'
 
 export function ProficiencyStep() {
-  const { user, setUser } = useAuth()
+  const { user, setUser, clearUser } = useAuth()
   const current = user?.proficiency_level ?? null
   const isEdit = current !== null
 
@@ -34,6 +34,10 @@ export function ProficiencyStep() {
       setUser(nextUser)
       navigate({ name: 'home' }, { replace: !isEdit })
     } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        clearUser()
+        return
+      }
       if (err instanceof ApiError && err.status === 400) {
         setError(err.message)
       } else {

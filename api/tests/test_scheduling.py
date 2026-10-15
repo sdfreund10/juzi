@@ -169,6 +169,12 @@ def _prefer_zh_to_en(modes: tuple[str, ...]) -> str:
     return modes[0]
 
 
+def _prefer_en_to_zh(modes: tuple[str, ...]) -> str:
+    if UserWord.Mode.EN_TO_ZH in modes:
+        return UserWord.Mode.EN_TO_ZH
+    return modes[0]
+
+
 @pytest.mark.django_db
 def test_card_from_user_word_novice_only_pinyin_at_zero_easy(
     user: User,
@@ -201,7 +207,7 @@ def test_card_from_user_word_intermediate_unlocks_en_to_zh_on_hsk_1(
     )
     with patch(
         "api.services.sessions.random.choice",
-        return_value=UserWord.Mode.EN_TO_ZH,
+        side_effect=_prefer_en_to_zh,
     ):
         card = _card_from_user_word(row, Learner.ProficiencyLevel.INTERMEDIATE)
     assert card.mode == UserWord.Mode.EN_TO_ZH
@@ -239,7 +245,7 @@ def test_card_from_user_word_expert_unlocks_zh_to_en_on_hsk_6(
     )
     with patch(
         "api.services.sessions.random.choice",
-        return_value=UserWord.Mode.ZH_TO_EN,
+        side_effect=_prefer_zh_to_en,
     ):
         card = _card_from_user_word(row, Learner.ProficiencyLevel.EXPERT)
     assert card.mode == UserWord.Mode.ZH_TO_EN
@@ -258,7 +264,7 @@ def test_card_from_user_word_uses_easy_count_when_higher_than_floor(
     )
     with patch(
         "api.services.sessions.random.choice",
-        return_value=UserWord.Mode.ZH_TO_EN,
+        side_effect=_prefer_zh_to_en,
     ):
         card = _card_from_user_word(row, Learner.ProficiencyLevel.NOVICE)
     assert card.mode == UserWord.Mode.ZH_TO_EN
