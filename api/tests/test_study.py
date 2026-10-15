@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from api.models import Category, UserWord, Word, WordCategory
+from api.models import Category, Learner, UserWord, Word, WordCategory
 from api.services.accounts import apply_login_email
 
 User = get_user_model()
@@ -25,7 +25,12 @@ def _make_user(*, email: str, password: str) -> User:
 
 @pytest.fixture
 def user(db) -> User:
-    return _make_user(email="alice@example.com", password="s3cret-alice")
+    user = _make_user(email="alice@example.com", password="s3cret-alice")
+    Learner.objects.create(
+        user=user,
+        proficiency_level=Learner.ProficiencyLevel.NOVICE,
+    )
+    return user
 
 
 @pytest.fixture
