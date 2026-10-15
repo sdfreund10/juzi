@@ -4,12 +4,12 @@ import random
 from dataclasses import dataclass
 from datetime import date
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 from django.db.models import Q
 from django.utils import timezone
 
 from api.models import Category, UserWord, Word
-from django.conf import settings
 
 DIFFICULTY_LEVELS: dict[str, frozenset[int]] = {
     "beginner": frozenset({1, 2, 3}),
