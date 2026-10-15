@@ -164,7 +164,10 @@ def build_session(
     if not due_rows:
         raise EmptySessionError()
 
-    user_proficiency = user.learner.proficiency_level
+    try:
+        user_proficiency = user.learner.proficiency_level
+    except Learner.DoesNotExist:
+        user_proficiency = None
     due_rows.sort(key=lambda row: _overdue_shuffle_key(row, today=today))
     cards = [_card_from_user_word(row, user_proficiency) for row in due_rows]
     return StudySession(
