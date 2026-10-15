@@ -32,6 +32,7 @@ def interval_days_for_streak(streak: int) -> int:
             break
     return matched
 
+
 def rate_user_word(
     *,
     user: AbstractBaseUser,
@@ -71,4 +72,3 @@ def rate_user_word(
             ]
         )
         return row
-

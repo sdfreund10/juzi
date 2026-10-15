@@ -53,6 +53,7 @@ def hsk_levels_for_difficulties(difficulties: list[str]) -> set[int]:
         levels.update(DIFFICULTY_LEVELS[key])
     return levels
 
+
 def _unlocked_modes_for_count(easy_count: int) -> tuple[str, ...]:
     """Derive which study modes are available from word-level easy_count."""
     threshold: int = settings.SCHEDULING_UNLOCK_EASY_COUNT
@@ -62,6 +63,7 @@ def _unlocked_modes_for_count(easy_count: int) -> tuple[str, ...]:
     if easy_count >= 2 * threshold:
         modes.append(UserWord.Mode.ZH_TO_EN)
     return tuple(modes)
+
 
 def _card_from_user_word(user_word: UserWord) -> SessionCard:
     word = user_word.word
