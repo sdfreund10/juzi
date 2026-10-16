@@ -18,13 +18,14 @@ function jsonResponse(status: number, body: unknown): Response {
 describe('apiRequest', () => {
   it('returns JSON on success', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, { authenticated: false, email: null }),
+      jsonResponse(200, { authenticated: false, email: null, proficiency_level: null }),
     )
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(apiRequest('/api/auth/me/')).resolves.toEqual({
       authenticated: false,
       email: null,
+      proficiency_level: null,
     })
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/auth/me/',
@@ -89,7 +90,11 @@ describe('apiRequest', () => {
   it('sends the CSRF token on unsafe methods', async () => {
     document.cookie = 'csrftoken=test-csrf; path=/'
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, { authenticated: true, email: 'a@b.com' }),
+      jsonResponse(200, {
+        authenticated: true,
+        email: 'a@b.com',
+        proficiency_level: null,
+      }),
     )
     vi.stubGlobal('fetch', fetchMock)
 

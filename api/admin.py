@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 
 from api.services.accounts import apply_login_email
 
-from .models import Category, UserWord, Word, WordCategory
+from .models import Category, Learner, UserWord, Word, WordCategory
 
 
 class EmailUsernameCreationForm(AdminUserCreationForm):
@@ -64,6 +64,15 @@ class EmailUserAdmin(DjangoUserAdmin):
 
 admin.site.unregister(User)
 admin.site.register(User, EmailUserAdmin)
+
+
+@admin.register(Learner)
+class LearnerAdmin(admin.ModelAdmin):
+    list_display = ("user", "proficiency_level")
+    list_select_related = ("user",)
+    list_filter = ("proficiency_level",)
+    autocomplete_fields = ("user",)
+    search_fields = ("user__username", "user__email")
 
 
 @admin.register(Word)

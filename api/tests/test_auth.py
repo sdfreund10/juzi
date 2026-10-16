@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.test import APIClient, APIRequestFactory
 
+from api.models import Learner
 from api.services.accounts import apply_login_email, normalize_login_email
 
 User = get_user_model()
@@ -47,7 +48,11 @@ def test_me_anonymous_sets_csrf_cookie(client: APIClient) -> None:
     response = client.get(reverse("auth-me"))
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == {"authenticated": False, "email": None}
+    assert response.json() == {
+        "authenticated": False,
+        "email": None,
+        "proficiency_level": None,
+    }
     assert "csrftoken" in client.cookies
 
 
@@ -78,7 +83,11 @@ def test_login_is_case_insensitive_for_email(client: APIClient, user: User) -> N
         **headers,
     )
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == {"authenticated": True, "email": "alice@example.com"}
+    assert response.json() == {
+        "authenticated": True,
+        "email": "alice@example.com",
+        "proficiency_level": None,
+    }
 
 
 @pytest.mark.django_db
@@ -124,20 +133,96 @@ def test_login_logout_and_me_roundtrip(client: APIClient, user: User) -> None:
         **headers,
     )
     assert login_response.status_code == status.HTTP_200_OK
-    assert login_response.json() == {"authenticated": True, "email": "alice@example.com"}
+    assert login_response.json() == {
+        "authenticated": True,
+        "email": "alice@example.com",
+        "proficiency_level": None,
+    }
 
     me_response = client.get(reverse("auth-me"))
     assert me_response.status_code == status.HTTP_200_OK
-    assert me_response.json() == {"authenticated": True, "email": "alice@example.com"}
+    assert me_response.json() == {
+        "authenticated": True,
+        "email": "alice@example.com",
+        "proficiency_level": None,
+    }
 
     # Session auth re-enforces CSRF once logged in.
     headers = _csrf_headers(client)
     logout_response = client.post(reverse("auth-logout"), format="json", **headers)
     assert logout_response.status_code == status.HTTP_200_OK
-    assert logout_response.json() == {"authenticated": False, "email": None}
+    assert logout_response.json() == {
+        "authenticated": False,
+        "email": None,
+        "proficiency_level": None,
+    }
 
     me_after = client.get(reverse("auth-me"))
-    assert me_after.json() == {"authenticated": False, "email": None}
+    assert me_after.json() == {
+        "authenticated": False,
+        "email": None,
+        "proficiency_level": None,
+    }
+
+
+@pytest.mark.django_db
+def test_proficiency_level_requires_authentication(client: APIClient) -> None:
+    headers = _csrf_headers(client)
+    response = client.post(
+        reverse("auth-proficiency-level"),
+        {"proficiency_level": "novice"},
+        format="json",
+        **headers,
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_proficiency_level_rejects_unknown_value(client: APIClient, user: User) -> None:
+    headers = _csrf_headers(client)
+    client.post(
+        reverse("auth-login"),
+        {"email": "alice@example.com", "password": "s3cret-alice"},
+        format="json",
+        **headers,
+    )
+    headers = _csrf_headers(client)
+    response = client.post(
+        reverse("auth-proficiency-level"),
+        {"proficiency_level": "distinguished"},
+        format="json",
+        **headers,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "proficiency_level" in response.json()
+
+
+@pytest.mark.django_db
+def test_proficiency_level_saves_and_returns_on_me(client: APIClient, user: User) -> None:
+    headers = _csrf_headers(client)
+    client.post(
+        reverse("auth-login"),
+        {"email": "alice@example.com", "password": "s3cret-alice"},
+        format="json",
+        **headers,
+    )
+    headers = _csrf_headers(client)
+    response = client.post(
+        reverse("auth-proficiency-level"),
+        {"proficiency_level": "expert"},
+        format="json",
+        **headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {
+        "authenticated": True,
+        "email": "alice@example.com",
+        "proficiency_level": "expert",
+    }
+    assert Learner.objects.get(user=user).proficiency_level == Learner.ProficiencyLevel.EXPERT
+
+    me_response = client.get(reverse("auth-me"))
+    assert me_response.json()["proficiency_level"] == "expert"
 
 
 @pytest.mark.django_db

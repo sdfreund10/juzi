@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from api.models import Category, UserWord, Word, WordCategory
+from api.models import Category, Learner, UserWord, Word, WordCategory
 from api.services.accounts import apply_login_email
 from api.services.scheduling import (
     GRADE_EASY,
@@ -19,7 +19,13 @@ from api.services.scheduling import (
     interval_days_for_streak,
     rate_user_word,
 )
-from api.services.sessions import EmptySessionError, _unlocked_modes_for_count, build_session
+from api.services.sessions import (
+    EmptySessionError,
+    _card_from_user_word,
+    _study_level_for_proficiency,
+    _unlocked_modes_for_level,
+    build_session,
+)
 
 User = get_user_model()
 
@@ -34,7 +40,12 @@ def _make_user(*, email: str, password: str = "s3cret") -> User:
 
 @pytest.fixture
 def user(db) -> User:
-    return _make_user(email="alice@example.com")
+    user = _make_user(email="alice@example.com")
+    Learner.objects.create(
+        user=user,
+        proficiency_level=Learner.ProficiencyLevel.NOVICE,
+    )
+    return user
 
 
 @pytest.fixture
@@ -67,7 +78,7 @@ def topic(db) -> Category:
 
 @pytest.fixture
 def words(topic: Category) -> dict[str, Word]:
-    beginner = Word.objects.create(
+    novice = Word.objects.create(
         chinese="愛",
         simplified="爱",
         pinyin="ài",
@@ -88,10 +99,10 @@ def words(topic: Category) -> dict[str, Word]:
         english_basic="abstract",
         hsk_level=6,
     )
-    for word in (beginner, intermediate, advanced):
+    for word in (novice, intermediate, advanced):
         WordCategory.objects.create(word=word, category=topic)
     return {
-        "beginner": beginner,
+        "novice": novice,
         "intermediate": intermediate,
         "advanced": advanced,
     }
@@ -114,7 +125,7 @@ def test_interval_days_for_streak(streak: int, expected_days: int) -> None:
 
 
 @pytest.mark.parametrize(
-    ("easy_count", "expected"),
+    ("study_level", "expected"),
     [
         (0, (UserWord.Mode.PINYIN_TO_EN,)),
         (4, (UserWord.Mode.PINYIN_TO_EN,)),
@@ -123,8 +134,140 @@ def test_interval_days_for_streak(streak: int, expected_days: int) -> None:
         (10, (UserWord.Mode.PINYIN_TO_EN, UserWord.Mode.EN_TO_ZH, UserWord.Mode.ZH_TO_EN)),
     ],
 )
-def test_unlocked_modes_for_count(easy_count: int, expected: tuple[str, ...]) -> None:
-    assert _unlocked_modes_for_count(easy_count) == expected
+def test_unlocked_modes_for_level(study_level: int, expected: tuple[str, ...]) -> None:
+    assert _unlocked_modes_for_level(study_level) == expected
+
+
+@pytest.mark.parametrize(
+    ("proficiency", "hsk_level", "expected_floor"),
+    [
+        (Learner.ProficiencyLevel.NOVICE, 1, 0),
+        (Learner.ProficiencyLevel.NOVICE, 7, 0),
+        (Learner.ProficiencyLevel.INTERMEDIATE, 1, 5),
+        (Learner.ProficiencyLevel.INTERMEDIATE, 3, 5),
+        (Learner.ProficiencyLevel.INTERMEDIATE, 4, 0),
+        (Learner.ProficiencyLevel.INTERMEDIATE, 6, 0),
+        (Learner.ProficiencyLevel.ADVANCED, 1, 10),
+        (Learner.ProficiencyLevel.ADVANCED, 3, 10),
+        (Learner.ProficiencyLevel.ADVANCED, 4, 5),
+        (Learner.ProficiencyLevel.ADVANCED, 6, 5),
+        (Learner.ProficiencyLevel.EXPERT, 1, 10),
+        (Learner.ProficiencyLevel.EXPERT, 7, 10),
+    ],
+)
+def test_study_level_for_proficiency(
+    proficiency: str,
+    hsk_level: int,
+    expected_floor: int,
+) -> None:
+    assert _study_level_for_proficiency(proficiency, hsk_level) == expected_floor
+
+
+def _prefer_zh_to_en(modes: tuple[str, ...]) -> str:
+    if UserWord.Mode.ZH_TO_EN in modes:
+        return UserWord.Mode.ZH_TO_EN
+    return modes[0]
+
+
+def _prefer_en_to_zh(modes: tuple[str, ...]) -> str:
+    if UserWord.Mode.EN_TO_ZH in modes:
+        return UserWord.Mode.EN_TO_ZH
+    return modes[0]
+
+
+@pytest.mark.django_db
+def test_card_from_user_word_novice_only_pinyin_at_zero_easy(
+    user: User,
+    words: dict[str, Word],
+) -> None:
+    row = UserWord.objects.create(
+        user=user,
+        word=words["novice"],
+        easy_count=0,
+        due_on=timezone.localdate(),
+    )
+    with patch(
+        "api.services.sessions.random.choice",
+        side_effect=_prefer_zh_to_en,
+    ):
+        card = _card_from_user_word(row, Learner.ProficiencyLevel.NOVICE)
+    assert card.mode == UserWord.Mode.PINYIN_TO_EN
+
+
+@pytest.mark.django_db
+def test_card_from_user_word_intermediate_unlocks_en_to_zh_on_hsk_1(
+    user: User,
+    words: dict[str, Word],
+) -> None:
+    row = UserWord.objects.create(
+        user=user,
+        word=words["novice"],
+        easy_count=0,
+        due_on=timezone.localdate(),
+    )
+    with patch(
+        "api.services.sessions.random.choice",
+        side_effect=_prefer_en_to_zh,
+    ):
+        card = _card_from_user_word(row, Learner.ProficiencyLevel.INTERMEDIATE)
+    assert card.mode == UserWord.Mode.EN_TO_ZH
+
+
+@pytest.mark.django_db
+def test_card_from_user_word_intermediate_not_zh_to_en_on_hsk_4(
+    user: User,
+    words: dict[str, Word],
+) -> None:
+    row = UserWord.objects.create(
+        user=user,
+        word=words["intermediate"],
+        easy_count=0,
+        due_on=timezone.localdate(),
+    )
+    with patch(
+        "api.services.sessions.random.choice",
+        side_effect=_prefer_zh_to_en,
+    ):
+        card = _card_from_user_word(row, Learner.ProficiencyLevel.INTERMEDIATE)
+    assert card.mode == UserWord.Mode.PINYIN_TO_EN
+
+
+@pytest.mark.django_db
+def test_card_from_user_word_expert_unlocks_zh_to_en_on_hsk_6(
+    user: User,
+    words: dict[str, Word],
+) -> None:
+    row = UserWord.objects.create(
+        user=user,
+        word=words["advanced"],
+        easy_count=0,
+        due_on=timezone.localdate(),
+    )
+    with patch(
+        "api.services.sessions.random.choice",
+        side_effect=_prefer_zh_to_en,
+    ):
+        card = _card_from_user_word(row, Learner.ProficiencyLevel.EXPERT)
+    assert card.mode == UserWord.Mode.ZH_TO_EN
+
+
+@pytest.mark.django_db
+def test_card_from_user_word_uses_easy_count_when_higher_than_floor(
+    user: User,
+    words: dict[str, Word],
+) -> None:
+    row = UserWord.objects.create(
+        user=user,
+        word=words["intermediate"],
+        easy_count=10,
+        due_on=timezone.localdate(),
+    )
+    with patch(
+        "api.services.sessions.random.choice",
+        side_effect=_prefer_zh_to_en,
+    ):
+        card = _card_from_user_word(row, Learner.ProficiencyLevel.NOVICE)
+    assert card.mode == UserWord.Mode.ZH_TO_EN
 
 
 @pytest.mark.django_db
@@ -132,7 +275,7 @@ def test_rate_hard_resets_streak_keeps_count(user: User, words: dict[str, Word])
     today = timezone.localdate()
     row = UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_streak=4,
         easy_count=7,
         due_on=today + timedelta(days=3),
@@ -155,7 +298,7 @@ def test_rate_easy_advances_streak_count_and_due(user: User, words: dict[str, Wo
     today = timezone.localdate()
     row = UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_streak=0,
         easy_count=0,
         due_on=today,
@@ -179,7 +322,7 @@ def test_rate_missing_user_word_raises(user: User, words: dict[str, Word]) -> No
     with pytest.raises(UserWordNotFoundError):
         rate_user_word(
             user=user,
-            word_id=words["beginner"].id,
+            word_id=words["novice"].id,
             grade=GRADE_EASY,
         )
 
@@ -193,13 +336,13 @@ def test_build_session_lazily_creates_difficulty_scoped_rows(
     session = build_session(
         user=user,
         category=topic,
-        difficulties=["beginner"],
+        difficulties=["novice"],
     )
 
     assert session.total == 1
-    assert session.cards[0].word_id == words["beginner"].id
+    assert session.cards[0].word_id == words["novice"].id
     assert UserWord.objects.filter(user=user).count() == 1
-    row = UserWord.objects.get(user=user, word=words["beginner"])
+    row = UserWord.objects.get(user=user, word=words["novice"])
     assert row.due_on == timezone.localdate()
     assert not UserWord.objects.filter(user=user, word=words["intermediate"]).exists()
     assert not UserWord.objects.filter(user=user, word=words["advanced"]).exists()
@@ -213,7 +356,7 @@ def test_build_session_one_card_per_word_and_unlocked_mode(
 ) -> None:
     UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_count=10,
         due_on=timezone.localdate(),
     )
@@ -222,12 +365,12 @@ def test_build_session_one_card_per_word_and_unlocked_mode(
         session = build_session(
             user=user,
             category=topic,
-            difficulties=["beginner"],
+            difficulties=["novice"],
         )
 
     assert session.total == 1
     card = session.cards[0]
-    assert card.word_id == words["beginner"].id
+    assert card.word_id == words["novice"].id
     assert card.mode == UserWord.Mode.ZH_TO_EN
 
 
@@ -239,7 +382,7 @@ def test_build_session_excludes_future_due(
 ) -> None:
     UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         due_on=timezone.localdate() + timedelta(days=1),
     )
 
@@ -247,7 +390,7 @@ def test_build_session_excludes_future_due(
         build_session(
             user=user,
             category=topic,
-            difficulties=["beginner"],
+            difficulties=["novice"],
         )
 
 
@@ -260,7 +403,7 @@ def test_rate_endpoint_requires_authentication(
     response = client.post(
         reverse("ratings-create"),
         {
-            "word_id": words["beginner"].id,
+            "word_id": words["novice"].id,
             "grade": "easy",
             "last_practiced_at": timezone.now().isoformat(),
         },
@@ -279,7 +422,7 @@ def test_rate_endpoint_happy_path(
     today = timezone.localdate()
     UserWord.objects.create(
         user=user,
-        word=words["beginner"],
+        word=words["novice"],
         easy_streak=0,
         easy_count=0,
         due_on=today,
@@ -288,7 +431,7 @@ def test_rate_endpoint_happy_path(
     response = client.post(
         reverse("ratings-create"),
         {
-            "word_id": words["beginner"].id,
+            "word_id": words["novice"].id,
             "grade": "easy",
             "last_practiced_at": timezone.now().isoformat(),
         },
@@ -298,7 +441,7 @@ def test_rate_endpoint_happy_path(
 
     assert response.status_code == status.HTTP_200_OK
     body = response.json()
-    assert body["user_word"]["word_id"] == words["beginner"].id
+    assert body["user_word"]["word_id"] == words["novice"].id
     assert body["user_word"]["easy_streak"] == 1
     assert body["user_word"]["easy_count"] == 1
 
@@ -313,7 +456,7 @@ def test_rate_endpoint_missing_row(
     response = client.post(
         reverse("ratings-create"),
         {
-            "word_id": words["beginner"].id,
+            "word_id": words["novice"].id,
             "grade": "hard",
             "last_practiced_at": timezone.now().isoformat(),
         },

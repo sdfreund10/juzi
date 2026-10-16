@@ -16,9 +16,12 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+export type ProficiencyLevel = 'novice' | 'intermediate' | 'advanced' | 'expert'
+
 export type AuthUser = {
   authenticated: true
   email: string
+  proficiency_level: ProficiencyLevel | null
 }
 
 export type AuthState =
@@ -26,6 +29,7 @@ export type AuthState =
   | {
       authenticated: false
       email: null
+      proficiency_level: null
     }
 
 type RequestOptions = {
@@ -150,16 +154,26 @@ export function logout(): Promise<AuthState> {
   return apiRequest<AuthState>('/api/auth/logout/', { method: 'POST' })
 }
 
+export function setProficiencyLevel(
+  proficiencyLevel: ProficiencyLevel,
+): Promise<AuthUser> {
+  return apiRequest<AuthUser>('/api/auth/proficiency-level/', {
+    method: 'POST',
+    body: { proficiency_level: proficiencyLevel },
+  })
+}
+
 export type Category = {
   id: number
   name: string
-  beginner_count: number
+  novice_count: number
   intermediate_count: number
   advanced_count: number
+  expert_count: number
   last_practiced_at: string | null
 }
 
-export type Difficulty = 'beginner' | 'intermediate' | 'advanced'
+export type Difficulty = ProficiencyLevel
 
 export type StudyCard = {
   word_id: number

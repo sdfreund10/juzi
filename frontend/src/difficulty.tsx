@@ -1,19 +1,21 @@
 import { startSessionTiming } from './monitoring'
 import { useEffect, useState } from 'preact/hooks'
-import type { Category, Difficulty } from './api'
+import type { Difficulty } from './api'
 import { Brand } from './brand'
 import { navigate } from './routes'
 import { useCategory } from './useCategories'
 
-const OPTIONS: { id: Difficulty; label: string; detail: string; countKey: keyof Category }[] = [
-  { id: 'beginner', label: 'Beginner', detail: 'HSK 1–3', countKey: 'beginner_count' },
+type countKeys = `${Difficulty}_count`
+const OPTIONS: { id: Difficulty; label: string; detail: string; countKey: countKeys }[] = [
+  { id: 'novice', label: 'Novice', detail: 'HSK 1–2', countKey: 'novice_count' },
   {
     id: 'intermediate',
     label: 'Intermediate',
-    detail: 'HSK 4–5',
+    detail: 'HSK 3–4',
     countKey: 'intermediate_count',
   },
-  { id: 'advanced', label: 'Advanced', detail: 'HSK 6+', countKey: 'advanced_count' },
+  { id: 'advanced', label: 'Advanced', detail: 'HSK 5–6', countKey: 'advanced_count' },
+  { id: 'expert', label: 'Expert', detail: 'HSK 7', countKey: 'expert_count' },
 ]
 
 type DifficultyProps = {

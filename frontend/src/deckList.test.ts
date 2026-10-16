@@ -14,9 +14,10 @@ function category(
   partial: Partial<Category> & Pick<Category, 'id' | 'name'>,
 ): Category {
   return {
-    beginner_count: 0,
+    novice_count: 0,
     intermediate_count: 0,
     advanced_count: 0,
+    expert_count: 0,
     last_practiced_at: null,
     ...partial,
   }

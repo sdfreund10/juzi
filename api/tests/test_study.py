@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from api.models import Category, UserWord, Word, WordCategory
+from api.models import Category, Learner, UserWord, Word, WordCategory
 from api.services.accounts import apply_login_email
 
 User = get_user_model()
@@ -25,7 +25,12 @@ def _make_user(*, email: str, password: str) -> User:
 
 @pytest.fixture
 def user(db) -> User:
-    return _make_user(email="alice@example.com", password="s3cret-alice")
+    user = _make_user(email="alice@example.com", password="s3cret-alice")
+    Learner.objects.create(
+        user=user,
+        proficiency_level=Learner.ProficiencyLevel.NOVICE,
+    )
+    return user
 
 
 @pytest.fixture
@@ -68,7 +73,7 @@ def hsk_one(db) -> Category:
 
 @pytest.fixture
 def seeded_words(topic_food: Category, hsk_one: Category) -> dict[str, Word]:
-    beginner = Word.objects.create(
+    novice = Word.objects.create(
         chinese="愛",
         simplified="爱",
         pinyin="ài",
@@ -92,13 +97,21 @@ def seeded_words(topic_food: Category, hsk_one: Category) -> dict[str, Word]:
         english_basic="abstract",
         hsk_level=6,
     )
-    for word in (beginner, intermediate, advanced):
+    expert = Word.objects.create(
+        chinese="專家",
+        simplified="专家",
+        pinyin="zhuānjiā",
+        english_basic="expert",
+        hsk_level=7,
+    )
+    for word in (novice, intermediate, advanced, expert):
         _link(word, topic_food)
         _link(word, hsk_one)
     return {
-        "beginner": beginner,
+        "novice": novice,
         "intermediate": intermediate,
         "advanced": advanced,
+        "expert": expert,
     }
 
 
@@ -123,9 +136,10 @@ def test_categories_lists_topic_decks_only(
         {
             "id": topic_food.id,
             "name": topic_food.name,
-            "beginner_count": 0,
+            "novice_count": 0,
             "intermediate_count": 0,
             "advanced_count": 0,
+            "expert_count": 0,
             "last_practiced_at": None,
         }
     ]
@@ -146,9 +160,10 @@ def test_categories_includes_difficulty_counts(
         {
             "id": topic_food.id,
             "name": topic_food.name,
-            "beginner_count": 1,
+            "novice_count": 1,
             "intermediate_count": 1,
             "advanced_count": 1,
+            "expert_count": 1,
             "last_practiced_at": None,
         }
     ]
@@ -165,7 +180,7 @@ def test_categories_includes_per_user_last_practiced_at(
     practiced_at = timezone.now() - timedelta(hours=2)
     UserWord.objects.create(
         user=user,
-        word=seeded_words["beginner"],
+        word=seeded_words["novice"],
         last_practiced_at=practiced_at,
     )
     UserWord.objects.create(
@@ -187,9 +202,10 @@ def test_categories_includes_per_user_last_practiced_at(
         {
             "id": topic_food.id,
             "name": topic_food.name,
-            "beginner_count": 1,
+            "novice_count": 1,
             "intermediate_count": 1,
             "advanced_count": 1,
+            "expert_count": 1,
             "last_practiced_at": practiced_at.isoformat(),
         }
     ]
@@ -200,7 +216,7 @@ def test_create_session_requires_authentication(client: APIClient, topic_food: C
     headers = _csrf_headers(client)
     response = client.post(
         reverse("sessions-create"),
-        {"category_id": topic_food.id, "difficulties": ["beginner"]},
+        {"category_id": topic_food.id, "difficulties": ["novice"]},
         format="json",
         **headers,
     )
@@ -217,7 +233,7 @@ def test_create_session_filters_difficulty_bands(
     headers = _login(client, user)
     response = client.post(
         reverse("sessions-create"),
-        {"category_id": topic_food.id, "difficulties": ["beginner", "advanced"]},
+        {"category_id": topic_food.id, "difficulties": ["novice", "advanced"]},
         format="json",
         **headers,
     )
@@ -225,14 +241,14 @@ def test_create_session_filters_difficulty_bands(
     assert response.status_code == status.HTTP_200_OK
     body = response.json()
     assert body["category"] == {"id": topic_food.id, "name": topic_food.name}
-    assert "beginner_count" not in body["category"]
-    assert body["difficulties"] == ["beginner", "advanced"]
+    assert "novice_count" not in body["category"]
+    assert body["difficulties"] == ["novice", "advanced"]
     assert body["total"] == 2
     word_ids = {card["word_id"] for card in body["cards"]}
-    assert word_ids == {seeded_words["beginner"].id, seeded_words["advanced"].id}
+    assert word_ids == {seeded_words["novice"].id, seeded_words["advanced"].id}
     assert all(card["mode"] in UserWord.Mode.values for card in body["cards"])
     by_word = {card["word_id"]: card for card in body["cards"]}
-    love = by_word[seeded_words["beginner"].id]
+    love = by_word[seeded_words["novice"].id]
     assert love["example_chinese"] == "我愛喝茶。"
     assert love["example_pinyin"] == "Wǒ ài hē chá."
     assert love["example_english"] == "I like to drink tea."
@@ -260,7 +276,7 @@ def test_create_session_returns_full_matching_set(
         reverse("sessions-create"),
         {
             "category_id": topic_food.id,
-            "difficulties": ["beginner", "intermediate", "advanced"],
+            "difficulties": ["novice", "intermediate", "advanced", "expert"],
         },
         format="json",
         **headers,
@@ -268,8 +284,8 @@ def test_create_session_returns_full_matching_set(
 
     assert response.status_code == status.HTTP_200_OK
     body = response.json()
-    assert body["total"] == 3
-    assert len(body["cards"]) == 3
+    assert body["total"] == 4
+    assert len(body["cards"]) == 4
 
 
 @pytest.mark.django_db
@@ -282,13 +298,13 @@ def test_create_session_excludes_future_due_words(
     tomorrow = timezone.localdate() + timedelta(days=1)
     UserWord.objects.create(
         user=user,
-        word=seeded_words["beginner"],
+        word=seeded_words["novice"],
         due_on=tomorrow,
     )
     headers = _login(client, user)
     response = client.post(
         reverse("sessions-create"),
-        {"category_id": topic_food.id, "difficulties": ["beginner"]},
+        {"category_id": topic_food.id, "difficulties": ["novice"]},
         format="json",
         **headers,
     )
@@ -306,7 +322,7 @@ def test_create_session_empty_when_no_words(
     headers = _login(client, user)
     response = client.post(
         reverse("sessions-create"),
-        {"category_id": topic_food.id, "difficulties": ["beginner"]},
+        {"category_id": topic_food.id, "difficulties": ["novice"]},
         format="json",
         **headers,
     )
@@ -324,7 +340,7 @@ def test_create_session_rejects_unknown_difficulty(
     headers = _login(client, user)
     response = client.post(
         reverse("sessions-create"),
-        {"category_id": topic_food.id, "difficulties": ["expert"]},
+        {"category_id": topic_food.id, "difficulties": ["beginner"]},
         format="json",
         **headers,
     )
@@ -340,7 +356,7 @@ def test_flag_word_requires_authentication(
     headers = _csrf_headers(client)
     response = client.post(
         reverse("word-flags-create"),
-        {"word_id": seeded_words["beginner"].id},
+        {"word_id": seeded_words["novice"].id},
         format="json",
         **headers,
     )
@@ -353,7 +369,7 @@ def test_flag_word_sets_flagged_by(
     user: User,
     seeded_words: dict[str, Word],
 ) -> None:
-    word = seeded_words["beginner"]
+    word = seeded_words["novice"]
     headers = _login(client, user)
     response = client.post(
         reverse("word-flags-create"),
@@ -373,7 +389,7 @@ def test_flag_word_keeps_first_reporter(
     user: User,
     seeded_words: dict[str, Word],
 ) -> None:
-    word = seeded_words["beginner"]
+    word = seeded_words["novice"]
     first = user
     second = _make_user(email="bob@example.com", password="s3cret-bob")
 

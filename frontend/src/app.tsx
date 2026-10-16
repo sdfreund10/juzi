@@ -8,6 +8,7 @@ import { Install } from './install'
 import { Login } from './login'
 import { navigate } from './routes'
 import { SessionFooter } from './sessionFooter'
+import { ProficiencyStep } from './proficiency'
 import { Study } from './study'
 import { ToastHost } from './toast'
 import { useRoute } from './useRoute'
@@ -45,6 +46,13 @@ function AppShell() {
     }
   }, [ready, user, serviceUnavailable, route.name])
 
+  useEffect(() => {
+    if (!ready || !user || serviceUnavailable) return
+    if (user.proficiency_level === null && route.name === 'home') {
+      navigate({ name: 'proficiency' }, { replace: true })
+    }
+  }, [ready, user, serviceUnavailable, route.name])
+
   if (!ready) {
     return (
       <main class="app">
@@ -62,11 +70,22 @@ function AppShell() {
     return <Login bootError={bootError} onSuccess={setUser} />
   }
 
+  if (user.proficiency_level === null && route.name === 'home') {
+    return (
+      <main class="app">
+        <Brand />
+        <p class="building-status">Loading…</p>
+      </main>
+    )
+  }
+
   const isStudy = route.name === 'session'
 
   return (
     <main class={`app${isStudy ? ' study' : ''}`}>
-      {route.name === 'session-new' ? (
+      {route.name === 'proficiency' ? (
+        <ProficiencyStep />
+      ) : route.name === 'session-new' ? (
         <DifficultyStep categoryId={route.categoryId} />
       ) : isStudy ? (
         <Study

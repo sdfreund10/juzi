@@ -42,11 +42,11 @@ afterEach(async () => {
 it('finishes only after the first card is committed to the DOM', async () => {
   let resolveResponse!: (response: Response) => void
   vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { resolveResponse = resolve })))
-  await act(() => render(h(Study, { categoryId: 1, difficulties: ['beginner'] }), host))
+  await act(() => render(h(Study, { categoryId: 1, difficulties: ['novice'] }), host))
   expect(transactions).toHaveLength(0)
   await act(async () => {
     resolveResponse(new Response(JSON.stringify({
-      category: { id: 1, name: 'Test deck' }, difficulties: ['beginner'], total: 1,
+      category: { id: 1, name: 'Test deck' }, difficulties: ['novice'], total: 1,
       cards: [{ word_id: 1, mode: 'pinyin_to_en',
         answer_chinese: 'private-content', answer_pinyin: 'pinyin', answer_english: 'answer',
         example_chinese: '', example_pinyin: '', example_english: '',
@@ -64,7 +64,7 @@ it('finishes only after the first card is committed to the DOM', async () => {
 it('marks failed session creation as a failure', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })))
   await act(async () => {
-    render(h(Study, { categoryId: 1, difficulties: ['beginner'] }), host)
+    render(h(Study, { categoryId: 1, difficulties: ['novice'] }), host)
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
   await Sentry.flush()

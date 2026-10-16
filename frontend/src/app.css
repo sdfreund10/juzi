@@ -446,6 +446,83 @@ body {
   color: var(--muted);
 }
 
+.proficiency-field {
+  margin: 12px 20px 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+.proficiency-field:disabled {
+  opacity: 0.65;
+}
+
+.proficiency-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.proficiency-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 0 14px 10px;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.proficiency-option input[type='radio'] {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.proficiency-option .g {
+  flex: 1;
+  min-width: 0;
+}
+
+.proficiency-option.selected {
+  border-left-color: var(--ink);
+  border-right-color: var(--ink);
+}
+
+.proficiency-option.selected .g b {
+  color: var(--ink);
+}
+
+.proficiency-option b {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.proficiency-option span.s {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.proficiency-option:has(input:focus-visible) {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
 .picker-actions {
   padding: 24px 20px 0;
 }
