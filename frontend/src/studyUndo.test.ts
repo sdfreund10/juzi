@@ -65,10 +65,10 @@ afterEach(async () => {
 
 async function mount(sessionCards = cards) {
   fetchMock.mockResolvedValueOnce(json({
-    category: { id: 1, name: 'Test deck' }, difficulties: ['beginner'],
+    category: { id: 1, name: 'Test deck' }, difficulties: ['novice'],
     total: sessionCards.length, cards: sessionCards,
   }))
-  await act(() => render(h(Study, { categoryId: 1, difficulties: ['beginner'] }), host))
+  await act(() => render(h(Study, { categoryId: 1, difficulties: ['novice'] }), host))
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
 }
 
