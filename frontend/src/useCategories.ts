@@ -2,10 +2,10 @@ import { useEffect, useState } from 'preact/hooks'
 import { ApiError, fetchCategories, type Category } from './api'
 import { useAuth } from './auth'
 
-export function useCategories(): {
+export function useCategories (): {
   categories: Category[] | null
   error: string | null
-} {
+  } {
   const { user, clearUser } = useAuth()
   const [categories, setCategories] = useState<Category[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +19,7 @@ export function useCategories(): {
 
     let cancelled = false
 
-    async function load() {
+    async function load () {
       try {
         const rows = await fetchCategories()
         if (!cancelled) {
@@ -37,7 +37,7 @@ export function useCategories(): {
       }
     }
 
-    void load()
+    load().catch(() => {})
     return () => {
       cancelled = true
     }
@@ -46,7 +46,7 @@ export function useCategories(): {
   return { categories, error }
 }
 
-export function useCategory(categoryId: number): {
+export function useCategory (categoryId: number): {
   category: Category | null
   ready: boolean
   missing: boolean
@@ -59,6 +59,6 @@ export function useCategory(categoryId: number): {
     category,
     ready,
     missing: ready && error === null && category === null,
-    error,
+    error
   }
 }

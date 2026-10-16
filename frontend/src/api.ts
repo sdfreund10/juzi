@@ -4,14 +4,14 @@ import { showToast } from './toast'
 export class ApiError extends Error {
   status: number
 
-  constructor(status: number, message: string) {
+  constructor (status: number, message: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
   }
 }
 
-function getCookie(name: string): string | null {
+function getCookie (name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
   return match ? decodeURIComponent(match[1]) : null
 }
@@ -39,7 +39,7 @@ type RequestOptions = {
   toast?: boolean
 }
 
-function messageFromErrorBody(data: unknown): string {
+function messageFromErrorBody (data: unknown): string {
   if (!data || typeof data !== 'object') {
     return 'Request failed'
   }
@@ -72,10 +72,10 @@ function messageFromErrorBody(data: unknown): string {
   return fieldMessages.length > 0 ? fieldMessages.join(' ') : 'Request failed'
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T> (path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? 'GET'
   const headers: Record<string, string> = {
-    Accept: 'application/json',
+    Accept: 'application/json'
   }
 
   if (options.body !== undefined) {
@@ -95,7 +95,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       method,
       headers,
       credentials: 'same-origin',
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.body === undefined ? undefined : JSON.stringify(options.body)
     })
   } catch (err) {
     reportApiFailure(method, path)
@@ -126,12 +126,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T
 }
 
-export async function checkHealth(): Promise<boolean> {
+export async function checkHealth (): Promise<boolean> {
   try {
     const response = await fetch('/api/health/', {
       method: 'GET',
       credentials: 'same-origin',
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json' }
     })
     return response.ok
   } catch {
@@ -139,27 +139,27 @@ export async function checkHealth(): Promise<boolean> {
   }
 }
 
-export function fetchMe(): Promise<AuthState> {
+export function fetchMe (): Promise<AuthState> {
   return apiRequest<AuthState>('/api/auth/me/')
 }
 
-export function login(email: string, password: string): Promise<AuthUser> {
+export function login (email: string, password: string): Promise<AuthUser> {
   return apiRequest<AuthUser>('/api/auth/login/', {
     method: 'POST',
-    body: { email, password },
+    body: { email, password }
   })
 }
 
-export function logout(): Promise<AuthState> {
+export function logout (): Promise<AuthState> {
   return apiRequest<AuthState>('/api/auth/logout/', { method: 'POST' })
 }
 
-export function setProficiencyLevel(
-  proficiencyLevel: ProficiencyLevel,
+export function setProficiencyLevel (
+  proficiencyLevel: ProficiencyLevel
 ): Promise<AuthUser> {
   return apiRequest<AuthUser>('/api/auth/proficiency-level/', {
     method: 'POST',
-    body: { proficiency_level: proficiencyLevel },
+    body: { proficiency_level: proficiencyLevel }
   })
 }
 
@@ -193,50 +193,50 @@ export type StudySession = {
   cards: StudyCard[]
 }
 
-export function fetchCategories(): Promise<Category[]> {
+export function fetchCategories (): Promise<Category[]> {
   return apiRequest<Category[]>('/api/categories/')
 }
 
-export function createSession(
+export function createSession (
   categoryId: number,
-  difficulties: Difficulty[],
+  difficulties: Difficulty[]
 ): Promise<StudySession> {
   return apiRequest<StudySession>('/api/sessions/', {
     method: 'POST',
-    body: { category_id: categoryId, difficulties },
+    body: { category_id: categoryId, difficulties }
   })
 }
 
 export type CardGrade = 'hard' | 'easy'
 
-export async function rateCard(wordId: number, grade: CardGrade): Promise<void> {
+export async function rateCard (wordId: number, grade: CardGrade): Promise<void> {
   try {
     await apiRequest('/api/ratings/', {
       method: 'POST',
-      body: { word_id: wordId, grade },
+      body: { word_id: wordId, grade }
     })
   } catch (err) {
     showToast(
       err instanceof ApiError && err.status === 401
         ? 'Your session expired. Sign in again to save progress.'
-        : 'Couldn’t save your progress. You can keep studying.',
+        : 'Couldn’t save your progress. You can keep studying.'
     )
     throw err
   }
 }
 
-export async function flagWord(wordId: number): Promise<void> {
+export async function flagWord (wordId: number): Promise<void> {
   try {
     await apiRequest('/api/word-flags/', {
       method: 'POST',
-      body: { word_id: wordId },
+      body: { word_id: wordId }
     })
     showToast('Marked for review')
   } catch (err) {
     showToast(
       err instanceof ApiError && err.status === 401
         ? 'Your session expired. Sign in again.'
-        : 'Couldn’t flag this card. Try again.',
+        : 'Couldn’t flag this card. Try again.'
     )
     throw err
   }

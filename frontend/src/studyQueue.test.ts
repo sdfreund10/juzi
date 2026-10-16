@@ -5,10 +5,10 @@ import {
   cardReveal,
   gradeEasy,
   gradeHard,
-  highlightHeadword,
+  highlightHeadword
 } from './studyCard'
 
-function card(overrides: Partial<StudyCard> = {}): StudyCard {
+function card (overrides: Partial<StudyCard> = {}): StudyCard {
   return {
     word_id: 1,
     mode: 'pinyin_to_en',
@@ -18,7 +18,7 @@ function card(overrides: Partial<StudyCard> = {}): StudyCard {
     example_chinese: '圖書館很大。',
     example_pinyin: 'Túshūguǎn hěn dà.',
     example_english: 'The library is very big.',
-    ...overrides,
+    ...overrides
   }
 }
 
@@ -30,26 +30,26 @@ describe('cardPrompt / cardReveal', () => {
         role: 'word',
         lines: [
           { text: '圖書館', kind: 'chinese' },
-          { text: 'túshūguǎn', kind: 'pinyin' },
-        ],
+          { text: 'túshūguǎn', kind: 'pinyin' }
+        ]
       },
       {
         role: 'example',
         lines: [
           { text: '圖書館很大。', kind: 'chinese' },
-          { text: 'Túshūguǎn hěn dà.', kind: 'pinyin' },
-        ],
-      },
+          { text: 'Túshūguǎn hěn dà.', kind: 'pinyin' }
+        ]
+      }
     ])
     expect(cardReveal(c)).toEqual([
       {
         role: 'word',
-        lines: [{ text: 'library', kind: 'english' }],
+        lines: [{ text: 'library', kind: 'english' }]
       },
       {
         role: 'example',
-        lines: [{ text: 'The library is very big.', kind: 'english' }],
-      },
+        lines: [{ text: 'The library is very big.', kind: 'english' }]
+      }
     ])
   })
 
@@ -58,28 +58,28 @@ describe('cardPrompt / cardReveal', () => {
     expect(cardPrompt(c)).toEqual([
       {
         role: 'word',
-        lines: [{ text: 'library', kind: 'english' }],
+        lines: [{ text: 'library', kind: 'english' }]
       },
       {
         role: 'example',
-        lines: [{ text: 'The library is very big.', kind: 'english' }],
-      },
+        lines: [{ text: 'The library is very big.', kind: 'english' }]
+      }
     ])
     expect(cardReveal(c)).toEqual([
       {
         role: 'word',
         lines: [
           { text: '圖書館', kind: 'chinese' },
-          { text: 'túshūguǎn', kind: 'pinyin' },
-        ],
+          { text: 'túshūguǎn', kind: 'pinyin' }
+        ]
       },
       {
         role: 'example',
         lines: [
           { text: '圖書館很大。', kind: 'chinese' },
-          { text: 'Túshūguǎn hěn dà.', kind: 'pinyin' },
-        ],
-      },
+          { text: 'Túshūguǎn hěn dà.', kind: 'pinyin' }
+        ]
+      }
     ])
   })
 
@@ -88,28 +88,28 @@ describe('cardPrompt / cardReveal', () => {
     expect(cardPrompt(c)).toEqual([
       {
         role: 'word',
-        lines: [{ text: '圖書館', kind: 'chinese' }],
+        lines: [{ text: '圖書館', kind: 'chinese' }]
       },
       {
         role: 'example',
-        lines: [{ text: '圖書館很大。', kind: 'chinese' }],
-      },
+        lines: [{ text: '圖書館很大。', kind: 'chinese' }]
+      }
     ])
     expect(cardReveal(c)).toEqual([
       {
         role: 'word',
         lines: [
           { text: 'túshūguǎn', kind: 'pinyin' },
-          { text: 'library', kind: 'english' },
-        ],
+          { text: 'library', kind: 'english' }
+        ]
       },
       {
         role: 'example',
         lines: [
           { text: 'Túshūguǎn hěn dà.', kind: 'pinyin' },
-          { text: 'The library is very big.', kind: 'english' },
-        ],
-      },
+          { text: 'The library is very big.', kind: 'english' }
+        ]
+      }
     ])
   })
 
@@ -118,22 +118,22 @@ describe('cardPrompt / cardReveal', () => {
       mode: 'pinyin_to_en',
       example_chinese: '',
       example_pinyin: '',
-      example_english: '',
+      example_english: ''
     })
     expect(cardPrompt(c)).toEqual([
       {
         role: 'word',
         lines: [
           { text: '圖書館', kind: 'chinese' },
-          { text: 'túshūguǎn', kind: 'pinyin' },
-        ],
-      },
+          { text: 'túshūguǎn', kind: 'pinyin' }
+        ]
+      }
     ])
     expect(cardReveal(c)).toEqual([
       {
         role: 'word',
-        lines: [{ text: 'library', kind: 'english' }],
-      },
+        lines: [{ text: 'library', kind: 'english' }]
+      }
     ])
   })
 })
@@ -142,18 +142,18 @@ describe('highlightHeadword', () => {
   it('accents each occurrence of the headword', () => {
     expect(highlightHeadword('圖書館很大。', '圖書館')).toEqual([
       { text: '圖書館', focus: true },
-      { text: '很大。', focus: false },
+      { text: '很大。', focus: false }
     ])
     expect(highlightHeadword('愛愛愛', '愛')).toEqual([
       { text: '愛', focus: true },
       { text: '愛', focus: true },
-      { text: '愛', focus: true },
+      { text: '愛', focus: true }
     ])
   })
 
   it('returns the sentence unchanged when the headword is missing', () => {
     expect(highlightHeadword('我們互相幫助。', '互助')).toEqual([
-      { text: '我們互相幫助。', focus: false },
+      { text: '我們互相幫助。', focus: false }
     ])
   })
 })

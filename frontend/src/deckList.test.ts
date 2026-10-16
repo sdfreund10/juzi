@@ -7,11 +7,11 @@ import {
   readPinnedDeckIds,
   recentlyPracticedDecks,
   togglePinnedDeckId,
-  writePinnedDeckIds,
+  writePinnedDeckIds
 } from './deckList'
 
-function category(
-  partial: Partial<Category> & Pick<Category, 'id' | 'name'>,
+function category (
+  partial: Partial<Category> & Pick<Category, 'id' | 'name'>
 ): Category {
   return {
     novice_count: 0,
@@ -19,7 +19,7 @@ function category(
     advanced_count: 0,
     expert_count: 0,
     last_practiced_at: null,
-    ...partial,
+    ...partial
   }
 }
 
@@ -31,7 +31,7 @@ describe('decksMatchingName', () => {
   const decks = [
     category({ id: 1, name: 'Food, Cooking & Dining' }),
     category({ id: 2, name: 'Numbers, Time & Measurement' }),
-    category({ id: 3, name: 'Travel' }),
+    category({ id: 3, name: 'Travel' })
   ]
 
   it('returns all decks when the query is blank', () => {
@@ -53,28 +53,28 @@ describe('recentlyPracticedDecks', () => {
       category({
         id: 1,
         name: 'Old',
-        last_practiced_at: '2026-01-01T10:00:00Z',
+        last_practiced_at: '2026-01-01T10:00:00Z'
       }),
       category({ id: 2, name: 'Never' }),
       category({
         id: 3,
         name: 'Newest',
-        last_practiced_at: '2026-03-01T10:00:00Z',
+        last_practiced_at: '2026-03-01T10:00:00Z'
       }),
       category({
         id: 4,
         name: 'Middle',
-        last_practiced_at: '2026-02-01T10:00:00Z',
+        last_practiced_at: '2026-02-01T10:00:00Z'
       }),
       category({
         id: 5,
         name: 'Also recent',
-        last_practiced_at: '2026-02-15T10:00:00Z',
-      }),
+        last_practiced_at: '2026-02-15T10:00:00Z'
+      })
     ]
 
     expect(recentlyPracticedDecks(decks).map((row) => row.id)).toEqual([
-      3, 5, 4,
+      3, 5, 4
     ])
   })
 })
@@ -90,7 +90,7 @@ describe('pinned deck ids', () => {
     expect(readPinnedDeckIds()).toEqual([])
     localStorage.setItem(
       PINNED_DECK_IDS_KEY,
-      JSON.stringify(['1', 2.5, null, 4]),
+      JSON.stringify(['1', 2.5, null, 4])
     )
     expect(readPinnedDeckIds()).toEqual([4])
   })
@@ -104,10 +104,8 @@ describe('pinned deck ids', () => {
     const decks = [
       category({ id: 1, name: 'Food' }),
       category({ id: 2, name: 'Travel' }),
-      category({ id: 3, name: 'Numbers' }),
+      category({ id: 3, name: 'Numbers' })
     ]
     expect(pinnedDecks(decks, [3, 9, 1]).map((row) => row.id)).toEqual([3, 1])
   })
 })
-
-

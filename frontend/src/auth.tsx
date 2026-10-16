@@ -13,7 +13,7 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ children }: { children: ComponentChildren }) {
+export function AuthProvider ({ children }: { children: ComponentChildren }) {
   const [ready, setReady] = useState(false)
   const [user, setUserState] = useState<AuthUser | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   useEffect(() => {
     let cancelled = false
 
-    async function loadSession() {
+    async function loadSession () {
       try {
         const me = await fetchMe()
         if (cancelled) return
@@ -47,19 +47,19 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
       }
     }
 
-    void loadSession()
+    loadSession().catch(() => {})
     return () => {
       cancelled = true
     }
   }, [])
 
-  function setUser(next: AuthUser) {
+  function setUser (next: AuthUser) {
     setBootError(null)
     setServiceUnavailable(false)
     setUserState(next)
   }
 
-  function clearUser() {
+  function clearUser () {
     setUserState(null)
   }
 
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   )
 }
 
-export function useAuth(): AuthContextValue {
+export function useAuth (): AuthContextValue {
   const value = useContext(AuthContext)
   if (!value) {
     throw new Error('useAuth must be used within AuthProvider')

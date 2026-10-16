@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Study } from './study'
 
 vi.mock('./useCategories', () => ({
-  useCategory: () => ({ category: { id: 1, name: 'Test deck' }, ready: true, missing: false, error: null }),
+  useCategory: () => ({ category: { id: 1, name: 'Test deck' }, ready: true, missing: false, error: null })
 }))
 
 type TransactionEvent = Parameters<NonNullable<Sentry.BrowserOptions['beforeSendTransaction']>>[0]
@@ -23,12 +23,12 @@ beforeEach(() => {
     traceLifecycle: 'static',
     tracesSampleRate: 1,
     defaultIntegrations: false,
-    beforeSendTransaction(event) {
+    beforeSendTransaction (event) {
       transactions.push(event)
       renderedAtEnd.push(host.textContent ?? '')
       return event
     },
-    transport: () => ({ send: async () => ({}), flush: async () => true }),
+    transport: () => ({ send: async () => ({}), flush: async () => true })
   })
 })
 
@@ -46,10 +46,19 @@ it('finishes only after the first card is committed to the DOM', async () => {
   expect(transactions).toHaveLength(0)
   await act(async () => {
     resolveResponse(new Response(JSON.stringify({
-      category: { id: 1, name: 'Test deck' }, difficulties: ['novice'], total: 1,
-      cards: [{ word_id: 1, mode: 'pinyin_to_en',
-        answer_chinese: 'private-content', answer_pinyin: 'pinyin', answer_english: 'answer',
-        example_chinese: '', example_pinyin: '', example_english: '' }],
+      category: { id: 1, name: 'Test deck' },
+      difficulties: ['novice'],
+      total: 1,
+      cards: [{
+        word_id: 1,
+        mode: 'pinyin_to_en',
+        answer_chinese: 'private-content',
+        answer_pinyin: 'pinyin',
+        answer_english: 'answer',
+        example_chinese: '',
+        example_pinyin: '',
+        example_english: ''
+      }]
     })))
     await new Promise((resolve) => setTimeout(resolve, 0))
   })

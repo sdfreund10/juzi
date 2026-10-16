@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'preact/hooks'
 import { parsePath, pathFor, type Route } from './routes'
 
-function readRoute(): Route {
+function readRoute (): Route {
   return parsePath(window.location.pathname)
 }
 
-export function useRoute(): Route {
+export function useRoute (): Route {
   const [route, setRoute] = useState<Route>(readRoute)
 
   useEffect(() => {
-    function onPopState() {
+    function onPopState () {
       setRoute(readRoute())
     }
     window.addEventListener('popstate', onPopState)

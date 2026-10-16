@@ -7,7 +7,7 @@ type LoginProps = {
   bootError?: string | null
 }
 
-export function Login({ onSuccess, bootError = null }: LoginProps) {
+export function Login ({ onSuccess, bootError = null }: LoginProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +18,7 @@ export function Login({ onSuccess, bootError = null }: LoginProps) {
     emailRef.current?.focus()
   }, [])
 
-  async function onSubmit(event: Event) {
+  async function onSubmit (event: Event) {
     event.preventDefault()
     setError(null)
     setSubmitting(true)
@@ -39,19 +39,19 @@ export function Login({ onSuccess, bootError = null }: LoginProps) {
   const banner = error ?? bootError
 
   return (
-    <main class="app">
+    <main class='app'>
       <Brand />
-      <h1 class="title">Sign in</h1>
-      <p class="lede">Sign in to continue studying.</p>
+      <h1 class='title'>Sign in</h1>
+      <p class='lede'>Sign in to continue studying.</p>
 
-      <form class="login-form" onSubmit={onSubmit}>
+      <form class='login-form' onSubmit={onSubmit}>
         <label>
           <span>Email</span>
           <input
             ref={emailRef}
-            type="email"
-            name="email"
-            autocomplete="email"
+            type='email'
+            name='email'
+            autocomplete='email'
             required
             value={email}
             onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
@@ -60,20 +60,20 @@ export function Login({ onSuccess, bootError = null }: LoginProps) {
         <label>
           <span>Password</span>
           <input
-            type="password"
-            name="password"
-            autocomplete="current-password"
+            type='password'
+            name='password'
+            autocomplete='current-password'
             required
             value={password}
             onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
           />
         </label>
         {banner && (
-          <p class="error" role="alert" aria-live="polite">
+          <p class='error' role='alert' aria-live='polite'>
             {banner}
           </p>
         )}
-        <button type="submit" class="cta" disabled={submitting}>
+        <button type='submit' class='cta' disabled={submitting}>
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>

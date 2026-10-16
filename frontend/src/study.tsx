@@ -7,7 +7,7 @@ import {
   rateCard,
   type Difficulty,
   type StudyCard,
-  type StudySession,
+  type StudySession
 } from './api'
 import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
@@ -19,13 +19,13 @@ import {
   gradeHard,
   highlightHeadword,
   type DisplayBlock,
-  type DisplayLine,
+  type DisplayLine
 } from './studyCard'
 import {
   StudyProgress,
   emptyProgress,
   recordEasy,
-  recordHard,
+  recordHard
 } from './studyProgress'
 import { useCategory } from './useCategories'
 
@@ -34,24 +34,24 @@ type StudyProps = {
   difficulties: Difficulty[]
 }
 
-function lineClass(
+function lineClass (
   line: DisplayLine,
   face: 'prompt' | 'answer',
-  blockRole: DisplayBlock['role'],
+  blockRole: DisplayBlock['role']
 ): string {
   const parts = [
     face === 'prompt' ? 'prompt-line' : 'answer-line',
-    line.kind,
+    line.kind
   ]
   if (line.kind === 'chinese') parts.push('zh')
   if (blockRole === 'example') parts.push('example')
   return parts.join(' ')
 }
 
-function LineText({
+function LineText ({
   line,
   blockRole,
-  headword,
+  headword
 }: {
   line: DisplayLine
   blockRole: DisplayBlock['role']
@@ -61,20 +61,22 @@ function LineText({
     return line.text
   }
   return highlightHeadword(line.text, headword).map((segment, index) =>
-    segment.focus ? (
-      <span key={`${index}-${segment.text}`} class="example-focus">
-        {segment.text}
-      </span>
-    ) : (
-      <span key={`${index}-${segment.text}`}>{segment.text}</span>
-    ),
+    segment.focus
+      ? (
+        <span key={`${index}-${segment.text}`} class='example-focus'>
+          {segment.text}
+        </span>
+        )
+      : (
+        <span key={`${index}-${segment.text}`}>{segment.text}</span>
+        )
   )
 }
 
-function DisplayBlocks({
+function DisplayBlocks ({
   blocks,
   face,
-  headword,
+  headword
 }: {
   blocks: DisplayBlock[]
   face: 'prompt' | 'answer'
@@ -105,7 +107,7 @@ function DisplayBlocks({
             key={`${block.role}-${block.lines.map((l) => l.text).join('|')}`}
             class={`card-block card-block-${block.role}`}
           >
-            {paired ? <div class="prompt-pair">{linesBody}</div> : linesBody}
+            {paired ? <div class='prompt-pair'>{linesBody}</div> : linesBody}
           </div>
         )
       })}
@@ -113,7 +115,7 @@ function DisplayBlocks({
   )
 }
 
-function StudySessionView({ session }: { session: StudySession }) {
+function StudySessionView ({ session }: { session: StudySession }) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
@@ -133,30 +135,30 @@ function StudySessionView({ session }: { session: StudySession }) {
     setConfirmFlag(false)
   }, [card?.word_id])
 
-  function onGrade(hard: boolean) {
+  function onGrade (hard: boolean) {
     if (!card) return
     const wordId = card.word_id
     setProgress((prev) =>
-      hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
+      hard ? recordHard(prev, wordId) : recordEasy(prev, wordId)
     )
     setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
     setRevealed(false)
     setConfirmFlag(false)
-    void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
+    rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
       // rateCard shows the failure toast. Keep the drill moving.
     })
   }
 
-  function onFlag() {
+  function onFlag () {
     if (!card || flagged) return
     setConfirmFlag(true)
   }
 
-  function onConfirmFlag() {
+  function onConfirmFlag () {
     if (!card || flagged) return
     const wordId = card.word_id
     setConfirmFlag(false)
-    void flagWord(wordId)
+    flagWord(wordId)
       .then(() => setFlagged(true))
       .catch(() => {
         // flagWord shows the failure toast.
@@ -165,23 +167,23 @@ function StudySessionView({ session }: { session: StudySession }) {
 
   return (
     <div class={`study-shell${revealed && !done ? ' revealed' : ''}`}>
-      <div class="study-top">
+      <div class='study-top'>
         <StudyProgress total={session.total} progress={progress} />
-        <div class="study-top-bar">
-          <p class="study-category">
+        <div class='study-top-bar'>
+          <p class='study-category'>
             <img
-              class="brand-mark study-mark"
+              class='brand-mark study-mark'
               src={brandMarkSrc}
-              alt=""
-              width="22"
-              height="22"
+              alt=''
+              width='22'
+              height='22'
             />
-            <span class="study-category-name">{session.category.name}</span>
+            <span class='study-category-name'>{session.category.name}</span>
           </p>
           <button
-            type="button"
-            class="text-btn study-close"
-            aria-label="Exit"
+            type='button'
+            class='text-btn study-close'
+            aria-label='Exit'
             onClick={() => navigate({ name: 'home' })}
           >
             ×
@@ -189,119 +191,125 @@ function StudySessionView({ session }: { session: StudySession }) {
         </div>
       </div>
 
-      {done ? (
-        <div class="study-body">
-          <CaughtUp />
-        </div>
-      ) : revealed ? (
-        <>
-          <div
-            class="study-body"
-            ref={bodyRef}
-            role="region"
-            aria-label="Study card"
-            tabIndex={0}
-          >
-            <button
-              type="button"
-              class="study-flag"
-              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
-              aria-pressed={flagged}
-              disabled={flagged}
-              onClick={onFlag}
-            >
-              <img
-                class="study-flag-icon"
-                src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
-                alt=""
-                width="14"
-                height="14"
-              />
-            </button>
-            <DisplayBlocks
-              blocks={cardPrompt(card)}
-              face="prompt"
-              headword={card.answer_chinese}
-            />
-            <DisplayBlocks
-              blocks={cardReveal(card)}
-              face="answer"
-              headword={card.answer_chinese}
-            />
+      {done
+        ? (
+          <div class='study-body'>
+            <CaughtUp />
           </div>
-          <div class="grade-zones" aria-label="Grade card">
-            <button
-              type="button"
-              class="grade-zone hard"
-              onClick={() => onGrade(true)}
-            >
-              Hard
-              <small>back soon</small>
-            </button>
-            <button
-              type="button"
-              class="grade-zone easy"
-              onClick={() => onGrade(false)}
-            >
-              Easy
-              <small>later</small>
-            </button>
-          </div>
-          {confirmFlag ? (
-            <div
-              class="study-flag-confirm"
-              role="dialog"
-              aria-modal="true"
-              aria-describedby="flag-confirm-copy"
-            >
-              <div class="study-flag-confirm-panel">
-                <p id="flag-confirm-copy">
-                  This will notify the team there may be a problem with this
-                  study card.
-                </p>
-                <div class="study-flag-confirm-actions">
-                  <button
-                    type="button"
-                    class="btn ghost"
-                    onClick={() => setConfirmFlag(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button type="button" class="btn" onClick={onConfirmFlag}>
-                    Flag
-                  </button>
-                </div>
+          )
+        : revealed
+          ? (
+            <>
+              <div
+                class='study-body'
+                ref={bodyRef}
+                role='region'
+                aria-label='Study card'
+                tabIndex={0}
+              >
+                <button
+                  type='button'
+                  class='study-flag'
+                  aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
+                  aria-pressed={flagged}
+                  disabled={flagged}
+                  onClick={onFlag}
+                >
+                  <img
+                    class='study-flag-icon'
+                    src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
+                    alt=''
+                    width='14'
+                    height='14'
+                  />
+                </button>
+                <DisplayBlocks
+                  blocks={cardPrompt(card)}
+                  face='prompt'
+                  headword={card.answer_chinese}
+                />
+                <DisplayBlocks
+                  blocks={cardReveal(card)}
+                  face='answer'
+                  headword={card.answer_chinese}
+                />
               </div>
+              <div class='grade-zones' aria-label='Grade card'>
+                <button
+                  type='button'
+                  class='grade-zone hard'
+                  onClick={() => onGrade(true)}
+                >
+                  Hard
+                  <small>back soon</small>
+                </button>
+                <button
+                  type='button'
+                  class='grade-zone easy'
+                  onClick={() => onGrade(false)}
+                >
+                  Easy
+                  <small>later</small>
+                </button>
+              </div>
+              {confirmFlag
+                ? (
+                  <div
+                    class='study-flag-confirm'
+                    role='dialog'
+                    aria-modal='true'
+                    aria-describedby='flag-confirm-copy'
+                  >
+                    <div class='study-flag-confirm-panel'>
+                      <p id='flag-confirm-copy'>
+                        This will notify the team there may be a problem with this
+                        study card.
+                      </p>
+                      <div class='study-flag-confirm-actions'>
+                        <button
+                          type='button'
+                          class='btn ghost'
+                          onClick={() => setConfirmFlag(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button type='button' class='btn' onClick={onConfirmFlag}>
+                          Flag
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  )
+                : null}
+            </>
+            )
+          : (
+            <div
+              class='study-body reveal-target'
+              ref={bodyRef}
+              onClick={() => setRevealed(true)}
+              role='button'
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setRevealed(true)
+                }
+              }}
+            >
+              <DisplayBlocks
+                blocks={cardPrompt(card)}
+                face='prompt'
+                headword={card.answer_chinese}
+              />
+              <p class='hint'>Tap anywhere to reveal</p>
             </div>
-          ) : null}
-        </>
-      ) : (
-        <div
-          class="study-body reveal-target"
-          ref={bodyRef}
-          onClick={() => setRevealed(true)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              setRevealed(true)
-            }
-          }}
-        >
-          <DisplayBlocks
-            blocks={cardPrompt(card)}
-            face="prompt"
-            headword={card.answer_chinese}
-          />
-          <p class="hint">Tap anywhere to reveal</p>
-        </div>
-      )}
+            )}
     </div>
   )
 }
 
-export function Study({ categoryId, difficulties }: StudyProps) {
+export function Study ({ categoryId, difficulties }: StudyProps) {
   const { category, ready, missing, error: categoryError } = useCategory(categoryId)
   const [session, setSession] = useState<StudySession | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -334,7 +342,7 @@ export function Study({ categoryId, difficulties }: StudyProps) {
     setError(null)
     setEmpty(false)
 
-    async function build() {
+    async function build () {
       try {
         const next = await withSessionTiming(() => createSession(categoryId, difficulties))
         if (cancelled) return
@@ -361,7 +369,7 @@ export function Study({ categoryId, difficulties }: StudyProps) {
       }
     }
 
-    void build()
+    build().catch(() => {})
     return () => {
       cancelled = true
     }
@@ -370,14 +378,14 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   if (categoryError) {
     return (
       <>
-        <h1 class="title">Building deck</h1>
-        <p class="error" role="alert" aria-live="polite">
+        <h1 class='title'>Building deck</h1>
+        <p class='error' role='alert' aria-live='polite'>
           {categoryError}
         </p>
-        <div class="picker-actions">
+        <div class='picker-actions'>
           <button
-            type="button"
-            class="cta"
+            type='button'
+            class='cta'
             onClick={() => navigate({ name: 'home' }, { replace: true })}
           >
             Back
@@ -388,7 +396,7 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   }
 
   if (!ready || !category) {
-    return <p class="building-status">Loading…</p>
+    return <p class='building-status'>Loading…</p>
   }
 
   if (empty) {
@@ -398,21 +406,20 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   if (error) {
     return (
       <>
-        <h1 class="title">Building deck</h1>
-        <p class="subtitle">{category.name}</p>
-        <p class="error" role="alert" aria-live="polite">
+        <h1 class='title'>Building deck</h1>
+        <p class='subtitle'>{category.name}</p>
+        <p class='error' role='alert' aria-live='polite'>
           {error}
         </p>
-        <div class="picker-actions">
+        <div class='picker-actions'>
           <button
-            type="button"
-            class="cta"
+            type='button'
+            class='cta'
             onClick={() =>
               navigate(
                 { name: 'session-new', categoryId: category.id },
-                { replace: true },
-              )
-            }
+                { replace: true }
+              )}
           >
             Back
           </button>
@@ -424,9 +431,9 @@ export function Study({ categoryId, difficulties }: StudyProps) {
   if (!session) {
     return (
       <>
-        <h1 class="title">Building deck</h1>
-        <p class="subtitle">{category.name}</p>
-        <p class="building-status" aria-live="polite">
+        <h1 class='title'>Building deck</h1>
+        <p class='subtitle'>{category.name}</p>
+        <p class='building-status' aria-live='polite'>
           Gathering cards…
         </p>
       </>

@@ -4,7 +4,7 @@ import { useAuth } from './auth'
 import { isIosDevice, isStandaloneDisplay } from './platform'
 import { navigate } from './routes'
 
-export function SessionFooter() {
+export function SessionFooter () {
   const { user, clearUser } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
@@ -12,7 +12,7 @@ export function SessionFooter() {
 
   if (!user) return null
 
-  async function onSignOut() {
+  async function onSignOut () {
     setError(null)
     setSigningOut(true)
     try {
@@ -34,30 +34,30 @@ export function SessionFooter() {
   return (
     <>
       {error && (
-        <p class="error" role="alert" aria-live="polite">
+        <p class='error' role='alert' aria-live='polite'>
           {error}
         </p>
       )}
-      <footer class="session-footer">
+      <footer class='session-footer'>
         {showInstallLink && (
           <button
-            type="button"
-            class="link-btn"
+            type='button'
+            class='link-btn'
             onClick={() => navigate({ name: 'install' })}
           >
             Add to Home Screen
           </button>
         )}
         <button
-          type="button"
-          class="link-btn"
+          type='button'
+          class='link-btn'
           onClick={() => navigate({ name: 'proficiency' })}
         >
           Proficiency level
         </button>
         <button
-          type="button"
-          class="link-btn"
+          type='button'
+          class='link-btn'
           onClick={onSignOut}
           disabled={signingOut}
         >

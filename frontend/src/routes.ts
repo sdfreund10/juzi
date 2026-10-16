@@ -4,7 +4,7 @@ export const DIFFICULTY_ORDER: Difficulty[] = [
   'novice',
   'intermediate',
   'advanced',
-  'expert',
+  'expert'
 ]
 
 const DIFFICULTY_SET = new Set<string>(DIFFICULTY_ORDER)
@@ -16,11 +16,11 @@ export type Route =
   | { name: 'session-new'; categoryId: number }
   | { name: 'session'; categoryId: number; difficulties: Difficulty[] }
 
-export function serializeDifficulties(difficulties: Difficulty[]): string {
+export function serializeDifficulties (difficulties: Difficulty[]): string {
   return DIFFICULTY_ORDER.filter((id) => difficulties.includes(id)).join('-')
 }
 
-export function parseDifficulties(slug: string): Difficulty[] | null {
+export function parseDifficulties (slug: string): Difficulty[] | null {
   if (!slug) return null
   const parts = slug.split('-')
   if (parts.length === 0) return null
@@ -32,7 +32,7 @@ export function parseDifficulties(slug: string): Difficulty[] | null {
   return DIFFICULTY_ORDER.filter((id) => seen.has(id))
 }
 
-export function parsePath(pathname: string): Route {
+export function parsePath (pathname: string): Route {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/') return { name: 'home' }
   if (path === '/install') return { name: 'install' }
@@ -55,7 +55,7 @@ export function parsePath(pathname: string): Route {
   return { name: 'session', categoryId, difficulties }
 }
 
-export function pathFor(route: Route): string {
+export function pathFor (route: Route): string {
   switch (route.name) {
     case 'home':
       return '/'
@@ -70,7 +70,7 @@ export function pathFor(route: Route): string {
   }
 }
 
-export function navigate(route: Route, options: { replace?: boolean } = {}): void {
+export function navigate (route: Route, options: { replace?: boolean } = {}): void {
   const next = pathFor(route)
   if (next === window.location.pathname) return
   if (options.replace) {

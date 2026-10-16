@@ -12,17 +12,17 @@ const OPTIONS: { id: Difficulty; label: string; detail: string; countKey: countK
     id: 'intermediate',
     label: 'Intermediate',
     detail: 'HSK 3–4',
-    countKey: 'intermediate_count',
+    countKey: 'intermediate_count'
   },
   { id: 'advanced', label: 'Advanced', detail: 'HSK 5–6', countKey: 'advanced_count' },
-  { id: 'expert', label: 'Expert', detail: 'HSK 7', countKey: 'expert_count' },
+  { id: 'expert', label: 'Expert', detail: 'HSK 7', countKey: 'expert_count' }
 ]
 
 type DifficultyProps = {
   categoryId: number
 }
 
-export function DifficultyStep({ categoryId }: DifficultyProps) {
+export function DifficultyStep ({ categoryId }: DifficultyProps) {
   const { category, ready, missing, error } = useCategory(categoryId)
   const [selected, setSelected] = useState<Set<Difficulty>>(() => new Set())
 
@@ -36,17 +36,17 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
     return (
       <>
         <Brand />
-        <div class="title-bar">
-          <h1 class="title">Difficulty</h1>
+        <div class='title-bar'>
+          <h1 class='title'>Difficulty</h1>
           <button
-            type="button"
-            class="text-btn"
+            type='button'
+            class='text-btn'
             onClick={() => navigate({ name: 'home' })}
           >
             Back
           </button>
         </div>
-        <p class="error" role="alert" aria-live="polite">
+        <p class='error' role='alert' aria-live='polite'>
           {error}
         </p>
       </>
@@ -57,14 +57,14 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
     return (
       <>
         <Brand />
-        <p class="building-status">Loading…</p>
+        <p class='building-status'>Loading…</p>
       </>
     )
   }
 
   const selectedCategory = category
 
-  function toggle(id: Difficulty) {
+  function toggle (id: Difficulty) {
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -76,46 +76,46 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
     })
   }
 
-  function submit() {
+  function submit () {
     if (selected.size === 0) return
     startSessionTiming()
     navigate({
       name: 'session',
       categoryId: selectedCategory.id,
-      difficulties: OPTIONS.map((opt) => opt.id).filter((id) => selected.has(id)),
+      difficulties: OPTIONS.map((opt) => opt.id).filter((id) => selected.has(id))
     })
   }
 
   return (
     <>
       <Brand />
-      <div class="title-bar">
-        <h1 class="title">Select Level(s)</h1>
+      <div class='title-bar'>
+        <h1 class='title'>Select Level(s)</h1>
         <button
-          type="button"
-          class="text-btn"
+          type='button'
+          class='text-btn'
           onClick={() => navigate({ name: 'home' })}
         >
           Back
         </button>
       </div>
-      <p class="subtitle">{selectedCategory.name}</p>
+      <p class='subtitle'>{selectedCategory.name}</p>
 
-      <section class="difficulty-grid" aria-label="Difficulty levels">
+      <section class='difficulty-grid' aria-label='Difficulty levels'>
         {OPTIONS.map((opt) => {
           const isSelected = selected.has(opt.id)
           const count = selectedCategory[opt.countKey]
           return (
             <button
               key={opt.id}
-              type="button"
+              type='button'
               class={`difficulty-option${isSelected ? ' selected' : ''}`}
               aria-pressed={isSelected}
               onClick={() => toggle(opt.id)}
             >
-              <span class="g">
+              <span class='g'>
                 <b>{opt.label}</b>
-                <span class="s">
+                <span class='s'>
                   {opt.detail}
                   {typeof count === 'number' ? ` · ${count} words` : ''}
                 </span>
@@ -125,10 +125,10 @@ export function DifficultyStep({ categoryId }: DifficultyProps) {
         })}
       </section>
 
-      <div class="picker-actions">
+      <div class='picker-actions'>
         <button
-          type="button"
-          class="cta"
+          type='button'
+          class='cta'
           disabled={selected.size === 0}
           onClick={submit}
         >
