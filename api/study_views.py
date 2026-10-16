@@ -7,9 +7,19 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from api.models import Category, UserWord, Word
-from api.serializers import CreateSessionSerializer, FlagWordSerializer, RateCardSerializer
+from api.serializers import (
+    CreateSessionSerializer,
+    FlagWordSerializer,
+    RateCardSerializer,
+    UndoRatingSerializer,
+)
 from api.services.categories import list_topic_categories
-from api.services.scheduling import UserWordNotFoundError, rate_user_word
+from api.services.scheduling import (
+    RatingNotUndoableError,
+    UserWordNotFoundError,
+    rate_user_word,
+    undo_user_word,
+)
 from api.services.sessions import EmptySessionError, StudySession, build_session
 
 
@@ -45,6 +55,14 @@ def _session_payload(session: StudySession) -> dict:
                 "example_chinese": card.example_chinese,
                 "example_pinyin": card.example_pinyin,
                 "example_english": card.example_english,
+                "progress": {
+                    "easy_streak": card.easy_streak,
+                    "easy_count": card.easy_count,
+                    "due_on": card.due_on.isoformat() if card.due_on else None,
+                    "last_practiced_at": (
+                        card.last_practiced_at.isoformat() if card.last_practiced_at else None
+                    ),
+                },
             }
             for card in session.cards
         ],
@@ -118,6 +136,7 @@ def rate_card(request: Request) -> Response:
             user=request.user,
             word_id=serializer.validated_data["word_id"],
             grade=serializer.validated_data["grade"],
+            last_practiced_at=serializer.validated_data["last_practiced_at"],
         )
     except UserWordNotFoundError:
         return Response(
@@ -129,6 +148,23 @@ def rate_card(request: Request) -> Response:
         _user_word_payload(result),
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def undo_card_rating(request: Request) -> Response:
+    serializer = UndoRatingSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        undo_user_word(user=request.user, **serializer.validated_data)
+    except UserWordNotFoundError:
+        return Response({"detail": "Word progress not found."}, status=status.HTTP_404_NOT_FOUND)
+    except RatingNotUndoableError:
+        return Response(
+            {"detail": "A newer rating was saved."},
+            status=status.HTTP_409_CONFLICT,
+        )
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(["POST"])

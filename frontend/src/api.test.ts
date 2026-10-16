@@ -162,7 +162,7 @@ describe('rateCard', () => {
       jsonResponse(status, { detail: 'Internal API wording' }),
     ))
 
-    await expect(rateCard(1, 'easy')).rejects.toMatchObject({ status })
+    await expect(rateCard(1, 'easy', '2026-10-15T12:00:00.000Z')).rejects.toMatchObject({ status })
     expect(toasts).toEqual([message])
   })
 
@@ -171,7 +171,7 @@ describe('rateCard', () => {
     setToastHandler((message) => toasts.push(message))
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
-    await expect(rateCard(1, 'hard')).rejects.toThrow('Failed to fetch')
+    await expect(rateCard(1, 'hard', '2026-10-15T12:00:00.000Z')).rejects.toThrow('Failed to fetch')
     expect(toasts).toEqual(['Couldn’t save your progress. You can keep studying.'])
   })
 })
