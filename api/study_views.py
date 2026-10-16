@@ -153,6 +153,7 @@ def rate_card(request: Request) -> Response:
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def undo_card_rating(request: Request) -> Response:
+    # Trusts client `previous`; see undo_rating docstring for the known race.
     serializer = UndoRatingSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     try:

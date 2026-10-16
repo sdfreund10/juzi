@@ -83,7 +83,12 @@ def undo_rating(
     last_practiced_at: datetime,
     previous: dict,
 ) -> UserWord:
-    """Restore a frontend checkpoint when this rating is still the latest change."""
+    """Restore a frontend checkpoint when this rating is still the latest change.
+
+    We are trusting whatever "previous" state the client sends is correct, which is mildly dangerous
+    A future, more robust strategy may be to store the snapshot in the database, perhaps
+    as a JSON field on the user_word row. Deferred for now.
+    """
     with transaction.atomic():
         try:
             row = UserWord.objects.select_for_update().get(user=user, word_id=word_id)
