@@ -49,7 +49,8 @@ it('finishes only after the first card is committed to the DOM', async () => {
       category: { id: 1, name: 'Test deck' }, difficulties: ['beginner'], total: 1,
       cards: [{ word_id: 1, mode: 'pinyin_to_en',
         answer_chinese: 'private-content', answer_pinyin: 'pinyin', answer_english: 'answer',
-        example_chinese: '', example_pinyin: '', example_english: '' }],
+        example_chinese: '', example_pinyin: '', example_english: '',
+        progress: { easy_streak: 0, easy_count: 0, due_on: null, last_practiced_at: null } }],
     })))
     await new Promise((resolve) => setTimeout(resolve, 0))
   })

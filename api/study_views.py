@@ -15,7 +15,7 @@ from api.serializers import (
 )
 from api.services.categories import list_topic_categories
 from api.services.scheduling import (
-    InvalidUndoTokenError,
+    RatingNotUndoableError,
     UserWordNotFoundError,
     rate_user_word,
     undo_rating,
@@ -54,6 +54,14 @@ def _session_payload(session: StudySession) -> dict:
                 "example_chinese": card.example_chinese,
                 "example_pinyin": card.example_pinyin,
                 "example_english": card.example_english,
+                "progress": {
+                    "easy_streak": card.easy_streak,
+                    "easy_count": card.easy_count,
+                    "due_on": card.due_on.isoformat() if card.due_on else None,
+                    "last_practiced_at": (
+                        card.last_practiced_at.isoformat() if card.last_practiced_at else None
+                    ),
+                },
             }
             for card in session.cards
         ],
@@ -123,10 +131,11 @@ def rate_card(request: Request) -> Response:
     serializer.is_valid(raise_exception=True)
 
     try:
-        result, undo_token = rate_user_word(
+        result = rate_user_word(
             user=request.user,
             word_id=serializer.validated_data["word_id"],
             grade=serializer.validated_data["grade"],
+            last_practiced_at=serializer.validated_data["last_practiced_at"],
         )
     except UserWordNotFoundError:
         return Response(
@@ -135,7 +144,7 @@ def rate_card(request: Request) -> Response:
         )
 
     return Response(
-        {**_user_word_payload(result), "undo_token": undo_token},
+        _user_word_payload(result),
         status=status.HTTP_200_OK,
     )
 
@@ -146,11 +155,13 @@ def undo_card_rating(request: Request) -> Response:
     serializer = UndoRatingSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     try:
-        undo_rating(user=request.user, undo_token=serializer.validated_data["undo_token"])
-    except InvalidUndoTokenError:
+        undo_rating(user=request.user, **serializer.validated_data)
+    except UserWordNotFoundError:
+        return Response({"detail": "Word progress not found."}, status=status.HTTP_404_NOT_FOUND)
+    except RatingNotUndoableError:
         return Response(
-            {"detail": "This rating can’t be undone."},
-            status=status.HTTP_400_BAD_REQUEST,
+            {"detail": "A newer rating was saved."},
+            status=status.HTTP_409_CONFLICT,
         )
     return Response(status=status.HTTP_204_NO_CONTENT)
 

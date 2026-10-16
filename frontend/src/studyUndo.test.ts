@@ -9,6 +9,13 @@ vi.mock('./useCategories', () => ({
   useCategory: () => ({ category: { id: 1, name: 'Test deck' }, ready: true, missing: false, error: null }),
 }))
 
+const emptyProgress = {
+  easy_streak: 0,
+  easy_count: 0,
+  due_on: null,
+  last_practiced_at: null,
+}
+const ratedAt = '2026-10-15T12:00:00.000Z'
 const cards: StudyCard[] = [1, 2, 3].map((id) => ({
   word_id: id,
   mode: 'pinyin_to_en',
@@ -18,6 +25,7 @@ const cards: StudyCard[] = [1, 2, 3].map((id) => ({
   example_chinese: '',
   example_pinyin: '',
   example_english: '',
+  progress: emptyProgress,
 }))
 
 let host: HTMLDivElement
@@ -41,9 +49,10 @@ beforeEach(() => {
   setToastHandler((message) => toasts.push(message))
   fetchMock = vi.fn((path: string) => {
     if (path === '/api/ratings/undo/') return Promise.resolve(new Response(null, { status: 204 }))
-    return Promise.resolve(json({ undo_token: 'latest-undo-token' }))
+    return Promise.resolve(json({}))
   })
   vi.stubGlobal('fetch', fetchMock)
+  vi.spyOn(Date.prototype, 'toISOString').mockReturnValue(ratedAt)
 })
 
 afterEach(async () => {
@@ -51,6 +60,7 @@ afterEach(async () => {
   host.remove()
   setToastHandler(null)
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 async function mount(sessionCards = cards) {
@@ -94,7 +104,11 @@ it('restores the previous card, its answer, and progress after Easy', async () =
   expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('0')
   expect(undoButton().disabled).toBe(true)
   expect(fetchMock).toHaveBeenLastCalledWith('/api/ratings/undo/', expect.objectContaining({
-    body: JSON.stringify({ undo_token: 'latest-undo-token' }),
+    body: JSON.stringify({
+      word_id: 1,
+      last_practiced_at: ratedAt,
+      previous: emptyProgress,
+    }),
   }))
 })
 
@@ -148,18 +162,22 @@ it('orders rapid saves and waits for the latest save before undoing', async () =
   expect(undoButton().disabled).toBe(true)
 
   await act(async () => {
-    first.resolve(json({ undo_token: 'first' }))
+    first.resolve(json({}))
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
   expect(fetchMock).toHaveBeenLastCalledWith('/api/ratings/', expect.objectContaining({
-    body: JSON.stringify({ word_id: 2, grade: 'easy' }),
+    body: JSON.stringify({ word_id: 2, grade: 'easy', last_practiced_at: ratedAt }),
   }))
   await act(async () => {
-    second.resolve(json({ undo_token: 'second' }))
+    second.resolve(json({}))
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
   expect(fetchMock).toHaveBeenLastCalledWith('/api/ratings/undo/', expect.objectContaining({
-    body: JSON.stringify({ undo_token: 'second' }),
+    body: JSON.stringify({
+      word_id: 2,
+      last_practiced_at: ratedAt,
+      previous: emptyProgress,
+    }),
   }))
   expect(host.textContent).toContain('word-3')
   await click('.reveal-target')
@@ -190,6 +208,16 @@ it('keeps the checkpoint when undo is rejected', async () => {
   await click('.study-undo')
   expect(host.textContent).toContain('word-2')
   expect(toasts).toEqual(['Couldn’t undo the rating. Try again.'])
+  expect(undoButton().disabled).toBe(false)
+})
+
+it('explains when a newer rating blocks undo', async () => {
+  await mount()
+  await grade('easy')
+  fetchMock.mockResolvedValueOnce(json({ detail: 'A newer rating was saved.' }, 409))
+  await click('.study-undo')
+  expect(host.textContent).toContain('word-2')
+  expect(toasts).toEqual(['A newer rating was saved. This rating can’t be undone.'])
   expect(undoButton().disabled).toBe(false)
 })
 

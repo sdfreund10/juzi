@@ -170,6 +170,14 @@ export type StudyCard = {
   example_chinese: string
   example_pinyin: string
   example_english: string
+  progress: CardProgress
+}
+
+export type CardProgress = {
+  easy_streak: number
+  easy_count: number
+  due_on: string | null
+  last_practiced_at: string | null
 }
 
 export type StudySession = {
@@ -195,13 +203,16 @@ export function createSession(
 
 export type CardGrade = 'hard' | 'easy'
 
-export async function rateCard(wordId: number, grade: CardGrade): Promise<string> {
+export async function rateCard(
+  wordId: number,
+  grade: CardGrade,
+  lastPracticedAt: string,
+): Promise<void> {
   try {
-    const result = await apiRequest<{ undo_token: string }>('/api/ratings/', {
+    await apiRequest('/api/ratings/', {
       method: 'POST',
-      body: { word_id: wordId, grade },
+      body: { word_id: wordId, grade, last_practiced_at: lastPracticedAt },
     })
-    return result.undo_token
   } catch (err) {
     showToast(
       err instanceof ApiError && err.status === 401
@@ -212,10 +223,14 @@ export async function rateCard(wordId: number, grade: CardGrade): Promise<string
   }
 }
 
-export function undoRating(undoToken: string): Promise<void> {
+export function undoRating(
+  wordId: number,
+  lastPracticedAt: string,
+  previous: CardProgress,
+): Promise<void> {
   return apiRequest('/api/ratings/undo/', {
     method: 'POST',
-    body: { undo_token: undoToken },
+    body: { word_id: wordId, last_practiced_at: lastPracticedAt, previous },
   })
 }
 

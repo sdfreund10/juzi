@@ -6,6 +6,7 @@ import {
   flagWord,
   rateCard,
   undoRating,
+  type CardProgress,
   type Difficulty,
   type StudyCard,
   type StudySession,
@@ -40,7 +41,18 @@ type StudyProps = {
 type RatingCheckpoint = {
   queue: StudyCard[]
   progress: SessionProgress
-  savedRating: Promise<string>
+  card: StudyCard
+  lastPracticedAt: string
+  savedRating: Promise<void>
+}
+
+function progressAfterHard(progress: CardProgress, lastPracticedAt: string): CardProgress {
+  return {
+    ...progress,
+    easy_streak: 0,
+    due_on: lastPracticedAt.slice(0, 10),
+    last_practiced_at: lastPracticedAt,
+  }
 }
 
 function lineClass(
@@ -149,17 +161,23 @@ function StudySessionView({ session }: { session: StudySession }) {
   function onGrade(hard: boolean) {
     if (!card || !revealed || undoInFlight.current) return
     const wordId = card.word_id
-    const savedRating = pendingSave.current.then(() => rateCard(wordId, hard ? 'hard' : 'easy'))
+    const lastPracticedAt = new Date().toISOString()
+    const savedRating = pendingSave.current.then(() =>
+      rateCard(wordId, hard ? 'hard' : 'easy', lastPracticedAt),
+    )
     // Keep saves ordered without making the learner wait before the next card.
     pendingSave.current = savedRating.catch(() => {
       // An unconfirmed save cannot be undone. Keep any newer checkpoint intact.
       setCheckpoint((current) => current?.savedRating === savedRating ? null : current)
     })
-    setCheckpoint({ queue, progress, savedRating })
+    setCheckpoint({ queue, progress, card, lastPracticedAt, savedRating })
     setProgress((prev) =>
       hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
     )
-    setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
+    setQueue((prev) => {
+      if (!hard) return gradeEasy(prev)
+      return gradeHard([{ ...card, progress: progressAfterHard(card.progress, lastPracticedAt) }, ...prev.slice(1)])
+    })
     setRevealed(false)
     setConfirmFlag(false)
   }
@@ -171,16 +189,25 @@ function StudySessionView({ session }: { session: StudySession }) {
     setConfirmFlag(false)
     try {
       // rateCard already explains save failures; do not offer an undo retry for one.
-      const undoToken = await checkpoint.savedRating.catch(() => null)
-      if (!undoToken) return
-      await undoRating(undoToken)
+      try {
+        await checkpoint.savedRating
+      } catch {
+        return
+      }
+      await undoRating(
+        checkpoint.card.word_id,
+        checkpoint.lastPracticedAt,
+        checkpoint.card.progress,
+      )
       setQueue(checkpoint.queue)
       setProgress(checkpoint.progress)
       setRevealed(true)
       setCheckpoint(null)
     } catch (err) {
       showToast(
-        'Couldn’t undo the rating. Try again.',
+        err instanceof ApiError && err.status === 409
+          ? 'A newer rating was saved. This rating can’t be undone.'
+          : 'Couldn’t undo the rating. Try again.',
       )
     } finally {
       undoInFlight.current = false

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
@@ -34,6 +34,10 @@ class SessionCard:
     example_chinese: str
     example_pinyin: str
     example_english: str
+    easy_streak: int
+    easy_count: int
+    due_on: date | None
+    last_practiced_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -77,6 +81,10 @@ def _card_from_user_word(user_word: UserWord) -> SessionCard:
         example_chinese=word.example_sentence_traditional,
         example_pinyin=word.example_sentence_pinyin,
         example_english=word.example_sentence_english,
+        easy_streak=user_word.easy_streak,
+        easy_count=user_word.easy_count,
+        due_on=user_word.due_on,
+        last_practiced_at=user_word.last_practiced_at,
     )
 
 

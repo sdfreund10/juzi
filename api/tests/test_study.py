@@ -236,6 +236,12 @@ def test_create_session_filters_difficulty_bands(
     assert love["example_chinese"] == "我愛喝茶。"
     assert love["example_pinyin"] == "Wǒ ài hē chá."
     assert love["example_english"] == "I like to drink tea."
+    assert love["progress"] == {
+        "easy_streak": 0,
+        "easy_count": 0,
+        "due_on": timezone.localdate().isoformat(),
+        "last_practiced_at": None,
+    }
     library = by_word[seeded_words["advanced"].id]
     assert library["example_chinese"] == ""
     assert library["example_pinyin"] == ""
