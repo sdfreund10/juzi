@@ -4,9 +4,7 @@ import {
   ApiError,
   createSession,
   flagWord,
-  rateCard,
   type Difficulty,
-  type StudyCard,
   type StudySession,
 } from './api'
 import { brandMarkSrc } from './brandMark.ts'
@@ -15,19 +13,13 @@ import { navigate } from './routes'
 import {
   cardPrompt,
   cardReveal,
-  gradeEasy,
-  gradeHard,
   highlightHeadword,
   type DisplayBlock,
   type DisplayLine,
 } from './studyCard'
-import {
-  StudyProgress,
-  emptyProgress,
-  recordEasy,
-  recordHard,
-} from './studyProgress'
+import { StudyProgress } from './studyProgress'
 import { useCategory } from './useCategories'
+import { useGrading } from './useGrading'
 
 type StudyProps = {
   categoryId: number
@@ -114,11 +106,10 @@ function DisplayBlocks({
 }
 
 function StudySessionView({ session }: { session: StudySession }) {
-  const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
-  const [progress, setProgress] = useState(emptyProgress)
+  const { queue, progress, canUndo, undoing, grade, undo } = useGrading(session.cards)
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
@@ -134,26 +125,26 @@ function StudySessionView({ session }: { session: StudySession }) {
   }, [card?.word_id])
 
   function onGrade(hard: boolean) {
-    if (!card) return
-    const wordId = card.word_id
-    setProgress((prev) =>
-      hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
-    )
-    setQueue((prev) => (hard ? gradeHard(prev) : gradeEasy(prev)))
+    if (!card || !revealed || undoing) return
+    grade(card, hard)
     setRevealed(false)
     setConfirmFlag(false)
-    void rateCard(wordId, hard ? 'hard' : 'easy').catch(() => {
-      // rateCard shows the failure toast. Keep the drill moving.
-    })
+  }
+
+  async function onUndo() {
+    setConfirmFlag(false)
+    if (await undo()) {
+      setRevealed(true)
+    }
   }
 
   function onFlag() {
-    if (!card || flagged) return
+    if (!card || flagged || undoing) return
     setConfirmFlag(true)
   }
 
   function onConfirmFlag() {
-    if (!card || flagged) return
+    if (!card || flagged || undoing) return
     const wordId = card.word_id
     setConfirmFlag(false)
     void flagWord(wordId)
@@ -189,6 +180,49 @@ function StudySessionView({ session }: { session: StudySession }) {
         </div>
       </div>
 
+      <div class="study-actions" role="group" aria-label="Card actions">
+        <button
+          type="button"
+          class="study-action study-undo"
+          aria-label="Undo last rating"
+          disabled={!canUndo || undoing}
+          onClick={onUndo}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 4 4 9l5 5M4 9h10a6 6 0 0 1 0 12h-3" />
+          </svg>
+          {undoing ? 'Undoing…' : 'Undo'}
+        </button>
+        {revealed && !done ? (
+          <button
+            type="button"
+            class="study-action study-flag"
+            aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
+            aria-pressed={flagged}
+            disabled={flagged || undoing}
+            onClick={onFlag}
+          >
+            <img
+              class="study-flag-icon"
+              src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
+              alt=""
+              width="14"
+              height="14"
+            />
+          </button>
+        ) : null}
+      </div>
+
       {done ? (
         <div class="study-body">
           <CaughtUp />
@@ -202,22 +236,6 @@ function StudySessionView({ session }: { session: StudySession }) {
             aria-label="Study card"
             tabIndex={0}
           >
-            <button
-              type="button"
-              class="study-flag"
-              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
-              aria-pressed={flagged}
-              disabled={flagged}
-              onClick={onFlag}
-            >
-              <img
-                class="study-flag-icon"
-                src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
-                alt=""
-                width="14"
-                height="14"
-              />
-            </button>
             <DisplayBlocks
               blocks={cardPrompt(card)}
               face="prompt"
@@ -233,6 +251,7 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone hard"
+              disabled={undoing}
               onClick={() => onGrade(true)}
             >
               Hard
@@ -241,6 +260,7 @@ function StudySessionView({ session }: { session: StudySession }) {
             <button
               type="button"
               class="grade-zone easy"
+              disabled={undoing}
               onClick={() => onGrade(false)}
             >
               Easy

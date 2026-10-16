@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
@@ -16,6 +16,10 @@ KNOWN_GRADES = frozenset({GRADE_HARD, GRADE_EASY})
 
 class UserWordNotFoundError(Exception):
     """No UserWord exists for this user and word."""
+
+
+class RatingNotUndoableError(Exception):
+    """The word changed after the rating being undone."""
 
 
 def interval_days_for_streak(streak: int) -> int:
@@ -37,11 +41,10 @@ def rate_user_word(
     user: AbstractBaseUser,
     word_id: int,
     grade: str,
+    last_practiced_at: datetime | None = None,
 ):
     """Apply hard/easy to the user's word row."""
     today = timezone.localdate()
-    now = timezone.now()
-
     with transaction.atomic():
         try:
             row = UserWord.objects.select_for_update().get(
@@ -61,7 +64,7 @@ def rate_user_word(
         else:
             raise ValueError(f"Unknown grade: {grade}")
 
-        row.last_practiced_at = now
+        row.last_practiced_at = last_practiced_at or timezone.now()
         row.save(
             update_fields=[
                 "easy_streak",
@@ -70,4 +73,34 @@ def rate_user_word(
                 "last_practiced_at",
             ]
         )
+        return row
+
+
+def undo_rating(
+    *,
+    user: AbstractBaseUser,
+    word_id: int,
+    last_practiced_at: datetime,
+    previous: dict,
+) -> UserWord:
+    """Restore a frontend checkpoint when this rating is still the latest change.
+
+    We are trusting whatever "previous" state the client sends is correct, which is mildly dangerous
+    A future, more robust strategy may be to store the snapshot in the database, perhaps
+    as a JSON field on the user_word row. Deferred for now.
+    """
+    with transaction.atomic():
+        try:
+            row = UserWord.objects.select_for_update().get(user=user, word_id=word_id)
+        except UserWord.DoesNotExist as exc:
+            raise UserWordNotFoundError from exc
+
+        if row.last_practiced_at != last_practiced_at:
+            raise RatingNotUndoableError
+
+        row.easy_streak = previous["easy_streak"]
+        row.easy_count = previous["easy_count"]
+        row.due_on = previous["due_on"]
+        row.last_practiced_at = previous["last_practiced_at"]
+        row.save(update_fields=["easy_streak", "easy_count", "due_on", "last_practiced_at"])
         return row
