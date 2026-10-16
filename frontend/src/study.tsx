@@ -4,11 +4,7 @@ import {
   ApiError,
   createSession,
   flagWord,
-  rateCard,
-  undoRating,
-  type CardProgress,
   type Difficulty,
-  type StudyCard,
   type StudySession,
 } from './api'
 import { brandMarkSrc } from './brandMark.ts'
@@ -17,42 +13,17 @@ import { navigate } from './routes'
 import {
   cardPrompt,
   cardReveal,
-  gradeEasy,
-  gradeHard,
   highlightHeadword,
   type DisplayBlock,
   type DisplayLine,
 } from './studyCard'
-import {
-  StudyProgress,
-  emptyProgress,
-  recordEasy,
-  recordHard,
-  type SessionProgress,
-} from './studyProgress'
-import { showToast } from './toast'
+import { StudyProgress } from './studyProgress'
 import { useCategory } from './useCategories'
+import { useGrading } from './useGrading'
 
 type StudyProps = {
   categoryId: number
   difficulties: Difficulty[]
-}
-
-type RatingCheckpoint = {
-  queue: StudyCard[]
-  progress: SessionProgress
-  card: StudyCard
-  lastPracticedAt: string
-  savedRating: Promise<void>
-}
-
-function progressAfterHard(progress: CardProgress, lastPracticedAt: string): CardProgress {
-  return {
-    ...progress,
-    easy_streak: 0,
-    due_on: lastPracticedAt.slice(0, 10),
-    last_practiced_at: lastPracticedAt,
-  }
 }
 
 function lineClass(
@@ -135,15 +106,10 @@ function DisplayBlocks({
 }
 
 function StudySessionView({ session }: { session: StudySession }) {
-  const [queue, setQueue] = useState<StudyCard[]>(() => [...session.cards])
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
-  const [progress, setProgress] = useState(emptyProgress)
-  const [checkpoint, setCheckpoint] = useState<RatingCheckpoint | null>(null)
-  const [undoing, setUndoing] = useState(false)
-  const undoInFlight = useRef(false)
-  const pendingSave = useRef<Promise<unknown>>(Promise.resolve())
+  const { queue, progress, canUndo, undoing, grade, undo } = useGrading(session.cards)
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
@@ -159,69 +125,26 @@ function StudySessionView({ session }: { session: StudySession }) {
   }, [card?.word_id])
 
   function onGrade(hard: boolean) {
-    if (!card || !revealed || undoInFlight.current) return
-    const wordId = card.word_id
-    const lastPracticedAt = new Date().toISOString()
-    const savedRating = pendingSave.current.then(() =>
-      rateCard(wordId, hard ? 'hard' : 'easy', lastPracticedAt),
-    )
-    // Keep saves ordered without making the learner wait before the next card.
-    pendingSave.current = savedRating.catch(() => {
-      // An unconfirmed save cannot be undone. Keep any newer checkpoint intact.
-      setCheckpoint((current) => current?.savedRating === savedRating ? null : current)
-    })
-    setCheckpoint({ queue, progress, card, lastPracticedAt, savedRating })
-    setProgress((prev) =>
-      hard ? recordHard(prev, wordId) : recordEasy(prev, wordId),
-    )
-    setQueue((prev) => {
-      if (!hard) return gradeEasy(prev)
-      return gradeHard([{ ...card, progress: progressAfterHard(card.progress, lastPracticedAt) }, ...prev.slice(1)])
-    })
+    if (!card || !revealed || undoing) return
+    grade(card, hard)
     setRevealed(false)
     setConfirmFlag(false)
   }
 
   async function onUndo() {
-    if (!checkpoint || undoInFlight.current) return
-    undoInFlight.current = true
-    setUndoing(true)
     setConfirmFlag(false)
-    try {
-      // rateCard already explains save failures; do not offer an undo retry for one.
-      try {
-        await checkpoint.savedRating
-      } catch {
-        return
-      }
-      await undoRating(
-        checkpoint.card.word_id,
-        checkpoint.lastPracticedAt,
-        checkpoint.card.progress,
-      )
-      setQueue(checkpoint.queue)
-      setProgress(checkpoint.progress)
+    if (await undo()) {
       setRevealed(true)
-      setCheckpoint(null)
-    } catch (err) {
-      showToast(
-        err instanceof ApiError && err.status === 409
-          ? 'A newer rating was saved. This rating can’t be undone.'
-          : 'Couldn’t undo the rating. Try again.',
-      )
-    } finally {
-      undoInFlight.current = false
-      setUndoing(false)
     }
   }
 
   function onFlag() {
-    if (!card || flagged || undoInFlight.current) return
+    if (!card || flagged || undoing) return
     setConfirmFlag(true)
   }
 
   function onConfirmFlag() {
-    if (!card || flagged || undoInFlight.current) return
+    if (!card || flagged || undoing) return
     const wordId = card.word_id
     setConfirmFlag(false)
     void flagWord(wordId)
@@ -262,7 +185,7 @@ function StudySessionView({ session }: { session: StudySession }) {
           type="button"
           class="study-action study-undo"
           aria-label="Undo last rating"
-          disabled={!checkpoint || undoing}
+          disabled={!canUndo || undoing}
           onClick={onUndo}
         >
           <svg
