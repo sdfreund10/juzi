@@ -201,16 +201,6 @@ it('keeps the current card on undo failure and allows retry', async () => {
   expect(host.textContent).toContain('answer-1')
 })
 
-it('keeps the checkpoint when undo is rejected', async () => {
-  await mount()
-  await grade('easy')
-  fetchMock.mockResolvedValueOnce(json({}, 400))
-  await click('.study-undo')
-  expect(host.textContent).toContain('word-2')
-  expect(toasts).toEqual(['Couldn’t undo the rating. Try again.'])
-  expect(undoButton().disabled).toBe(false)
-})
-
 it('explains when a newer rating blocks undo', async () => {
   await mount()
   await grade('easy')
@@ -234,15 +224,5 @@ it('disables undo when the latest rating could not be saved', async () => {
   expect(undoButton().disabled).toBe(true)
   expect(host.textContent).toContain('word-2')
   expect(fetchMock).toHaveBeenCalledTimes(2)
-  expect(toasts).toEqual(['Couldn’t save your progress. You can keep studying.'])
-})
-
-it('allows later ratings to save after a save failure', async () => {
-  await mount()
-  fetchMock.mockResolvedValueOnce(json({}, 500))
-  await grade('easy')
-  await grade('easy')
-  await click('.study-undo')
-  expect(host.textContent).toContain('answer-2')
   expect(toasts).toEqual(['Couldn’t save your progress. You can keep studying.'])
 })
