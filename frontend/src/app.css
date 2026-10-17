@@ -771,7 +771,7 @@ body {
 }
 
 .prompt-block {
-  margin: 56px 0 0;
+  margin: 32px 0 0;
   padding: 0 16px;
   text-align: center;
 }
@@ -965,7 +965,9 @@ body {
 
 .grade-zones {
   flex-shrink: 0;
-  height: calc(240px + env(safe-area-inset-bottom, 0px));
+  height: calc(30% + env(safe-area-inset-bottom, 0px));
+  min-height: calc(120px + env(safe-area-inset-bottom, 0px));
+  max-height: calc(280px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
 }
@@ -1179,5 +1181,5 @@ body {
 }
 
 .app.study + .toast {
-  bottom: calc(240px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(280px + 0.25rem + env(safe-area-inset-bottom, 0px));
 }
