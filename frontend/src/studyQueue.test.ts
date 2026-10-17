@@ -18,6 +18,12 @@ function card (overrides: Partial<StudyCard> = {}): StudyCard {
     example_chinese: '圖書館很大。',
     example_pinyin: 'Túshūguǎn hěn dà.',
     example_english: 'The library is very big.',
+    progress: {
+      easy_streak: 0,
+      easy_count: 0,
+      due_on: null,
+      last_practiced_at: null
+    },
     ...overrides
   }
 }

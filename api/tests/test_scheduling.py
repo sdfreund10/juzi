@@ -402,7 +402,11 @@ def test_rate_endpoint_requires_authentication(
     headers = _csrf_headers(client)
     response = client.post(
         reverse("ratings-create"),
-        {"word_id": words["novice"].id, "grade": "easy"},
+        {
+            "word_id": words["novice"].id,
+            "grade": "easy",
+            "last_practiced_at": timezone.now().isoformat(),
+        },
         format="json",
         **headers,
     )
@@ -426,7 +430,11 @@ def test_rate_endpoint_happy_path(
     headers = _login(client, user)
     response = client.post(
         reverse("ratings-create"),
-        {"word_id": words["novice"].id, "grade": "easy"},
+        {
+            "word_id": words["novice"].id,
+            "grade": "easy",
+            "last_practiced_at": timezone.now().isoformat(),
+        },
         format="json",
         **headers,
     )
@@ -447,7 +455,11 @@ def test_rate_endpoint_missing_row(
     headers = _login(client, user)
     response = client.post(
         reverse("ratings-create"),
-        {"word_id": words["novice"].id, "grade": "hard"},
+        {
+            "word_id": words["novice"].id,
+            "grade": "hard",
+            "last_practiced_at": timezone.now().isoformat(),
+        },
         format="json",
         **headers,
     )

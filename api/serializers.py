@@ -44,12 +44,26 @@ class CreateSessionSerializer(serializers.Serializer):
 class RateCardSerializer(serializers.Serializer):
     word_id = serializers.IntegerField(min_value=1)
     grade = serializers.CharField()
+    last_practiced_at = serializers.DateTimeField()
 
     def validate_grade(self, value: str) -> str:
         grade = value.strip().lower()
         if grade not in KNOWN_GRADES:
             raise serializers.ValidationError(f"Unknown grade: {value}. Expected hard or easy.")
         return grade
+
+
+class UserWordProgressSerializer(serializers.Serializer):
+    easy_streak = serializers.IntegerField(min_value=0)
+    easy_count = serializers.IntegerField(min_value=0)
+    due_on = serializers.DateField(allow_null=True)
+    last_practiced_at = serializers.DateTimeField(allow_null=True)
+
+
+class UndoRatingSerializer(serializers.Serializer):
+    word_id = serializers.IntegerField(min_value=1)
+    last_practiced_at = serializers.DateTimeField()
+    previous = UserWordProgressSerializer()
 
 
 class FlagWordSerializer(serializers.Serializer):

@@ -57,7 +57,8 @@ it('finishes only after the first card is committed to the DOM', async () => {
         answer_english: 'answer',
         example_chinese: '',
         example_pinyin: '',
-        example_english: ''
+        example_english: '',
+        progress: { easy_streak: 0, easy_count: 0, due_on: null, last_practiced_at: null }
       }]
     })))
     await new Promise((resolve) => setTimeout(resolve, 0))
