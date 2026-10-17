@@ -70,10 +70,19 @@ export function pathFor (route: Route): string {
   }
 }
 
+let pendingReplaceNavigation = false
+
+export function consumePendingReplaceNavigation (): boolean {
+  const value = pendingReplaceNavigation
+  pendingReplaceNavigation = false
+  return value
+}
+
 export function navigate (route: Route, options: { replace?: boolean } = {}): void {
   const next = pathFor(route)
   if (next === window.location.pathname) return
   if (options.replace) {
+    pendingReplaceNavigation = true
     window.history.replaceState(null, '', next)
   } else {
     window.history.pushState(null, '', next)

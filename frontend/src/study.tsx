@@ -75,7 +75,11 @@ function DisplayBlocks ({
   headword: string
 }) {
   return (
-    <div class={face === 'prompt' ? 'prompt-block' : 'answer'}>
+    <div
+      class={
+        face === 'prompt' ? 'prompt-block' : 'answer study-answer-enter'
+      }
+    >
       {blocks.map((block) => {
         const paired =
           block.role === 'word' &&
@@ -229,104 +233,105 @@ function StudySessionView ({ session }: { session: StudySession }) {
 
       {done
         ? (
-          <div class='study-body'>
+          <div key='caught-up' class='study-body study-card-enter'>
             <CaughtUp />
           </div>
           )
-        : revealed
-          ? (
-            <>
-              <div
-                class='study-body'
-                ref={bodyRef}
-                role='region'
-                aria-label='Study card'
-                tabIndex={0}
-              >
-                <DisplayBlocks
-                  blocks={cardPrompt(card)}
-                  face='prompt'
-                  headword={card.answer_chinese}
-                />
-                <DisplayBlocks
-                  blocks={cardReveal(card)}
-                  face='answer'
-                  headword={card.answer_chinese}
-                />
-              </div>
-              <div class='grade-zones' aria-label='Grade card'>
-                <button
-                  type='button'
-                  class='grade-zone hard'
-                  disabled={undoing}
-                  onClick={() => onGrade(true)}
-                >
-                  Hard
-                  <small>back soon</small>
-                </button>
-                <button
-                  type='button'
-                  class='grade-zone easy'
-                  disabled={undoing}
-                  onClick={() => onGrade(false)}
-                >
-                  Easy
-                  <small>later</small>
-                </button>
-              </div>
-              {confirmFlag
-                ? (
-                  <div
-                    class='study-flag-confirm'
-                    role='dialog'
-                    aria-modal='true'
-                    aria-describedby='flag-confirm-copy'
-                  >
-                    <div class='study-flag-confirm-panel'>
-                      <p id='flag-confirm-copy'>
-                        This will notify the team there may be a problem with this
-                        study card.
-                      </p>
-                      <div class='study-flag-confirm-actions'>
-                        <button
-                          type='button'
-                          class='btn ghost'
-                          onClick={() => setConfirmFlag(false)}
-                        >
-                          Cancel
-                        </button>
-                        <button type='button' class='btn' onClick={onConfirmFlag}>
-                          Flag
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  )
-                : null}
-            </>
-            )
-          : (
+        : (
+          <>
             <div
-              class='study-body reveal-target'
+              key={card.word_id}
+              class={`study-body study-card-enter${revealed ? '' : ' reveal-target'}`}
               ref={bodyRef}
-              onClick={() => setRevealed(true)}
-              role='button'
+              role={revealed ? 'region' : 'button'}
+              aria-label={revealed ? 'Study card' : undefined}
               tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  setRevealed(true)
-                }
-              }}
+              onClick={revealed ? undefined : () => setRevealed(true)}
+              onKeyDown={
+                revealed
+                  ? undefined
+                  : (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setRevealed(true)
+                      }
+                    }
+              }
             >
               <DisplayBlocks
                 blocks={cardPrompt(card)}
                 face='prompt'
                 headword={card.answer_chinese}
               />
-              <p class='hint'>Tap anywhere to reveal</p>
+              {revealed
+                ? (
+                  <DisplayBlocks
+                    blocks={cardReveal(card)}
+                    face='answer'
+                    headword={card.answer_chinese}
+                  />
+                  )
+                : (
+                  <p class='hint'>Tap anywhere to reveal</p>
+                  )}
             </div>
-            )}
+            {revealed
+              ? (
+                <>
+                  <div class='grade-zones' aria-label='Grade card'>
+                    <button
+                      type='button'
+                      class='grade-zone hard'
+                      disabled={undoing}
+                      onClick={() => onGrade(true)}
+                    >
+                      Hard
+                      <small>back soon</small>
+                    </button>
+                    <button
+                      type='button'
+                      class='grade-zone easy'
+                      disabled={undoing}
+                      onClick={() => onGrade(false)}
+                    >
+                      Easy
+                      <small>later</small>
+                    </button>
+                  </div>
+                  {confirmFlag
+                    ? (
+                      <div
+                        class='study-flag-confirm study-flag-enter'
+                        role='dialog'
+                        aria-modal='true'
+                        aria-describedby='flag-confirm-copy'
+                      >
+                        <div class='study-flag-confirm-panel'>
+                          <p id='flag-confirm-copy'>
+                            This will notify the team there may be a problem with this
+                            study card.
+                          </p>
+                          <div class='study-flag-confirm-actions'>
+                            <button
+                              type='button'
+                              class='btn ghost'
+                              onClick={() => setConfirmFlag(false)}
+                            >
+                              Cancel
+                            </button>
+                            <button type='button' class='btn' onClick={onConfirmFlag}>
+                              Flag
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      )
+                    : null}
+                </>
+                )
+              : null}
+          </>
+          )}
     </div>
   )
 }

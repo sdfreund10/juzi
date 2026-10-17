@@ -57,6 +57,76 @@ body {
   flex-direction: column;
 }
 
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@keyframes screen-enter-forward {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes screen-enter-back {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes screen-enter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes study-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .screen-enter-forward {
+    animation: screen-enter-forward 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .screen-enter-back {
+    animation: screen-enter-back 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .screen-enter-fade {
+    animation: screen-enter-fade 120ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter-forward,
+  .screen-enter-back,
+  .screen-enter-fade {
+    animation: screen-enter-fade 120ms ease-out;
+  }
+}
+
 @media (max-width: 390px) {
   .app {
     border-left: 0;
@@ -701,7 +771,7 @@ body {
 }
 
 .prompt-block {
-  margin: 56px 0 0;
+  margin: 32px 0 0;
   padding: 0 16px;
   text-align: center;
 }
@@ -895,7 +965,9 @@ body {
 
 .grade-zones {
   flex-shrink: 0;
-  height: calc(120px + env(safe-area-inset-bottom, 0px));
+  height: calc(30% + env(safe-area-inset-bottom, 0px));
+  min-height: calc(120px + env(safe-area-inset-bottom, 0px));
+  max-height: calc(280px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
 }
@@ -934,17 +1006,23 @@ body {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .grade-zones {
-    animation: grade-zones-in 0.15s ease-out;
+  .grade-zones,
+  .study-card-enter,
+  .study-answer-enter {
+    animation: study-fade-in 100ms ease-out;
   }
 
-  @keyframes grade-zones-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .study-flag-enter {
+    animation: study-fade-in 120ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grade-zones,
+  .study-card-enter,
+  .study-answer-enter,
+  .study-flag-enter {
+    animation: study-fade-in 100ms ease-out;
   }
 }
 
@@ -1103,5 +1181,6 @@ body {
 }
 
 .app.study + .toast {
-  bottom: calc(120px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(clamp(120px, 30vh, 280px) + 0.25rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(clamp(120px, 30dvh, 280px) + 0.25rem + env(safe-area-inset-bottom, 0px));
 }
