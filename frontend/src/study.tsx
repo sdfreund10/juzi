@@ -244,7 +244,7 @@ function StudySessionView ({ session }: { session: StudySession }) {
               class={`study-body study-card-enter${revealed ? '' : ' reveal-target'}`}
               ref={bodyRef}
               role={revealed ? 'region' : 'button'}
-              aria-label='Study card'
+              aria-label={revealed ? 'Study card' : undefined}
               tabIndex={0}
               onClick={revealed ? undefined : () => setRevealed(true)}
               onKeyDown={
