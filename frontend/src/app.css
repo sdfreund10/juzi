@@ -1181,5 +1181,6 @@ body {
 }
 
 .app.study + .toast {
-  bottom: calc(280px + 0.25rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(clamp(120px, 30vh, 280px) + 0.25rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(clamp(120px, 30dvh, 280px) + 0.25rem + env(safe-area-inset-bottom, 0px));
 }
