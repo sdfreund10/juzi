@@ -8,12 +8,12 @@ const OPTIONS: { id: ProficiencyLevel; label: string; detail: string }[] = [
   { id: 'novice', label: 'Novice', detail: 'Start with pinyin helper on all cards.' },
   { id: 'intermediate', label: 'Intermediate', detail: 'Adds English-to-Chinese cards for beginner words.' },
   { id: 'advanced', label: 'Advanced', detail: 'Adds English-to-Chinese cards for all words and character-only prompts for beginner words.' },
-  { id: 'expert', label: 'Expert', detail: 'All card types for all words.' },
+  { id: 'expert', label: 'Expert', detail: 'All card types for all words.' }
 ]
 
 const FIELD_NAME = 'proficiency_level'
 
-export function ProficiencyStep() {
+export function ProficiencyStep () {
   const { user, setUser, clearUser } = useAuth()
   const current = user?.proficiency_level ?? null
   const isEdit = current !== null
@@ -25,7 +25,7 @@ export function ProficiencyStep() {
   const canConfirm =
     selected !== null && (!isEdit || selected !== current) && !submitting
 
-  async function confirm() {
+  async function confirm () {
     if (!canConfirm || selected === null) return
     setError(null)
     setSubmitting(true)
@@ -47,7 +47,7 @@ export function ProficiencyStep() {
     }
   }
 
-  function onRadioChange(level: ProficiencyLevel) {
+  function onRadioChange (level: ProficiencyLevel) {
     if (submitting) return
     setError(null)
     setSelected(level)
@@ -56,14 +56,14 @@ export function ProficiencyStep() {
   return (
     <>
       <Brand />
-      <div class="title-bar">
-        <h1 class="title" id="proficiency-title">
+      <div class='title-bar'>
+        <h1 class='title' id='proficiency-title'>
           {isEdit ? 'Change proficiency level' : 'Select your proficiency level'}
         </h1>
         {isEdit && (
           <button
-            type="button"
-            class="text-btn"
+            type='button'
+            class='text-btn'
             onClick={() => navigate({ name: 'home' })}
             disabled={submitting}
           >
@@ -71,14 +71,14 @@ export function ProficiencyStep() {
           </button>
         )}
       </div>
-      <p class="lede">Selecting a higher level will unlock harder study modes.</p>
+      <p class='lede'>Selecting a higher level will unlock harder study modes.</p>
 
       <fieldset
-        class="proficiency-field"
+        class='proficiency-field'
         disabled={submitting}
-        aria-labelledby="proficiency-title"
+        aria-labelledby='proficiency-title'
       >
-        <legend class="proficiency-legend">Proficiency level</legend>
+        <legend class='proficiency-legend'>Proficiency level</legend>
         {OPTIONS.map((opt) => {
           const isSelected = selected === opt.id
           return (
@@ -87,34 +87,34 @@ export function ProficiencyStep() {
               class={`proficiency-option${isSelected ? ' selected' : ''}`}
             >
               <input
-                type="radio"
+                type='radio'
                 name={FIELD_NAME}
                 value={opt.id}
                 checked={isSelected}
                 onChange={() => onRadioChange(opt.id)}
               />
-              <span class="g">
+              <span class='g'>
                 <b>{opt.label}</b>
-                <span class="s">{opt.detail}</span>
+                <span class='s'>{opt.detail}</span>
               </span>
             </label>
           )
         })}
       </fieldset>
 
-      <div class="picker-actions">
+      <div class='picker-actions'>
         <button
-          type="button"
-          class="cta"
+          type='button'
+          class='cta'
           disabled={!canConfirm}
-          onClick={() => void confirm()}
+          onClick={() => { confirm().catch(() => {}) }}
         >
           {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Confirm'}
         </button>
       </div>
 
       {error && (
-        <p class="error" role="alert" aria-live="polite">
+        <p class='error' role='alert' aria-live='polite'>
           {error}
         </p>
       )}

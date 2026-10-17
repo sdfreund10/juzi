@@ -4,14 +4,14 @@ import {
   rateCard,
   undoRating,
   type CardProgress,
-  type StudyCard,
+  type StudyCard
 } from './api'
 import { gradeEasy, gradeHard } from './studyCard'
 import {
   emptyProgress,
   recordEasy,
   recordHard,
-  type SessionProgress,
+  type SessionProgress
 } from './studyProgress'
 import { showToast } from './toast'
 
@@ -23,16 +23,16 @@ type RatingCheckpoint = {
   savedRating: Promise<void>
 }
 
-function progressAfterHard(progress: CardProgress, lastPracticedAt: string): CardProgress {
+function progressAfterHard (progress: CardProgress, lastPracticedAt: string): CardProgress {
   return {
     ...progress,
     easy_streak: 0,
     due_on: lastPracticedAt.slice(0, 10),
-    last_practiced_at: lastPracticedAt,
+    last_practiced_at: lastPracticedAt
   }
 }
 
-export function useGrading(cards: StudyCard[]) {
+export function useGrading (cards: StudyCard[]) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...cards])
   const [progress, setProgress] = useState(emptyProgress)
   // Right now just store one checkpoint for the latest graded card.
@@ -42,35 +42,35 @@ export function useGrading(cards: StudyCard[]) {
   // Pending serves as a request queue. Append new requests by chaining via a then().
   const pendingSave = useRef<Promise<void>>(Promise.resolve())
 
-  function grade(card: StudyCard, hard: boolean) {
+  function grade (card: StudyCard, hard: boolean) {
     if (undoInFlight.current) return
 
     const lastPracticedAt = new Date().toISOString()
 
     // Add the rating to the request queue.
     const savedRating = pendingSave.current.then(() =>
-      rateCard(card.word_id, hard ? 'hard' : 'easy', lastPracticedAt),
+      rateCard(card.word_id, hard ? 'hard' : 'easy', lastPracticedAt)
     )
     // Keep saves ordered without making the learner wait before the next card.
     pendingSave.current = savedRating.catch(() => {
       setCheckpoint((current) => current?.savedRating === savedRating ? null : current)
     })
-  
+
     setCheckpoint({ queue, progress, card, lastPracticedAt, savedRating })
     setProgress((current) =>
-      hard ? recordHard(current, card.word_id) : recordEasy(current, card.word_id),
+      hard ? recordHard(current, card.word_id) : recordEasy(current, card.word_id)
     )
     setQueue((current) => {
       if (!hard) return gradeEasy(current)
       const ratedCard = {
         ...card,
-        progress: progressAfterHard(card.progress, lastPracticedAt),
+        progress: progressAfterHard(card.progress, lastPracticedAt)
       }
       return gradeHard([ratedCard, ...current.slice(1)])
     })
   }
 
-  async function undo(): Promise<boolean> {
+  async function undo (): Promise<boolean> {
     if (!checkpoint || undoInFlight.current) return false
 
     undoInFlight.current = true
@@ -85,7 +85,7 @@ export function useGrading(cards: StudyCard[]) {
       await undoRating(
         checkpoint.card.word_id,
         checkpoint.lastPracticedAt,
-        checkpoint.card.progress,
+        checkpoint.card.progress
       )
       setQueue(checkpoint.queue)
       setProgress(checkpoint.progress)
@@ -95,7 +95,7 @@ export function useGrading(cards: StudyCard[]) {
       showToast(
         err instanceof ApiError && err.status === 409
           ? 'A newer rating was saved. This rating can’t be undone.'
-          : 'Couldn’t undo the rating. Try again.',
+          : 'Couldn’t undo the rating. Try again.'
       )
       return false
     } finally {

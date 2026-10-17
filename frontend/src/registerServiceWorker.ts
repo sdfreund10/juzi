@@ -1,5 +1,5 @@
 /** Register the app-shell service worker (same-origin production builds only). */
-export function registerServiceWorker(): void {
+export function registerServiceWorker (): void {
   if (!('serviceWorker' in navigator)) {
     return
   }
@@ -8,7 +8,7 @@ export function registerServiceWorker(): void {
     return
   }
 
-  void navigator.serviceWorker.register('/sw.js').catch(() => {
+  navigator.serviceWorker.register('/sw.js').catch(() => {
     // Installability still works without a controlling SW; ignore register failures.
   })
 }

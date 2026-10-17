@@ -9,7 +9,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "standard \"src/**/*.{ts,tsx}\"",
+    "lint:fix": "standard --fix \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@sentry/browser": "^11.7.0",
@@ -19,9 +21,17 @@
     "@preact/preset-vite": "^2.10.6",
     "@sentry/vite-plugin": "^5.4.1",
     "@types/node": "^24.13.3",
+    "@typescript-eslint/parser": "^8.71.2",
     "happy-dom": "^20.14.5",
+    "standard": "^17.1.2",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.3"
+  },
+  "standard": {
+    "parser": "@typescript-eslint/parser",
+    "env": [
+      "browser"
+    ]
   }
 }

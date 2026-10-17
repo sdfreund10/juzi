@@ -3,31 +3,31 @@ export type SessionProgress = {
   hardIds: number[]
 }
 
-export function emptyProgress(): SessionProgress {
+export function emptyProgress (): SessionProgress {
   return { easyCount: 0, hardIds: [] }
 }
 
-export function recordEasy(
+export function recordEasy (
   progress: SessionProgress,
-  wordId: number,
+  wordId: number
 ): SessionProgress {
   return {
     easyCount: progress.easyCount + 1,
-    hardIds: progress.hardIds.filter((id) => id !== wordId),
+    hardIds: progress.hardIds.filter((id) => id !== wordId)
   }
 }
 
-export function recordHard(
+export function recordHard (
   progress: SessionProgress,
-  wordId: number,
+  wordId: number
 ): SessionProgress {
   if (progress.hardIds.includes(wordId)) return progress
   return { ...progress, hardIds: [...progress.hardIds, wordId] }
 }
 
-export function StudyProgress({
+export function StudyProgress ({
   total,
-  progress,
+  progress
 }: {
   total: number
   progress: SessionProgress
@@ -37,8 +37,8 @@ export function StudyProgress({
 
   return (
     <div
-      class="study-progress"
-      role="progressbar"
+      class='study-progress'
+      role='progressbar'
       aria-valuemin={0}
       aria-valuemax={total}
       aria-valuenow={progress.easyCount}
@@ -48,8 +48,8 @@ export function StudyProgress({
           : 'Session progress'
       }
     >
-      <span class="study-progress-easy" style={{ width: `${easyPct}%` }} />
-      <span class="study-progress-hard" style={{ width: `${hardPct}%` }} />
+      <span class='study-progress-easy' style={{ width: `${easyPct}%` }} />
+      <span class='study-progress-hard' style={{ width: `${hardPct}%` }} />
     </div>
   )
 }

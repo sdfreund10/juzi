@@ -15,7 +15,7 @@ it('reports server failures with the request method, pathname, and status', asyn
     .rejects.toMatchObject({ status: 503 })
   expect(Sentry.captureException).toHaveBeenCalledWith(
     expect.objectContaining({ message: 'API server failure' }),
-    expect.objectContaining({ tags: { method: 'POST', pathname: '/api/ratings/', status: 503 } }),
+    expect.objectContaining({ tags: { method: 'POST', pathname: '/api/ratings/', status: 503 } })
   )
 })
 
@@ -25,7 +25,7 @@ it('reports a network failure and preserves the original error', async () => {
   await expect(apiRequest('/api/categories/')).rejects.toBe(failure)
   expect(Sentry.captureException).toHaveBeenCalledWith(
     expect.objectContaining({ message: 'API network failure' }),
-    expect.objectContaining({ tags: { method: 'GET', pathname: '/api/categories/' } }),
+    expect.objectContaining({ tags: { method: 'GET', pathname: '/api/categories/' } })
   )
 })
 

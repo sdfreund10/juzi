@@ -6,14 +6,14 @@ import type { StudyCard } from './api'
 import { setToastHandler } from './toast'
 
 vi.mock('./useCategories', () => ({
-  useCategory: () => ({ category: { id: 1, name: 'Test deck' }, ready: true, missing: false, error: null }),
+  useCategory: () => ({ category: { id: 1, name: 'Test deck' }, ready: true, missing: false, error: null })
 }))
 
 const emptyProgress = {
   easy_streak: 0,
   easy_count: 0,
   due_on: null,
-  last_practiced_at: null,
+  last_practiced_at: null
 }
 const ratedAt = '2026-10-15T12:00:00.000Z'
 const cards: StudyCard[] = [1, 2, 3].map((id) => ({
@@ -25,20 +25,20 @@ const cards: StudyCard[] = [1, 2, 3].map((id) => ({
   example_chinese: '',
   example_pinyin: '',
   example_english: '',
-  progress: emptyProgress,
+  progress: emptyProgress
 }))
 
 let host: HTMLDivElement
 let toasts: string[]
 let fetchMock: ReturnType<typeof vi.fn>
 
-function json(body: unknown, status = 200) {
+function json (body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status })
 }
 
-function deferredResponse() {
+function deferredResponse () {
   let resolve!: (response: Response) => void
-  const promise = new Promise<Response>((done) => { resolve = done })
+  const promise = new Promise<Response>((_resolve) => { resolve = _resolve })
   return { promise, resolve }
 }
 
@@ -63,20 +63,22 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-async function mount(sessionCards = cards) {
+async function mount (sessionCards = cards) {
   fetchMock.mockResolvedValueOnce(json({
-    category: { id: 1, name: 'Test deck' }, difficulties: ['novice'],
-    total: sessionCards.length, cards: sessionCards,
+    category: { id: 1, name: 'Test deck' },
+    difficulties: ['novice'],
+    total: sessionCards.length,
+    cards: sessionCards
   }))
   await act(() => render(h(Study, { categoryId: 1, difficulties: ['novice'] }), host))
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
 }
 
-function undoButton() {
+function undoButton () {
   return host.querySelector<HTMLButtonElement>('[aria-label="Undo last rating"]')!
 }
 
-async function click(selector: string) {
+async function click (selector: string) {
   const target = host.querySelector<HTMLElement>(selector)
   expect(target).not.toBeNull()
   await act(async () => {
@@ -85,7 +87,7 @@ async function click(selector: string) {
   })
 }
 
-async function grade(grade: 'easy' | 'hard') {
+async function grade (grade: 'easy' | 'hard') {
   await click('.reveal-target')
   await click(`.grade-zone.${grade}`)
 }
@@ -107,8 +109,8 @@ it('restores the previous card, its answer, and progress after Easy', async () =
     body: JSON.stringify({
       word_id: 1,
       last_practiced_at: ratedAt,
-      previous: emptyProgress,
-    }),
+      previous: emptyProgress
+    })
   }))
 })
 
@@ -166,7 +168,7 @@ it('orders rapid saves and waits for the latest save before undoing', async () =
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
   expect(fetchMock).toHaveBeenLastCalledWith('/api/ratings/', expect.objectContaining({
-    body: JSON.stringify({ word_id: 2, grade: 'easy', last_practiced_at: ratedAt }),
+    body: JSON.stringify({ word_id: 2, grade: 'easy', last_practiced_at: ratedAt })
   }))
   await act(async () => {
     second.resolve(json({}))
@@ -176,8 +178,8 @@ it('orders rapid saves and waits for the latest save before undoing', async () =
     body: JSON.stringify({
       word_id: 2,
       last_practiced_at: ratedAt,
-      previous: emptyProgress,
-    }),
+      previous: emptyProgress
+    })
   }))
   expect(host.textContent).toContain('word-3')
   await click('.reveal-target')

@@ -3,7 +3,7 @@ import {
   parseDifficulties,
   parsePath,
   pathFor,
-  serializeDifficulties,
+  serializeDifficulties
 } from './routes'
 
 describe('difficulty slugs', () => {
@@ -41,7 +41,7 @@ describe('parsePath / pathFor', () => {
   it('parses session-new', () => {
     expect(parsePath('/category/12/sessions/new')).toEqual({
       name: 'session-new',
-      categoryId: 12,
+      categoryId: 12
     })
   })
 
@@ -49,7 +49,7 @@ describe('parsePath / pathFor', () => {
     expect(parsePath('/category/3/sessions/novice-advanced')).toEqual({
       name: 'session',
       categoryId: 3,
-      difficulties: ['novice', 'advanced'],
+      difficulties: ['novice', 'advanced']
     })
   })
 

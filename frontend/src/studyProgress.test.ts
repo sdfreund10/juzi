@@ -9,14 +9,14 @@ describe('recordEasy / recordHard', () => {
   it('counts an unseen card as easy and leaves hard empty', () => {
     expect(recordEasy(emptyProgress(), 1)).toEqual({
       easyCount: 1,
-      hardIds: [],
+      hardIds: []
     })
   })
 
   it('adds an unseen card to the hard list', () => {
     expect(recordHard(emptyProgress(), 1)).toEqual({
       easyCount: 0,
-      hardIds: [1],
+      hardIds: [1]
     })
   })
 
@@ -29,7 +29,7 @@ describe('recordEasy / recordHard', () => {
     const afterHard = recordHard(recordHard(emptyProgress(), 1), 2)
     expect(recordEasy(afterHard, 1)).toEqual({
       easyCount: 1,
-      hardIds: [2],
+      hardIds: [2]
     })
   })
 

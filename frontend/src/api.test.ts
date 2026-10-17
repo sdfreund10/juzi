@@ -8,31 +8,31 @@ afterEach(() => {
   setToastHandler(null)
 })
 
-function jsonResponse(status: number, body: unknown): Response {
+function jsonResponse (status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' }
   })
 }
 
 describe('apiRequest', () => {
   it('returns JSON on success', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, { authenticated: false, email: null, proficiency_level: null }),
+      jsonResponse(200, { authenticated: false, email: null, proficiency_level: null })
     )
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(apiRequest('/api/auth/me/')).resolves.toEqual({
       authenticated: false,
       email: null,
-      proficiency_level: null,
+      proficiency_level: null
     })
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/auth/me/',
       expect.objectContaining({
         method: 'GET',
-        credentials: 'same-origin',
-      }),
+        credentials: 'same-origin'
+      })
     )
   })
 
@@ -40,19 +40,19 @@ describe('apiRequest', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(400, { detail: 'Invalid email or password.' }),
-      ),
+        jsonResponse(400, { detail: 'Invalid email or password.' })
+      )
     )
 
     const err = await apiRequest('/api/auth/login/', {
       method: 'POST',
-      body: { email: 'a@b.com', password: 'x' },
+      body: { email: 'a@b.com', password: 'x' }
     }).catch((e: unknown) => e)
 
     expect(err).toBeInstanceOf(ApiError)
     expect(err).toMatchObject({
       status: 400,
-      message: 'Invalid email or password.',
+      message: 'Invalid email or password.'
     })
   })
 
@@ -60,30 +60,30 @@ describe('apiRequest', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(400, { email: ['Enter a valid email address.'] }),
-      ),
+        jsonResponse(400, { email: ['Enter a valid email address.'] })
+      )
     )
 
     await expect(
       apiRequest('/api/auth/login/', {
         method: 'POST',
-        body: { email: 'nope', password: 'x' },
-      }),
+        body: { email: 'nope', password: 'x' }
+      })
     ).rejects.toMatchObject({
       status: 400,
-      message: 'Enter a valid email address.',
+      message: 'Enter a valid email address.'
     })
   })
 
   it('falls back when the error body is not JSON', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(new Response('plain fail', { status: 500 })),
+      vi.fn().mockResolvedValue(new Response('plain fail', { status: 500 }))
     )
 
     await expect(apiRequest('/api/auth/me/')).rejects.toMatchObject({
       status: 500,
-      message: 'Request failed',
+      message: 'Request failed'
     })
   })
 
@@ -93,8 +93,8 @@ describe('apiRequest', () => {
       jsonResponse(200, {
         authenticated: true,
         email: 'a@b.com',
-        proficiency_level: null,
-      }),
+        proficiency_level: null
+      })
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -106,10 +106,10 @@ describe('apiRequest', () => {
         method: 'POST',
         headers: expect.objectContaining({
           'X-CSRFToken': 'test-csrf',
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         }),
-        body: JSON.stringify({ email: 'a@b.com', password: 'secret' }),
-      }),
+        body: JSON.stringify({ email: 'a@b.com', password: 'secret' })
+      })
     )
   })
 
@@ -118,11 +118,11 @@ describe('apiRequest', () => {
     setToastHandler((message) => toasts.push(message))
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(500, { detail: 'Server error' })),
+      vi.fn().mockResolvedValue(jsonResponse(500, { detail: 'Server error' }))
     )
 
     await expect(
-      apiRequest('/api/ratings/', { method: 'POST', body: {}, toast: true }),
+      apiRequest('/api/ratings/', { method: 'POST', body: {}, toast: true })
     ).rejects.toBeInstanceOf(ApiError)
     expect(toasts).toEqual(['Server error'])
   })
@@ -133,7 +133,7 @@ describe('apiRequest', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
     await expect(
-      apiRequest('/api/ratings/', { method: 'POST', body: {}, toast: true }),
+      apiRequest('/api/ratings/', { method: 'POST', body: {}, toast: true })
     ).rejects.toThrow('Failed to fetch')
     expect(toasts).toEqual(['Could not reach the server.'])
   })
@@ -143,7 +143,7 @@ describe('apiRequest', () => {
     setToastHandler((message) => toasts.push(message))
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(500, { detail: 'Server error' })),
+      vi.fn().mockResolvedValue(jsonResponse(500, { detail: 'Server error' }))
     )
 
     await expect(apiRequest('/api/auth/me/')).rejects.toBeInstanceOf(ApiError)
@@ -154,12 +154,12 @@ describe('apiRequest', () => {
 describe('rateCard', () => {
   it.each([
     [401, 'Your session expired. Sign in again to save progress.'],
-    [500, 'Couldn’t save your progress. You can keep studying.'],
+    [500, 'Couldn’t save your progress. You can keep studying.']
   ])('shows learner-facing copy for HTTP %i without a duplicate toast', async (status, message) => {
     const toasts: string[] = []
     setToastHandler((toast) => toasts.push(toast))
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      jsonResponse(status, { detail: 'Internal API wording' }),
+      jsonResponse(status, { detail: 'Internal API wording' })
     ))
 
     await expect(rateCard(1, 'easy', '2026-10-15T12:00:00.000Z')).rejects.toMatchObject({ status })
@@ -191,20 +191,20 @@ describe('flagWord', () => {
       expect.objectContaining({
         method: 'POST',
         credentials: 'same-origin',
-        body: JSON.stringify({ word_id: 42 }),
-      }),
+        body: JSON.stringify({ word_id: 42 })
+      })
     )
     expect(toasts).toEqual(['Marked for review'])
   })
 
   it.each([
     [401, 'Your session expired. Sign in again.'],
-    [500, 'Couldn’t flag this card. Try again.'],
+    [500, 'Couldn’t flag this card. Try again.']
   ])('shows learner-facing copy for HTTP %i', async (status, message) => {
     const toasts: string[] = []
     setToastHandler((toast) => toasts.push(toast))
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      jsonResponse(status, { detail: 'Internal API wording' }),
+      jsonResponse(status, { detail: 'Internal API wording' })
     ))
 
     await expect(flagWord(1)).rejects.toMatchObject({ status })
@@ -215,14 +215,14 @@ describe('flagWord', () => {
 describe('checkHealth', () => {
   it('returns true when /api/health/ is ok', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse(200, { status: 'ok', service: 'juzi', database: 'connected' }),
+      jsonResponse(200, { status: 'ok', service: 'juzi', database: 'connected' })
     )
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(checkHealth()).resolves.toBe(true)
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/health/',
-      expect.objectContaining({ method: 'GET', credentials: 'same-origin' }),
+      expect.objectContaining({ method: 'GET', credentials: 'same-origin' })
     )
   })
 
@@ -230,8 +230,8 @@ describe('checkHealth', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        jsonResponse(500, { status: 'error', service: 'juzi', database: 'disconnected' }),
-      ),
+        jsonResponse(500, { status: 'error', service: 'juzi', database: 'disconnected' })
+      )
     )
     await expect(checkHealth()).resolves.toBe(false)
 

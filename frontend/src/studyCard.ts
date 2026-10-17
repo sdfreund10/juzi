@@ -16,9 +16,9 @@ export type TextSegment = {
 }
 
 /** Split a Chinese example so the headword can be accented. No match → one plain segment. */
-export function highlightHeadword(
+export function highlightHeadword (
   sentence: string,
-  headword: string,
+  headword: string
 ): TextSegment[] {
   if (!sentence || !headword || !sentence.includes(headword)) {
     return [{ text: sentence, focus: false }]
@@ -40,13 +40,13 @@ export function highlightHeadword(
   return segments
 }
 
-function hasExample(card: StudyCard): boolean {
+function hasExample (card: StudyCard): boolean {
   return Boolean(
-    card.example_chinese && card.example_pinyin && card.example_english,
+    card.example_chinese && card.example_pinyin && card.example_english
   )
 }
 
-export function cardPrompt(card: StudyCard): DisplayBlock[] {
+export function cardPrompt (card: StudyCard): DisplayBlock[] {
   const example = hasExample(card)
 
   switch (card.mode) {
@@ -56,17 +56,17 @@ export function cardPrompt(card: StudyCard): DisplayBlock[] {
           role: 'word',
           lines: [
             { text: card.answer_chinese, kind: 'chinese' },
-            { text: card.answer_pinyin, kind: 'pinyin' },
-          ],
-        },
+            { text: card.answer_pinyin, kind: 'pinyin' }
+          ]
+        }
       ]
       if (example) {
         blocks.push({
           role: 'example',
           lines: [
             { text: card.example_chinese, kind: 'chinese' },
-            { text: card.example_pinyin, kind: 'pinyin' },
-          ],
+            { text: card.example_pinyin, kind: 'pinyin' }
+          ]
         })
       }
       return blocks
@@ -75,13 +75,13 @@ export function cardPrompt(card: StudyCard): DisplayBlock[] {
       const blocks: DisplayBlock[] = [
         {
           role: 'word',
-          lines: [{ text: card.answer_english, kind: 'english' }],
-        },
+          lines: [{ text: card.answer_english, kind: 'english' }]
+        }
       ]
       if (example) {
         blocks.push({
           role: 'example',
-          lines: [{ text: card.example_english, kind: 'english' }],
+          lines: [{ text: card.example_english, kind: 'english' }]
         })
       }
       return blocks
@@ -90,13 +90,13 @@ export function cardPrompt(card: StudyCard): DisplayBlock[] {
       const blocks: DisplayBlock[] = [
         {
           role: 'word',
-          lines: [{ text: card.answer_chinese, kind: 'chinese' }],
-        },
+          lines: [{ text: card.answer_chinese, kind: 'chinese' }]
+        }
       ]
       if (example) {
         blocks.push({
           role: 'example',
-          lines: [{ text: card.example_chinese, kind: 'chinese' }],
+          lines: [{ text: card.example_chinese, kind: 'chinese' }]
         })
       }
       return blocks
@@ -105,13 +105,13 @@ export function cardPrompt(card: StudyCard): DisplayBlock[] {
       return [
         {
           role: 'word',
-          lines: [{ text: card.example_chinese, kind: 'chinese' }],
-        },
+          lines: [{ text: card.example_chinese, kind: 'chinese' }]
+        }
       ]
   }
 }
 
-export function cardReveal(card: StudyCard): DisplayBlock[] {
+export function cardReveal (card: StudyCard): DisplayBlock[] {
   const example = hasExample(card)
 
   switch (card.mode) {
@@ -119,13 +119,13 @@ export function cardReveal(card: StudyCard): DisplayBlock[] {
       const blocks: DisplayBlock[] = [
         {
           role: 'word',
-          lines: [{ text: card.answer_english, kind: 'english' }],
-        },
+          lines: [{ text: card.answer_english, kind: 'english' }]
+        }
       ]
       if (example) {
         blocks.push({
           role: 'example',
-          lines: [{ text: card.example_english, kind: 'english' }],
+          lines: [{ text: card.example_english, kind: 'english' }]
         })
       }
       return blocks
@@ -136,17 +136,17 @@ export function cardReveal(card: StudyCard): DisplayBlock[] {
           role: 'word',
           lines: [
             { text: card.answer_chinese, kind: 'chinese' },
-            { text: card.answer_pinyin, kind: 'pinyin' },
-          ],
-        },
+            { text: card.answer_pinyin, kind: 'pinyin' }
+          ]
+        }
       ]
       if (example) {
         blocks.push({
           role: 'example',
           lines: [
             { text: card.example_chinese, kind: 'chinese' },
-            { text: card.example_pinyin, kind: 'pinyin' },
-          ],
+            { text: card.example_pinyin, kind: 'pinyin' }
+          ]
         })
       }
       return blocks
@@ -157,17 +157,17 @@ export function cardReveal(card: StudyCard): DisplayBlock[] {
           role: 'word',
           lines: [
             { text: card.answer_pinyin, kind: 'pinyin' },
-            { text: card.answer_english, kind: 'english' },
-          ],
-        },
+            { text: card.answer_english, kind: 'english' }
+          ]
+        }
       ]
       if (example) {
         blocks.push({
           role: 'example',
           lines: [
             { text: card.example_pinyin, kind: 'pinyin' },
-            { text: card.example_english, kind: 'english' },
-          ],
+            { text: card.example_english, kind: 'english' }
+          ]
         })
       }
       return blocks
@@ -176,15 +176,15 @@ export function cardReveal(card: StudyCard): DisplayBlock[] {
       return [
         {
           role: 'word',
-          lines: [{ text: card.answer_english, kind: 'english' }],
-        },
+          lines: [{ text: card.answer_english, kind: 'english' }]
+        }
       ]
   }
 }
 
-export function gradeHard<T>(
+export function gradeHard<T> (
   queue: T[],
-  random: () => number = Math.random,
+  random: () => number = Math.random
 ): T[] {
   if (queue.length === 0) return queue
   const [current, ...rest] = queue
@@ -194,7 +194,7 @@ export function gradeHard<T>(
   return [...rest.slice(0, index), current, ...rest.slice(index)]
 }
 
-export function gradeEasy<T>(queue: T[]): T[] {
+export function gradeEasy<T> (queue: T[]): T[] {
   if (queue.length === 0) return queue
   return queue.slice(1)
 }
