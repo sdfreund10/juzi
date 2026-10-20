@@ -7,6 +7,7 @@ from django.core.management.base import CommandError
 
 from api.management.commands import embed_words
 from api.models import Word, WordEmbedding
+from api.services.embeddings import DIMENSIONS
 
 pytestmark = pytest.mark.django_db
 
@@ -37,7 +38,7 @@ def response_for(count: int) -> Mock:
         json=Mock(
             return_value={
                 "data": [
-                    {"index": index, "embedding": [float(index + 1)] * embed_words.DIMENSIONS}
+                    {"index": index, "embedding": [float(index + 1)] * DIMENSIONS}
                     for index in reversed(range(count))
                 ]
             }
@@ -53,7 +54,7 @@ def test_stores_embeddings_matched_to_words_and_skips_unchanged(words, post) -> 
     assert WordEmbedding.objects.count() == 3
     for index, word in enumerate(words):
         embedding = WordEmbedding.objects.get(word=word)
-        assert embedding.vector == [float(index + 1)] * embed_words.DIMENSIONS
+        assert embedding.vector == [float(index + 1)] * DIMENSIONS
         assert embedding.model_name == "openai/text-embedding-3-small"
         assert embedding.source_text == f"Chinese: {word.chinese}\nMeaning: {word.english_basic}"
         assert embedding.updated_at is not None
@@ -97,7 +98,7 @@ def test_replaces_stale_embedding(words, post, changed_field) -> None:
         word=word,
         source_text=f"Chinese: {word.chinese}\nMeaning: {word.english_basic}",
         model_name=embed_words.MODEL_NAME,
-        vector=[0.0] * embed_words.DIMENSIONS,
+        vector=[0.0] * DIMENSIONS,
     )
     setattr(embedding, changed_field, "outdated")
     embedding.save()
@@ -109,7 +110,7 @@ def test_replaces_stale_embedding(words, post, changed_field) -> None:
     assert WordEmbedding.objects.filter(word=word).count() == 1
     assert embedding.model_name == embed_words.MODEL_NAME
     assert embedding.source_text == f"Chinese: {word.chinese}\nMeaning: {word.english_basic}"
-    assert embedding.vector == [1.0] * embed_words.DIMENSIONS
+    assert embedding.vector == [1.0] * DIMENSIONS
 
 
 def test_resumes_after_failed_batch(words, post, monkeypatch) -> None:
@@ -222,7 +223,7 @@ def test_limit_excludes_unchanged_words_and_combines_with_hsk_filter(words, post
         word=words[0],
         model_name=embed_words.MODEL_NAME,
         source_text=f"Chinese: {words[0].chinese}\nMeaning: {words[0].english_basic}",
-        vector=[0.5] * embed_words.DIMENSIONS,
+        vector=[0.5] * DIMENSIONS,
     )
     post.return_value = response_for(1)
 
