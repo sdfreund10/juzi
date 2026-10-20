@@ -1,52 +1,12 @@
-import math
 import os
 
 import requests
 from django.core.management.base import BaseCommand, CommandError
 
 from api.models import Word, WordEmbedding
+from api.services.embeddings import MODEL_NAME, generate_vectors, word_embedding_text
 
-MODEL_NAME = "openai/text-embedding-3-small"
-DIMENSIONS = 1536
 BATCH_SIZE = 100
-
-
-def generate_vectors(api_key: str, texts: list[str]) -> list[list[float]]:
-    response = requests.post(
-        "https://openrouter.ai/api/v1/embeddings",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": MODEL_NAME,
-            "input": texts,
-            "encoding_format": "float",
-            "dimensions": DIMENSIONS,
-        },
-        timeout=(10, 60),
-    )
-    response.raise_for_status()
-    payload = response.json()
-    data = payload.get("data") if isinstance(payload, dict) else None
-    if not isinstance(data, list) or len(data) != len(texts):
-        raise ValueError("OpenRouter returned an unexpected number of embeddings")
-
-    # Match by response index: providers may return entries out of order.
-    vectors = {}
-    for entry in data:
-        if not isinstance(entry, dict):
-            raise ValueError("OpenRouter returned an invalid embedding entry")
-        index = entry.get("index")
-        vector = entry.get("embedding")
-        if type(index) is not int or index not in range(len(texts)) or index in vectors:
-            raise ValueError("OpenRouter returned invalid embedding indices")
-        if (
-            not isinstance(vector, list)
-            or len(vector) != DIMENSIONS
-            or any(type(value) not in (int, float) or not math.isfinite(value) for value in vector)
-        ):
-            raise ValueError("OpenRouter returned an invalid embedding vector")
-        vectors[index] = vector
-
-    return [vectors[index] for index in range(len(texts))]
 
 
 class Command(BaseCommand):
@@ -82,7 +42,7 @@ class Command(BaseCommand):
             words = words.filter(hsk_level__in=options["hsk_level"])
 
         for word in words.iterator(chunk_size=BATCH_SIZE):
-            source_text = f"Chinese: {word.chinese}\nMeaning: {word.english_basic}"
+            source_text = word_embedding_text(word)
             embedding = getattr(word, "embedding", None)
             if (
                 embedding is not None

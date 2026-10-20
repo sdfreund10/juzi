@@ -113,9 +113,47 @@ uv run scripts/prep_cards.py
 make seed-hsk
 # If the local file is unavailable, set HSK_PREPPED_CARDS_URL in .env
 
+# Generate word embeddings (set OPENROUTER_API_KEY in .env first)
+uv run python manage.py embed_words
+# Optional: select HSK levels and cap newly generated embeddings
+uv run python manage.py embed_words --hsk-level 1 2 --limit 50
+
 # Seed local login accounts (DEBUG only; refuses when DJANGO_DEBUG is false)
 make seed-users
 
 # Rebuild SPA after frontend changes (for Django-served mode)
 cd frontend && npm run build
 ```
+
+`embed_words` sends traditional Chinese and the English gloss to OpenRouter's
+`openai/text-embedding-3-small` model in batches of 100, storing 1536-dimensional
+vectors in `WordEmbedding`. It skips embeddings with unchanged input and model,
+and replaces embeddings when either changes. Each batch is saved independently;
+rerun after a failure to resume. Categories, pinyin, and examples are excluded.
+Use `--hsk-level` to select one or more levels (1–7; 7 means HSK 7+), and
+`--limit` to cap embeddings generated in a run. Either option works independently.
+Words are processed by ID; unchanged embeddings do not count toward the limit.
+
+## Deck builder service
+
+After running `embed_words`, call the backend service from Django:
+
+```python
+from api.services.deck_builder import build_deck
+
+draft = build_deck(prompt="Beginner vocabulary for ordering vegetarian food", size=15)
+draft.name   # Suggested English deck name
+draft.words  # List of existing Word records, at most 15
+```
+
+The service embeds the prompt with `openai/text-embedding-3-small`, retrieves
+the closest words by cosine similarity, and uses `openai/gpt-6-luna` to select
+relevant candidates. It returns a draft without saving a category or changing
+vocabulary. Empty results are allowed when no candidates fit. Stale embeddings,
+different embedding models, and invalid vectors are excluded from retrieval.
+
+`prompt` must be nonempty and `size` a positive integer. Invalid input raises
+`ValueError`; missing credentials or provider failures raise `DeckBuildError`.
+The service uses `OPENROUTER_API_KEY` from `.env`. Retrieval scans the stored
+arrays with bounded candidate memory; there is no vector index yet. Live
+relevance and end-to-end latency need validation against the populated catalog.
