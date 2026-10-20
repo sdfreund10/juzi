@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 
@@ -27,6 +28,23 @@ class Word(models.Model):
 
     def __str__(self) -> str:
         return self.chinese
+
+
+class WordEmbedding(models.Model):
+    """Stored vector and the model/input used to embed a vocabulary entry."""
+
+    word = models.OneToOneField(
+        Word,
+        on_delete=models.CASCADE,
+        related_name="embedding",
+    )
+    model_name = models.CharField(max_length=100)
+    source_text = models.TextField()
+    vector = ArrayField(models.FloatField())
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"{self.word_id}:{self.model_name}"
 
 
 class Category(models.Model):
