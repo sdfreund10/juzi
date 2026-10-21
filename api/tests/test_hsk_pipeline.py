@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from django.core.management import call_command
+from django.utils import timezone
 
 from api.models import Category, Word, WordCategory
 
@@ -201,8 +202,6 @@ def test_seed_hsk_from_cards_file(tmp_path: Path) -> None:
 
 @pytest.mark.django_db
 def test_seed_hsk_preserves_archived_at(tmp_path: Path) -> None:
-    from django.utils import timezone
-
     cards = [
         {
             "hsk_level": 1,

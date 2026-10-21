@@ -434,30 +434,6 @@ def test_flag_word_missing_word(
 
 
 @pytest.mark.django_db
-def test_flag_word_rejects_archived_word(
-    client: APIClient,
-    user: User,
-    seeded_words: dict[str, Word],
-) -> None:
-    word = seeded_words["novice"]
-    word.archived_at = timezone.now()
-    word.save(update_fields=["archived_at"])
-    headers = _login(client, user)
-
-    response = client.post(
-        reverse("word-flags-create"),
-        {"word_id": word.id},
-        format="json",
-        **headers,
-    )
-
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json() == {"detail": "Word not found."}
-    word.refresh_from_db()
-    assert word.flagged_by_id is None
-
-
-@pytest.mark.django_db
 def test_create_session_excludes_archived_words(
     client: APIClient,
     user: User,

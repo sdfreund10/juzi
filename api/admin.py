@@ -1,15 +1,11 @@
 from django.contrib import admin, messages
-from django.contrib.admin.utils import unquote
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import (
     AdminUserCreationForm,
     UserChangeForm,
 )
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied
-from django.http import Http404, HttpResponseRedirect
-from django.template.response import TemplateResponse
-from django.urls import path, reverse
+from django.utils import timezone
 
 from api.services.accounts import apply_login_email
 
@@ -36,32 +32,30 @@ class FlagStatusFilter(admin.SimpleListFilter):
 
 
 class ArchiveStatusFilter(admin.SimpleListFilter):
+    """Shows active words by default, replacing the stock "All" choice with "Active"."""
+
     title = "archive status"
-    parameter_name = "archive_status"
+    parameter_name = "archived"
 
     def lookups(self, request, model_admin):
-        return (
-            ("active", "Active"),
-            ("archived", "Archived"),
-            ("all", "All"),
-        )
+        return (("yes", "Archived"),)
 
     def queryset(self, request, queryset):
-        value = self.value()
-        if value == "archived":
+        if self.value() == "yes":
             return queryset.filter(archived_at__isnull=False)
-        if value == "all":
-            return queryset
         return queryset.active()
 
     def choices(self, changelist):
-        value = self.value()
-        for lookup, title in self.lookup_choices:
-            yield {
-                "selected": value == lookup or (lookup == "active" and value is None),
-                "query_string": changelist.get_query_string({self.parameter_name: lookup}),
-                "display": title,
-            }
+        yield {
+            "selected": self.value() is None,
+            "query_string": changelist.get_query_string(remove=[self.parameter_name]),
+            "display": "Active",
+        }
+        yield {
+            "selected": self.value() == "yes",
+            "query_string": changelist.get_query_string({self.parameter_name: "yes"}),
+            "display": "Archived",
+        }
 
 
 class EmailUsernameCreationForm(AdminUserCreationForm):
@@ -164,13 +158,7 @@ class WordAdmin(admin.ModelAdmin):
         (
             "Review",
             {
-                "fields": ("reporter",),
-            },
-        ),
-        (
-            "Archive",
-            {
-                "fields": ("archived_at",),
+                "fields": ("reporter", "archived_at"),
             },
         ),
     )
@@ -181,115 +169,39 @@ class WordAdmin(admin.ModelAdmin):
             return "—"
         return str(obj.flagged_by)
 
-    def get_urls(self):
-        archive_name = f"{self.opts.app_label}_{self.opts.model_name}_archive"
-        restore_name = f"{self.opts.app_label}_{self.opts.model_name}_restore"
-        return [
-            path(
-                "<path:object_id>/archive/",
-                self.admin_site.admin_view(self.archive_view),
-                name=archive_name,
-            ),
-            path(
-                "<path:object_id>/restore/",
-                self.admin_site.admin_view(self.restore_view),
-                name=restore_name,
-            ),
-            *super().get_urls(),
-        ]
-
     def has_delete_permission(self, request, obj=None):
         return False
 
     def save_model(self, request, obj, form, change):
         if change and "_save_and_unflag" in request.POST:
             obj.flagged_by = None
+        if change and "_save_and_archive" in request.POST:
+            obj.archived_at = timezone.now()
+        if change and "_save_and_restore" in request.POST:
+            obj.archived_at = None
         super().save_model(request, obj, form, change)
 
     def construct_change_message(self, request, form, formsets, add=False):
         change_message = super().construct_change_message(request, form, formsets, add)
-        if not add and "_save_and_unflag" in request.POST:
-            change_message = list(change_message)
-            change_message.append({"changed": {"fields": ["flagged_by"]}})
+        if add:
+            return change_message
+        fields = []
+        if "_save_and_unflag" in request.POST:
+            fields.append("flagged_by")
+        if "_save_and_archive" in request.POST or "_save_and_restore" in request.POST:
+            fields.append("archived_at")
+        if fields:
+            change_message = [*change_message, {"changed": {"fields": fields}}]
         return change_message
 
     def response_change(self, request, obj):
         if "_save_and_unflag" in request.POST:
             self.message_user(request, "Saved and unflagged.", messages.SUCCESS)
+        if "_save_and_archive" in request.POST:
+            self.message_user(request, "Saved and archived.", messages.SUCCESS)
+        if "_save_and_restore" in request.POST:
+            self.message_user(request, "Saved and restored.", messages.SUCCESS)
         return super().response_change(request, obj)
-
-    def archive_view(self, request, object_id: str) -> TemplateResponse | HttpResponseRedirect:
-        word = self._word_for_change(request, object_id)
-        if word.archived_at is not None:
-            self.message_user(request, "Already archived.", messages.INFO)
-            return HttpResponseRedirect(reverse("admin:api_word_change", args=[word.pk]))
-        if request.method == "POST":
-            word.archive()
-            self.log_change(request, word, [{"changed": {"fields": ["archived_at"]}}])
-            self.message_user(request, "Archived.", messages.SUCCESS)
-            return HttpResponseRedirect(reverse("admin:api_word_changelist"))
-        return self._render_confirmation(
-            request,
-            word,
-            title="Archive word",
-            breadcrumb="Archive",
-            message=(
-                f"Archive “{word}”? It leaves practice and deck counts, "
-                "but keeps progress, decks, and any flag."
-            ),
-        )
-
-    def restore_view(self, request, object_id: str) -> TemplateResponse | HttpResponseRedirect:
-        word = self._word_for_change(request, object_id)
-        if word.archived_at is None:
-            self.message_user(request, "Already active.", messages.INFO)
-            return HttpResponseRedirect(reverse("admin:api_word_change", args=[word.pk]))
-        if request.method == "POST":
-            word.restore()
-            self.log_change(request, word, [{"changed": {"fields": ["archived_at"]}}])
-            self.message_user(request, "Restored.", messages.SUCCESS)
-            return HttpResponseRedirect(reverse("admin:api_word_changelist"))
-        return self._render_confirmation(
-            request,
-            word,
-            title="Restore word",
-            breadcrumb="Restore",
-            message=(
-                f"Restore “{word}”? Only the archive stamp is cleared; "
-                "flags, decks, and progress stay as they are."
-            ),
-        )
-
-    def _word_for_change(self, request, object_id: str) -> Word:
-        word = self.get_object(request, unquote(object_id))
-        if word is None:
-            raise Http404
-        if not self.has_change_permission(request, word):
-            raise PermissionDenied
-        return word
-
-    def _render_confirmation(
-        self,
-        request,
-        word: Word,
-        *,
-        title: str,
-        breadcrumb: str,
-        message: str,
-    ) -> TemplateResponse:
-        request.current_app = self.admin_site.name
-        return TemplateResponse(
-            request,
-            "admin/api/word/archive_status_confirmation.html",
-            {
-                **self.admin_site.each_context(request),
-                "title": title,
-                "breadcrumb": breadcrumb,
-                "message": message,
-                "object": word,
-                "opts": self.opts,
-            },
-        )
 
 
 @admin.register(Category)

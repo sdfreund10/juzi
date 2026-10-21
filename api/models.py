@@ -1,15 +1,10 @@
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
 
 
 class WordQuerySet(models.QuerySet):
     def active(self):
-        """Words that still show up in practice.
-
-        The default manager stays unfiltered so admin and imports can still
-        find archived rows.
-        """
+        """Words that are not archived and still show up in practice."""
         return self.filter(archived_at__isnull=True)
 
 
@@ -35,7 +30,7 @@ class Word(models.Model):
     archived_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="When set, this word is hidden from practice. Progress, decks, and flags stay.",
+        help_text="Archived words are hidden from practice.",
     )
 
     objects = WordQuerySet.as_manager()
@@ -45,20 +40,6 @@ class Word(models.Model):
 
     def __str__(self) -> str:
         return self.chinese
-
-    def archive(self) -> None:
-        """Hide this word from practice. A second call leaves the original stamp."""
-        if self.archived_at is not None:
-            return
-        self.archived_at = timezone.now()
-        self.save(update_fields=["archived_at"])
-
-    def restore(self) -> None:
-        """Return this word to practice. Flags, decks, and progress stay as they are."""
-        if self.archived_at is None:
-            return
-        self.archived_at = None
-        self.save(update_fields=["archived_at"])
 
 
 class Category(models.Model):

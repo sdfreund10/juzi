@@ -141,13 +141,7 @@ def batches(items: list[Any], size: int):
 def seed_word_batch(
     cards: list[dict[str, Any]], categories: dict[str, Category]
 ) -> tuple[int, int, int]:
-    """Bulk upsert words and add their category links for one batch of cards.
-
-    Matches existing rows by (chinese, pinyin). Content updates never clear
-    archived_at, so imports do not reactivate archived words. Editing a word's
-    Chinese or pinyin identity can leave the archived row unmatched and create a
-    separate word on the next seed.
-    """
+    """Bulk upsert words and add their category links for one batch of cards."""
     cards_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     category_names_by_key: dict[tuple[str, str], set[str]] = {}
     for row in cards:

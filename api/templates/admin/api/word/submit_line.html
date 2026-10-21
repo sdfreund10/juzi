@@ -1,17 +1,16 @@
 {% extends "admin/submit_line.html" %}
-{% load i18n admin_urls %}
+{% load i18n %}
 
 {% block submit-row %}
 {{ block.super }}
-{% if show_save and original and original.flagged_by_id %}
+{% if show_save and original %}
+{% if original.flagged_by_id %}
 <input type="submit" value="{% translate 'Save and unflag' %}" name="_save_and_unflag">
 {% endif %}
-{% if has_change_permission and original and not original.archived_at and not is_popup %}
-    {% url 'admin:api_word_archive' original.pk|admin_urlquote as archive_url %}
-    <a role="button" href="{% add_preserved_filters archive_url %}" class="deletelink">Archive</a>
+{% if original.archived_at %}
+<input type="submit" value="{% translate 'Save and restore' %}" name="_save_and_restore">
+{% else %}
+<input type="submit" value="{% translate 'Save and archive' %}" name="_save_and_archive">
 {% endif %}
-{% if has_change_permission and original and original.archived_at and not is_popup %}
-    {% url 'admin:api_word_restore' original.pk|admin_urlquote as restore_url %}
-    <a role="button" href="{% add_preserved_filters restore_url %}" class="button">Restore</a>
 {% endif %}
 {% endblock %}

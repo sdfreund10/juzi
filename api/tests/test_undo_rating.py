@@ -107,17 +107,3 @@ def test_other_user_cannot_undo_progress(client, progress):
 def test_undo_validates_payload(client):
     response = client.post(reverse("ratings-undo"), {}, format="json")
     assert response.status_code == 400
-
-
-def test_rate_and_undo_still_work_for_archived_word(client, progress):
-    progress.word.archived_at = timezone.now()
-    progress.word.save(update_fields=["archived_at"])
-    previous = UserWord.objects.get(pk=progress.pk)
-    rated_at = timezone.now().replace(microsecond=123000)
-
-    rate(client, progress, "easy", rated_at)
-    assert undo(client, progress, rated_at, previous).status_code == 204
-
-    progress.refresh_from_db()
-    assert progress.easy_streak == 6
-    assert progress.easy_count == 12

@@ -13,6 +13,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='word',
             name='archived_at',
-            field=models.DateTimeField(blank=True, null=True),
+            field=models.DateTimeField(
+                blank=True, help_text='Archived words are hidden from practice.', null=True
+            ),
         ),
     ]
