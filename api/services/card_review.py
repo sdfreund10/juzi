@@ -15,33 +15,33 @@ from api.services.openrouter import (
     strict_json_schema,
 )
 
-VERDICTS = ("no_clear_issue", "issues_found", "needs_human_review")
-PRACTICE_DIRECTIONS = ("pinyin_to_en", "en_to_zh", "zh_to_en")
-STRING_FIELDS = (
-    "chinese",
-    "simplified",
-    "pinyin",
+REVIEW_MODEL = "anthropic/claude-sonnet-4.5"
+VERDICTS = ("no_clear_issue", "issues_found", "remove", "needs_human_review")
+DICTIONARY_FIELDS = ("chinese", "simplified", "pinyin")
+SUGGESTION_FIELDS = (
     "english_basic",
     *(f"example_sentence_{key}" for key in EXAMPLE_SENTENCE_PROPERTIES),
 )
-SUGGESTION_FIELDS = (*STRING_FIELDS, "hsk_level")
 
 REVIEW_PROMPT = """
-You review vocabulary cards for a household app that practices traditional Chinese.
+You review vocabulary cards for an app to practice traditional Chinese as used in Taiwan.
 
-Each card is used in three directions: pinyin to English, English to Chinese, and
-Chinese to English.
+Each card has a word or phrase from the HSK dictionary in traditional Chinese,
+simplified Chinese, and pinyin. These dictionary fields are fixed: never suggest
+changes to them.
+Each card also has an English meaning and an example sentence in traditional
+Chinese, simplified Chinese, pinyin, and English. These fields can be changed.
 
 Review:
 - whether the English meaning is accurate and concise
-- whether the pinyin matches the traditional Chinese, including tones
 - whether the four example-sentence fields say the same thing
-- whether the example is natural
-- traditional Chinese and Taiwan usage
-- whether difficulty fits the given HSK level
+- whether the example is natural traditional Chinese as used in Taiwan
 - whether any practice direction is ambiguous
 
-Do not mention learners, reporters, flags, or archive state.
+Use the "remove" verdict when the word or phrase itself is uncommon in Taiwan at the given HSK level
+Explain why in the findings and eave every suggestion null.
+
+Value brevity in your analysis.
 Use null in suggestions to keep the current value. Only suggest a replacement
 when you would change that field.
 """.strip()
@@ -67,26 +67,15 @@ OUTPUT_SCHEMA = strict_json_schema(
                     "properties": {
                         "aspect": {"type": "string"},
                         "explanation": {"type": "string"},
-                        "practice_directions": {
-                            "type": "array",
-                            "items": {"type": "string", "enum": list(PRACTICE_DIRECTIONS)},
-                        },
                     },
-                    "required": ["aspect", "explanation", "practice_directions"],
+                    "required": ["aspect", "explanation"],
                     "additionalProperties": False,
                 },
             },
             "suggestions": {
                 "type": "object",
                 "properties": {
-                    "chinese": _nullable_string("Traditional Chinese."),
-                    "simplified": _nullable_string("Simplified Chinese."),
-                    "pinyin": _nullable_string("Tone-marked pinyin."),
                     "english_basic": _nullable_string("English gloss."),
-                    "hsk_level": {
-                        "type": ["integer", "null"],
-                        "description": "HSK level, or null to keep the current value.",
-                    },
                     **{
                         f"example_sentence_{key}": {**spec, "type": ["string", "null"]}
                         for key, spec in EXAMPLE_SENTENCE_PROPERTIES.items()
@@ -102,10 +91,6 @@ OUTPUT_SCHEMA = strict_json_schema(
 )
 
 
-class CardReviewNotConfigured(Exception):
-    pass
-
-
 class CardReviewFailed(Exception):
     pass
 
@@ -113,18 +98,12 @@ class CardReviewFailed(Exception):
 class FindingSerializer(serializers.Serializer):
     aspect = serializers.CharField(max_length=255)
     explanation = serializers.CharField(max_length=2000)
-    practice_directions = serializers.ListField(
-        child=serializers.ChoiceField(choices=PRACTICE_DIRECTIONS),
-        allow_empty=True,
-    )
 
 
 class SuggestionsSerializer(serializers.Serializer):
-    hsk_level = serializers.IntegerField(allow_null=True)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for name in STRING_FIELDS:
+        for name in SUGGESTION_FIELDS:
             self.fields[name] = serializers.CharField(
                 max_length=Word._meta.get_field(name).max_length,
                 allow_null=True,
@@ -138,39 +117,25 @@ class CardReviewResponseSerializer(serializers.Serializer):
     suggestions = SuggestionsSerializer()
 
 
-def _model_allowed(model: str) -> bool:
-    lowered = model.lower()
-    return bool(model) and not lowered.startswith("openai/") and "luna" not in lowered
-
-
-def is_card_review_configured() -> bool:
-    return bool(settings.OPENROUTER_API_KEY.strip()) and _model_allowed(
-        settings.CARD_REVIEW_MODEL.strip()
-    )
-
-
 def review_input(word: Word) -> dict[str, Any]:
     return {
-        **{name: getattr(word, name) for name in SUGGESTION_FIELDS},
+        **{name: getattr(word, name) for name in (*DICTIONARY_FIELDS, *SUGGESTION_FIELDS)},
         "decks": list(word.categories.order_by("name").values_list("name", flat=True)),
     }
 
 
 def review_card(word: Word) -> dict[str, Any]:
     """Read-only review of a saved word. Never writes."""
-    model = settings.CARD_REVIEW_MODEL.strip()
     api_key = settings.OPENROUTER_API_KEY.strip()
-    if not model or not api_key:
-        raise CardReviewNotConfigured("Card review is not configured.")
-    if not _model_allowed(model):
-        raise CardReviewNotConfigured("This review model is not allowed.")
+    if not api_key:
+        raise CardReviewFailed("Card review is not configured.")
 
     try:
         response = requests.post(
             OPENROUTER_URL,
             headers={"Authorization": f"Bearer {api_key}"},
             json={
-                "model": model,
+                "model": REVIEW_MODEL,
                 "messages": [
                     {"role": "system", "content": REVIEW_PROMPT},
                     {
@@ -197,7 +162,7 @@ def review_card(word: Word) -> dict[str, Any]:
     except (ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise CardReviewFailed("The review response was invalid.") from exc
 
-    if payload.get("model") != model:
+    if payload.get("model") != REVIEW_MODEL:
         raise CardReviewFailed("The review used a different model than configured.")
 
     serializer = CardReviewResponseSerializer(data=parsed)

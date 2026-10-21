@@ -11,18 +11,14 @@ from django.utils import timezone
 from api.models import Category, UserWord, Word, WordCategory
 from api.services.card_review import (
     OPENROUTER_URL,
+    REVIEW_MODEL,
     SUGGESTION_FIELDS,
     CardReviewFailed,
-    CardReviewNotConfigured,
     review_card,
     review_input,
 )
 
-CLAUDE_MODEL = "anthropic/claude-sonnet-4.5"
-REVIEW_SETTINGS = override_settings(
-    CARD_REVIEW_MODEL=CLAUDE_MODEL,
-    OPENROUTER_API_KEY="test-openrouter-key",
-)
+REVIEW_SETTINGS = override_settings(OPENROUTER_API_KEY="test-openrouter-key")
 
 
 def _superuser() -> User:
@@ -87,7 +83,6 @@ def _review_payload(**overrides: object) -> dict[str, object]:
             {
                 "aspect": "meaning",
                 "explanation": "Gloss is too broad.",
-                "practice_directions": ["pinyin_to_en", "zh_to_en"],
             }
         ],
         "suggestions": _null_suggestions(english_basic="to love (a person)"),
@@ -99,7 +94,7 @@ def _review_payload(**overrides: object) -> dict[str, object]:
 def _openrouter_response(
     *,
     content: object | None = None,
-    model: str = CLAUDE_MODEL,
+    model: str = REVIEW_MODEL,
     status_code: int = 200,
     raw_json: object | None = None,
 ) -> Mock:
@@ -137,8 +132,14 @@ def _word_state(word: Word) -> dict[str, object]:
     }
 
 
-def _analyze_url(word: Word) -> str:
-    return reverse("admin:api_word_analyze", args=[word.pk])
+def _change_url(word: Word) -> str:
+    return reverse("admin:api_word_change", args=[word.pk])
+
+
+def _client_for(user: User) -> Client:
+    client = Client()
+    client.force_login(user)
+    return client
 
 
 @pytest.mark.django_db
@@ -171,7 +172,7 @@ def test_review_input_sends_content_and_decks_not_people() -> None:
 
     assert captured["url"] == OPENROUTER_URL
     assert captured["timeout"] == (5, 45)
-    assert captured["json"]["model"] == CLAUDE_MODEL
+    assert captured["json"]["model"] == REVIEW_MODEL
     assert captured["json"]["provider"] == {"allow_fallbacks": False}
     sent = json.dumps(captured["json"], ensure_ascii=False)
     assert "愛" in sent
@@ -190,7 +191,6 @@ def test_review_input_sends_content_and_decks_not_people() -> None:
         "simplified",
         "pinyin",
         "english_basic",
-        "hsk_level",
         "example_sentence_traditional",
         "example_sentence_simplified",
         "example_sentence_pinyin",
@@ -204,15 +204,15 @@ def test_review_input_sends_content_and_decks_not_people() -> None:
 @pytest.mark.parametrize(
     ("content", "model"),
     [
-        ("not-json", CLAUDE_MODEL),
-        (json.dumps({"verdict": "issues_found"}), CLAUDE_MODEL),
+        ("not-json", REVIEW_MODEL),
+        (json.dumps({"verdict": "issues_found"}), REVIEW_MODEL),
         (
             json.dumps(_review_payload(verdict="looks_fine")),
-            CLAUDE_MODEL,
+            REVIEW_MODEL,
         ),
         (
-            json.dumps(_review_payload(suggestions=_null_suggestions(chinese="字" * 65))),
-            CLAUDE_MODEL,
+            json.dumps(_review_payload(suggestions=_null_suggestions(english_basic="x" * 256))),
+            REVIEW_MODEL,
         ),
         (json.dumps(_review_payload()), "anthropic/claude-other"),
     ],
@@ -244,84 +244,60 @@ def test_review_card_reports_timeouts_and_provider_errors() -> None:
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "model",
-    ["", "openai/gpt-4o", "provider/luna-preview"],
-)
-def test_model_guard_refuses_disallowed_models_without_calling_provider(model: str) -> None:
-    word = _word()
-    with (
-        override_settings(CARD_REVIEW_MODEL=model, OPENROUTER_API_KEY="test-openrouter-key"),
-        patch("api.services.card_review.requests.post") as post,
-    ):
-        with pytest.raises(CardReviewNotConfigured):
-            review_card(word)
-    post.assert_not_called()
-
-
-@pytest.mark.django_db
-@override_settings(CARD_REVIEW_MODEL=CLAUDE_MODEL, OPENROUTER_API_KEY="")
+@override_settings(OPENROUTER_API_KEY="")
 def test_missing_api_key_is_not_configured() -> None:
     word = _word()
     with patch("api.services.card_review.requests.post") as post:
-        with pytest.raises(CardReviewNotConfigured):
+        with pytest.raises(CardReviewFailed, match="not configured"):
             review_card(word)
     post.assert_not_called()
 
 
 @pytest.mark.django_db
-@REVIEW_SETTINGS
-def test_analyze_requires_change_permission_and_post() -> None:
+def test_change_form_offers_analysis_only_to_editors_of_saved_words() -> None:
     word = _word()
-    url = _analyze_url(word)
-    viewer = _staff_with_word_view()
-    editor = _staff_with_word_change()
-    learner = User.objects.create_user(
-        "learner@test.com",
-        "learner@test.com",
-        "local-test-password",
-    )
+    change_url = _change_url(word)
+    editor_client = _client_for(_staff_with_word_change())
+    viewer_client = _client_for(_staff_with_word_view())
+    admin_client = _client_for(_superuser())
 
-    anonymous = Client()
-    anonymous_response = anonymous.post(url)
-    assert anonymous_response.status_code == 302
-    assert "/admin/login/" in anonymous_response["Location"]
+    with patch("api.services.card_review.requests.post") as post:
+        change_body = editor_client.get(change_url).content.decode()
+        add_body = admin_client.get(reverse("admin:api_word_add")).content.decode()
+        viewer_body = viewer_client.get(f"{change_url}?include_analysis=true").content.decode()
 
-    learner_client = Client()
-    learner_client.force_login(learner)
-    learner_response = learner_client.post(url)
-    assert learner_response.status_code == 302
-    assert "/admin/login/" in learner_response["Location"]
+    post.assert_not_called()
+    assert 'href="?include_analysis=true">Analyze card</a>' in change_body
+    assert "Analyze card" not in add_body
+    assert 'id="card-review"' not in add_body
+    assert "Analyze card" not in viewer_body
+    assert 'id="card-review"' not in viewer_body
 
-    viewer_client = Client()
-    viewer_client.force_login(viewer)
-    viewer_response = viewer_client.post(url)
-    assert viewer_response.status_code == 403
-    assert viewer_response.json() == {"detail": "You cannot analyze this word."}
 
-    editor_client = Client()
-    editor_client.force_login(editor)
-    get_response = editor_client.get(url)
-    assert get_response.status_code == 405
-    assert get_response.json() == {"detail": "Method not allowed."}
+@pytest.mark.django_db
+def test_analyze_link_keeps_changelist_filters() -> None:
+    word = _word()
+    client = _client_for(_staff_with_word_change())
+
+    body = client.get(
+        _change_url(word), {"_changelist_filters": "flag_status=flagged"}
+    ).content.decode()
+
+    assert "?_changelist_filters=flag_status%3Dflagged&amp;include_analysis=true" in body
 
 
 @pytest.mark.django_db
 @REVIEW_SETTINGS
-def test_analyze_success_and_failures_do_not_mutate_the_word() -> None:
+def test_include_analysis_renders_escaped_review_without_mutating_the_word() -> None:
     reporter = User.objects.create_user(
         "reporter@test.com",
         "reporter@test.com",
         "local-test-password",
     )
     word = _word(flagged_by=reporter, archived_at=timezone.now())
-    category = Category.objects.create(name="Food")
-    WordCategory.objects.create(word=word, category=category)
+    WordCategory.objects.create(word=word, category=Category.objects.create(name="Food"))
     before = _word_state(word)
-    admin = _superuser()
-    client = Client()
-    client.force_login(admin)
-    url = _analyze_url(word)
+    client = _client_for(_superuser())
     script_payload = _review_payload(
         suggestions=_null_suggestions(english_basic="<script>alert(1)</script>")
     )
@@ -330,81 +306,77 @@ def test_analyze_success_and_failures_do_not_mutate_the_word() -> None:
         "api.services.card_review.requests.post",
         return_value=_openrouter_response(content=script_payload),
     ):
-        success = client.post(url)
+        response = client.get(f"{_change_url(word)}?include_analysis=true")
 
-    assert success.status_code == 200
-    body = success.json()
-    assert body["verdict"] == "issues_found"
-    assert body["suggestions"]["english_basic"] == "<script>alert(1)</script>"
-    assert _word_state(word) == before
-
-    failure_cases = [
-        _openrouter_response(content="not-json"),
-        _openrouter_response(status_code=502, raw_json={"error": "down"}),
-        _openrouter_response(content=_review_payload(), model="other/model"),
-    ]
-    for response in failure_cases:
-        with patch("api.services.card_review.requests.post", return_value=response):
-            failed = client.post(url)
-        assert failed.status_code == 502
-        assert "detail" in failed.json()
-        assert _word_state(word) == before
-
-    with patch("api.services.card_review.requests.post", side_effect=requests.Timeout):
-        timed_out = client.post(url)
-    assert timed_out.status_code == 502
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert "Issues found" in body
+    assert "meaning: Gloss is too broad." in body
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
+    assert "<script>alert(1)</script>" not in body
+    assert "Keep current value" in body
+    assert "<strong>English basic</strong>" in body
+    assert "<strong>Chinese</strong>" not in body
+    assert "<strong>Pinyin</strong>" not in body
+    assert "Refreshing runs a new analysis." in body
     assert _word_state(word) == before
 
 
 @pytest.mark.django_db
-@override_settings(CARD_REVIEW_MODEL="", OPENROUTER_API_KEY="test-openrouter-key")
-def test_analyze_unconfigured_does_not_call_provider_or_mutate() -> None:
+@REVIEW_SETTINGS
+def test_remove_verdict_points_active_words_to_archive() -> None:
+    active = _word()
+    archived = _word(chinese="愛人", archived_at=timezone.now())
+    client = _client_for(_superuser())
+    removal_payload = _review_payload(
+        verdict="remove",
+        findings=[{"aspect": "usage", "explanation": "Rare in Taiwan."}],
+        suggestions=_null_suggestions(),
+    )
+
+    with patch(
+        "api.services.card_review.requests.post",
+        side_effect=[
+            _openrouter_response(content=removal_payload),
+            _openrouter_response(content=removal_payload),
+        ],
+    ):
+        active_body = client.get(f"{_change_url(active)}?include_analysis=true").content.decode()
+        archived_body = client.get(
+            f"{_change_url(archived)}?include_analysis=true"
+        ).content.decode()
+
+    assert "Remove card" in active_body
+    assert "Use Save and archive to remove it from practice." in active_body
+    assert "Remove card" in archived_body
+    assert "Use Save and archive" not in archived_body
+
+
+@pytest.mark.django_db
+@REVIEW_SETTINGS
+@pytest.mark.parametrize(
+    ("provider_response", "message"),
+    [
+        (_openrouter_response(content="not-json"), "The review response was invalid."),
+        (
+            _openrouter_response(status_code=502, raw_json={"error": "down"}),
+            "The review provider returned an error.",
+        ),
+        (requests.Timeout(), "The review request timed out."),
+    ],
+)
+def test_include_analysis_shows_failures_with_retry_without_mutating_the_word(
+    provider_response: object, message: str
+) -> None:
     word = _word()
     before = _word_state(word)
-    admin = _superuser()
-    client = Client()
-    client.force_login(admin)
-    with patch("api.services.card_review.requests.post") as post:
-        response = client.post(_analyze_url(word))
-    assert response.status_code == 503
-    assert response.json() == {"detail": "Card review is not configured."}
-    post.assert_not_called()
+    client = _client_for(_superuser())
+
+    with patch("api.services.card_review.requests.post", side_effect=[provider_response]):
+        response = client.get(f"{_change_url(word)}?include_analysis=true")
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert message in body
+    assert 'href="?include_analysis=true">Try again</a>' in body
     assert _word_state(word) == before
-
-
-@pytest.mark.django_db
-@override_settings(CARD_REVIEW_MODEL="", OPENROUTER_API_KEY="")
-def test_change_form_shows_analyze_panel_only_for_saved_words_with_change_permission() -> None:
-    word = _word()
-    change_url = reverse("admin:api_word_change", args=[word.pk])
-    add_url = reverse("admin:api_word_add")
-    analyze_url = _analyze_url(word)
-
-    editor = _staff_with_word_change()
-    editor_client = Client()
-    editor_client.force_login(editor)
-    change = editor_client.get(change_url)
-
-    admin = _superuser()
-    add_client = Client()
-    add_client.force_login(admin)
-    add = add_client.get(add_url)
-    change_body = change.content.decode()
-    add_body = add.content.decode()
-
-    assert change.status_code == 200
-    assert "Analyze card" in change_body
-    assert "Results are discarded when you leave or refresh." in change_body
-    assert 'data-configured="false"' in change_body
-    assert analyze_url in change_body
-    assert "admin/js/card_review.js" in change_body
-    assert add.status_code == 200
-    assert "Analyze card" not in add_body
-    assert 'id="card-review"' not in add_body
-
-    viewer = _staff_with_word_view()
-    viewer_client = Client()
-    viewer_client.force_login(viewer)
-    viewer_change = viewer_client.get(change_url).content.decode()
-    assert "Analyze card" not in viewer_change
-    assert 'id="card-review"' not in viewer_change

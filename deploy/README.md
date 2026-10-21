@@ -89,18 +89,14 @@ DJANGO_ALLOWED_HOSTS=YOUR_DOMAIN
 CSRF_TRUSTED_ORIGINS=https://YOUR_DOMAIN
 DATABASE_URL='postgres://juzi:choose-a-strong-password@localhost:5432/juzi'
 OPENROUTER_API_KEY=
-CARD_REVIEW_MODEL=
 EOF
 sudo chown root:juzi /etc/juzi.env
 sudo chmod 640 /etc/juzi.env
 ```
 
-Word admin **Analyze card** reads `OPENROUTER_API_KEY` and `CARD_REVIEW_MODEL`.
-`CARD_REVIEW_MODEL` has no default; leave it blank until you enable review.
-Use an Anthropic Claude model ID that supports structured JSON output
-(for example `anthropic/claude-sonnet-4.5`). IDs that start with `openai/`
-or contain `luna` are refused. Gunicorn `--timeout 60` covers the review
-read timeout (45s) plus connect time.
+Word admin **Analyze card** reads `OPENROUTER_API_KEY`. Leave it blank to
+disable review. Gunicorn `--timeout 60` covers the review read timeout
+(45s) plus connect time.
 
 ### 6. Deploy key and clone
 

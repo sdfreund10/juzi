@@ -5,19 +5,20 @@ from django.contrib.auth.forms import (
     UserChangeForm,
 )
 from django.contrib.auth.models import User
-from django.http import JsonResponse
-from django.urls import path
 from django.utils import timezone
+from django.utils.text import capfirst
 
 from api.services.accounts import apply_login_email
-from api.services.card_review import (
-    CardReviewFailed,
-    CardReviewNotConfigured,
-    is_card_review_configured,
-    review_card,
-)
+from api.services.card_review import SUGGESTION_FIELDS, CardReviewFailed, review_card
 
 from .models import Category, Learner, UserWord, Word, WordCategory
+
+VERDICT_LABELS = {
+    "no_clear_issue": "No clear issue",
+    "issues_found": "Issues found",
+    "remove": "Remove card",
+    "needs_human_review": "Needs human review",
+}
 
 
 class FlagStatusFilter(admin.SimpleListFilter):
@@ -131,6 +132,22 @@ class LearnerAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email")
 
 
+def card_review_context(word: Word) -> dict:
+    try:
+        review = review_card(word)
+    except CardReviewFailed as exc:
+        return {"error": str(exc)}
+    return {
+        "verdict": VERDICT_LABELS[review["verdict"]],
+        "recommends_removal": review["verdict"] == "remove",
+        "findings": review["findings"],
+        "suggestions": [
+            (capfirst(Word._meta.get_field(name).verbose_name), review["suggestions"][name])
+            for name in SUGGESTION_FIELDS
+        ],
+    }
+
+
 @admin.register(Word)
 class WordAdmin(admin.ModelAdmin):
     list_display = ("chinese", "pinyin", "english_basic", "hsk_level", "flagged_by")
@@ -142,7 +159,6 @@ class WordAdmin(admin.ModelAdmin):
 
     class Media:
         css = {"all": ("admin/css/card_review.css",)}
-        js = ("admin/js/card_review.js",)
 
     fieldsets = (
         (
@@ -185,37 +201,14 @@ class WordAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    def get_urls(self):
-        info = self.opts.app_label, self.opts.model_name
-        custom = [
-            path(
-                "<path:object_id>/analyze/",
-                self.admin_site.admin_view(self.analyze_view),
-                name=f"{info[0]}_{info[1]}_analyze",
-            ),
-        ]
-        return custom + super().get_urls()
-
-    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
-        extra_context = extra_context or {}
-        extra_context["card_review_configured"] = is_card_review_configured()
-        return super().changeform_view(request, object_id, form_url, extra_context)
-
-    def analyze_view(self, request, object_id):
-        if request.method != "POST":
-            return JsonResponse({"detail": "Method not allowed."}, status=405)
-        if not self.has_change_permission(request):
-            return JsonResponse({"detail": "You cannot analyze this word."}, status=403)
-        word = self.get_object(request, object_id)
-        if word is None:
-            return JsonResponse({"detail": "Word not found."}, status=404)
-        try:
-            result = review_card(word)
-        except CardReviewNotConfigured as exc:
-            return JsonResponse({"detail": str(exc)}, status=503)
-        except CardReviewFailed as exc:
-            return JsonResponse({"detail": str(exc)}, status=502)
-        return JsonResponse(result, json_dumps_params={"ensure_ascii": False})
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        if obj and self.has_change_permission(request, obj):
+            query = request.GET.copy()
+            query["include_analysis"] = "true"
+            context["analyze_url"] = f"?{query.urlencode()}"
+            if request.method == "GET" and "include_analysis" in request.GET:
+                context["card_review"] = card_review_context(obj)
+        return super().render_change_form(request, context, add, change, form_url, obj)
 
     def save_model(self, request, obj, form, change):
         if change and "_save_and_unflag" in request.POST:

@@ -1,18 +1,46 @@
 {% extends "admin/change_form.html" %}
-{% load i18n admin_urls %}
 
-{% block coltype %}{% if original and has_change_permission %}colMS{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block coltype %}{% if analyze_url %}colMS{% else %}{{ block.super }}{% endif %}{% endblock %}
 
 {% block sidebar %}
-{% if original and has_change_permission %}
-<aside id="card-review" class="card-review"
-       data-analyze-url="{% url opts|admin_urlname:'analyze' original.pk %}"
-       data-configured="{% if card_review_configured %}true{% else %}false{% endif %}">
+{% if analyze_url %}
+<aside id="card-review" class="card-review">
   <h2>Card review</h2>
-  <p class="card-review__notice">Results are discarded when you leave or refresh.</p>
-  <p class="card-review__status" hidden></p>
-  <button type="button" class="card-review__analyze">Analyze card</button>
-  <div class="card-review__result" hidden></div>
+  {% if not card_review %}
+  <p class="card-review__notice">Reviews the saved card. Save your changes first.</p>
+  <a class="button" href="{{ analyze_url }}">Analyze card</a>
+  {% elif card_review.error %}
+  <p class="card-review__error">{{ card_review.error }}</p>
+  <a class="button" href="{{ analyze_url }}">Try again</a>
+  {% else %}
+  <p class="card-review__notice">Results aren't saved. Refreshing runs a new analysis.</p>
+  <h3>Verdict</h3>
+  <p>{{ card_review.verdict }}</p>
+  {% if card_review.recommends_removal and not original.archived_at %}
+  <p class="card-review__notice">Use Save and archive to remove it from practice.</p>
+  {% endif %}
+  <h3>Findings</h3>
+  <ul class="card-review__list">
+    {% for finding in card_review.findings %}
+    <li>{{ finding.aspect }}: {{ finding.explanation }}</li>
+    {% empty %}
+    <li>None.</li>
+    {% endfor %}
+  </ul>
+  <h3>Suggestions</h3>
+  <ul class="card-review__list">
+    {% for label, value in card_review.suggestions %}
+    <li>
+      <strong>{{ label }}</strong>
+      {% if value is None %}
+      <span class="card-review__keep">Keep current value</span>
+      {% else %}
+      <span class="card-review__suggestion">{{ value }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </aside>
 {% endif %}
 {% endblock %}
