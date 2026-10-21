@@ -1,0 +1,18 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block coltype %}{% if original and has_change_permission %}colMS{% else %}{{ block.super }}{% endif %}{% endblock %}
+
+{% block sidebar %}
+{% if original and has_change_permission %}
+<aside id="card-review" class="card-review"
+       data-analyze-url="{% url opts|admin_urlname:'analyze' original.pk %}"
+       data-configured="{% if card_review_configured %}true{% else %}false{% endif %}">
+  <h2>Card review</h2>
+  <p class="card-review__notice">Results are discarded when you leave or refresh.</p>
+  <p class="card-review__status" hidden></p>
+  <button type="button" class="card-review__analyze">Analyze card</button>
+  <div class="card-review__result" hidden></div>
+</aside>
+{% endif %}
+{% endblock %}
