@@ -1,14 +1,10 @@
 from django.contrib import admin, messages
-from django.contrib.admin import helpers
-from django.contrib.admin.models import CHANGE, LogEntry
-from django.contrib.admin.utils import model_ngettext
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import (
     AdminUserCreationForm,
     UserChangeForm,
 )
 from django.contrib.auth.models import User
-from django.template.response import TemplateResponse
 
 from api.services.accounts import apply_login_email
 
@@ -107,7 +103,6 @@ class WordAdmin(admin.ModelAdmin):
     list_select_related = ("flagged_by",)
     search_fields = ("chinese", "simplified", "pinyin", "english_basic")
     readonly_fields = ("reporter",)
-    actions = ("unflag_selected",)
     fieldsets = (
         (
             "Vocabulary",
@@ -173,50 +168,6 @@ class WordAdmin(admin.ModelAdmin):
         if "_save_and_unflag" in request.POST:
             self.message_user(request, "Saved and unflagged.", messages.SUCCESS)
         return super().response_change(request, obj)
-
-    @admin.action(description="Unflag selected words", permissions=["change"])
-    def unflag_selected(self, request, queryset):
-        flagged = queryset.filter(flagged_by__isnull=False).select_related("flagged_by")
-        if request.POST.get("post"):
-            words = list(flagged)
-            if words:
-                word_ids = [word.pk for word in words]
-                Word.objects.filter(pk__in=word_ids).update(flagged_by=None)
-                LogEntry.objects.log_actions(
-                    user_id=request.user.pk,
-                    queryset=words,
-                    action_flag=CHANGE,
-                    change_message=[{"changed": {"fields": ["flagged_by"]}}],
-                )
-                self.message_user(
-                    request,
-                    f"Unflagged {len(words)} {model_ngettext(self.opts, len(words))}.",
-                    messages.SUCCESS,
-                )
-            else:
-                self.message_user(
-                    request,
-                    "None of the selected words were flagged.",
-                    messages.WARNING,
-                )
-            return None
-
-        opts = self.model._meta
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "Unflag selected words",
-            "subtitle": None,
-            "queryset": flagged,
-            "opts": opts,
-            "action_checkbox_name": helpers.ACTION_CHECKBOX_NAME,
-            "media": self.media,
-        }
-        request.current_app = self.admin_site.name
-        return TemplateResponse(
-            request,
-            "admin/api/word/unflag_selected_confirmation.html",
-            context,
-        )
 
 
 @admin.register(Category)
