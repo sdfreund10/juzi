@@ -11,6 +11,25 @@ from api.services.accounts import apply_login_email
 from .models import Category, Learner, UserWord, Word, WordCategory
 
 
+class FlagStatusFilter(admin.SimpleListFilter):
+    title = "flag status"
+    parameter_name = "flag_status"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("flagged", "Flagged"),
+            ("unflagged", "Unflagged"),
+        )
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "flagged":
+            return queryset.filter(flagged_by__isnull=False)
+        if value == "unflagged":
+            return queryset.filter(flagged_by__isnull=True)
+        return queryset
+
+
 class EmailUsernameCreationForm(AdminUserCreationForm):
     class Meta(AdminUserCreationForm.Meta):
         model = User
@@ -77,8 +96,9 @@ class LearnerAdmin(admin.ModelAdmin):
 
 @admin.register(Word)
 class WordAdmin(admin.ModelAdmin):
-    list_display = ("chinese", "simplified", "pinyin", "english_basic", "flagged_by")
-    list_filter = ("flagged_by",)
+    list_display = ("chinese", "pinyin", "english_basic", "hsk_level", "flagged_by")
+    list_display_links = ("chinese",)
+    list_filter = (FlagStatusFilter, "flagged_by")
     list_select_related = ("flagged_by",)
     autocomplete_fields = ("flagged_by",)
     search_fields = ("chinese", "simplified", "pinyin", "english_basic")
