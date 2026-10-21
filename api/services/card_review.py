@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from typing import Any
 
 import requests
@@ -9,24 +8,23 @@ from django.conf import settings
 from rest_framework import serializers
 
 from api.models import Word
-
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-CONNECT_TIMEOUT_SECONDS = 5
-READ_TIMEOUT_SECONDS = 45
+from api.services.openrouter import (
+    EXAMPLE_SENTENCE_PROPERTIES,
+    OPENROUTER_URL,
+    parse_chat_json,
+    strict_json_schema,
+)
 
 VERDICTS = ("no_clear_issue", "issues_found", "needs_human_review")
 PRACTICE_DIRECTIONS = ("pinyin_to_en", "en_to_zh", "zh_to_en")
-SUGGESTION_FIELDS = (
+STRING_FIELDS = (
     "chinese",
     "simplified",
     "pinyin",
     "english_basic",
-    "hsk_level",
-    "example_sentence_traditional",
-    "example_sentence_simplified",
-    "example_sentence_pinyin",
-    "example_sentence_english",
+    *(f"example_sentence_{key}" for key in EXAMPLE_SENTENCE_PROPERTIES),
 )
+SUGGESTION_FIELDS = (*STRING_FIELDS, "hsk_level")
 
 REVIEW_PROMPT = """
 You review vocabulary cards for a household app that practices traditional Chinese.
@@ -49,131 +47,67 @@ when you would change that field.
 """.strip()
 
 
-def _string_or_null_schema(*, description: str) -> dict[str, Any]:
+def _nullable_string(description: str) -> dict[str, Any]:
     return {"type": ["string", "null"], "description": description}
 
 
-OUTPUT_SCHEMA = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "card_review",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "verdict": {
-                    "type": "string",
-                    "enum": list(VERDICTS),
-                    "description": "Overall review outcome.",
-                },
-                "findings": {
-                    "type": "array",
-                    "description": "Explained issues. Empty when there is no clear issue.",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "aspect": {
-                                "type": "string",
-                                "description": "What part of the card the finding is about.",
-                            },
-                            "explanation": {
-                                "type": "string",
-                                "description": "Why this is a problem for an operator.",
-                            },
-                            "practice_directions": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string",
-                                    "enum": list(PRACTICE_DIRECTIONS),
-                                },
-                                "description": "Practice directions this finding affects.",
-                            },
-                        },
-                        "required": ["aspect", "explanation", "practice_directions"],
-                        "additionalProperties": False,
-                    },
-                },
-                "suggestions": {
+OUTPUT_SCHEMA = strict_json_schema(
+    "card_review",
+    {
+        "type": "object",
+        "properties": {
+            "verdict": {
+                "type": "string",
+                "enum": list(VERDICTS),
+            },
+            "findings": {
+                "type": "array",
+                "items": {
                     "type": "object",
-                    "description": "Replacement values, or null to keep the current value.",
                     "properties": {
-                        "chinese": _string_or_null_schema(description="Traditional Chinese."),
-                        "simplified": _string_or_null_schema(description="Simplified Chinese."),
-                        "pinyin": _string_or_null_schema(description="Tone-marked pinyin."),
-                        "english_basic": _string_or_null_schema(description="English gloss."),
-                        "hsk_level": {
-                            "type": ["integer", "null"],
-                            "description": "HSK level, or null to keep the current value.",
+                        "aspect": {"type": "string"},
+                        "explanation": {"type": "string"},
+                        "practice_directions": {
+                            "type": "array",
+                            "items": {"type": "string", "enum": list(PRACTICE_DIRECTIONS)},
                         },
-                        "example_sentence_traditional": _string_or_null_schema(
-                            description="Example sentence in traditional Chinese."
-                        ),
-                        "example_sentence_simplified": _string_or_null_schema(
-                            description="Example sentence in simplified Chinese."
-                        ),
-                        "example_sentence_pinyin": _string_or_null_schema(
-                            description="Example sentence in pinyin."
-                        ),
-                        "example_sentence_english": _string_or_null_schema(
-                            description="Example sentence in English."
-                        ),
                     },
-                    "required": list(SUGGESTION_FIELDS),
+                    "required": ["aspect", "explanation", "practice_directions"],
                     "additionalProperties": False,
                 },
             },
-            "required": ["verdict", "findings", "suggestions"],
-            "additionalProperties": False,
+            "suggestions": {
+                "type": "object",
+                "properties": {
+                    "chinese": _nullable_string("Traditional Chinese."),
+                    "simplified": _nullable_string("Simplified Chinese."),
+                    "pinyin": _nullable_string("Tone-marked pinyin."),
+                    "english_basic": _nullable_string("English gloss."),
+                    "hsk_level": {
+                        "type": ["integer", "null"],
+                        "description": "HSK level, or null to keep the current value.",
+                    },
+                    **{
+                        f"example_sentence_{key}": {**spec, "type": ["string", "null"]}
+                        for key, spec in EXAMPLE_SENTENCE_PROPERTIES.items()
+                    },
+                },
+                "required": list(SUGGESTION_FIELDS),
+                "additionalProperties": False,
+            },
         },
+        "required": ["verdict", "findings", "suggestions"],
+        "additionalProperties": False,
     },
-}
+)
 
 
-class CardReviewError(Exception):
-    """Operator-facing card review failure."""
-
-
-class CardReviewNotConfigured(CardReviewError):
+class CardReviewNotConfigured(Exception):
     pass
 
 
-class CardReviewFailed(CardReviewError):
+class CardReviewFailed(Exception):
     pass
-
-
-@dataclass(frozen=True)
-class CardReviewFinding:
-    aspect: str
-    explanation: str
-    practice_directions: list[str]
-
-
-@dataclass(frozen=True)
-class CardReviewResult:
-    verdict: str
-    findings: list[CardReviewFinding]
-    suggestions: dict[str, str | int | None]
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "verdict": self.verdict,
-            "findings": [
-                {
-                    "aspect": finding.aspect,
-                    "explanation": finding.explanation,
-                    "practice_directions": finding.practice_directions,
-                }
-                for finding in self.findings
-            ],
-            "suggestions": self.suggestions,
-        }
-
-
-def _field_max_length(name: str) -> int:
-    max_length = Word._meta.get_field(name).max_length
-    if max_length is None:
-        raise RuntimeError(f"Word.{name} is missing max_length")
-    return max_length
 
 
 class FindingSerializer(serializers.Serializer):
@@ -186,39 +120,16 @@ class FindingSerializer(serializers.Serializer):
 
 
 class SuggestionsSerializer(serializers.Serializer):
-    chinese = serializers.CharField(
-        max_length=_field_max_length("chinese"), allow_null=True, allow_blank=True
-    )
-    simplified = serializers.CharField(
-        max_length=_field_max_length("simplified"), allow_null=True, allow_blank=True
-    )
-    pinyin = serializers.CharField(
-        max_length=_field_max_length("pinyin"), allow_null=True, allow_blank=True
-    )
-    english_basic = serializers.CharField(
-        max_length=_field_max_length("english_basic"), allow_null=True, allow_blank=True
-    )
     hsk_level = serializers.IntegerField(allow_null=True)
-    example_sentence_traditional = serializers.CharField(
-        max_length=_field_max_length("example_sentence_traditional"),
-        allow_null=True,
-        allow_blank=True,
-    )
-    example_sentence_simplified = serializers.CharField(
-        max_length=_field_max_length("example_sentence_simplified"),
-        allow_null=True,
-        allow_blank=True,
-    )
-    example_sentence_pinyin = serializers.CharField(
-        max_length=_field_max_length("example_sentence_pinyin"),
-        allow_null=True,
-        allow_blank=True,
-    )
-    example_sentence_english = serializers.CharField(
-        max_length=_field_max_length("example_sentence_english"),
-        allow_null=True,
-        allow_blank=True,
-    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in STRING_FIELDS:
+            self.fields[name] = serializers.CharField(
+                max_length=Word._meta.get_field(name).max_length,
+                allow_null=True,
+                allow_blank=True,
+            )
 
 
 class CardReviewResponseSerializer(serializers.Serializer):
@@ -227,123 +138,69 @@ class CardReviewResponseSerializer(serializers.Serializer):
     suggestions = SuggestionsSerializer()
 
 
-def _configured_model() -> str:
-    return str(getattr(settings, "CARD_REVIEW_MODEL", "") or "").strip()
-
-
-def _api_key() -> str:
-    return str(getattr(settings, "OPENROUTER_API_KEY", "") or "").strip()
-
-
-def is_model_allowed(model_id: str) -> bool:
-    lowered = model_id.lower()
-    if not model_id.strip():
-        return False
-    if lowered.startswith("openai/"):
-        return False
-    return "luna" not in lowered
+def _model_allowed(model: str) -> bool:
+    lowered = model.lower()
+    return bool(model) and not lowered.startswith("openai/") and "luna" not in lowered
 
 
 def is_card_review_configured() -> bool:
-    return bool(_api_key()) and is_model_allowed(_configured_model())
+    return bool(settings.OPENROUTER_API_KEY.strip()) and _model_allowed(
+        settings.CARD_REVIEW_MODEL.strip()
+    )
 
 
 def review_input(word: Word) -> dict[str, Any]:
     return {
-        "chinese": word.chinese,
-        "simplified": word.simplified,
-        "pinyin": word.pinyin,
-        "english_basic": word.english_basic,
-        "hsk_level": word.hsk_level,
-        "example_sentence_traditional": word.example_sentence_traditional,
-        "example_sentence_simplified": word.example_sentence_simplified,
-        "example_sentence_pinyin": word.example_sentence_pinyin,
-        "example_sentence_english": word.example_sentence_english,
+        **{name: getattr(word, name) for name in SUGGESTION_FIELDS},
         "decks": list(word.categories.order_by("name").values_list("name", flat=True)),
     }
 
 
-def _require_configured_model() -> str:
-    model = _configured_model()
-    if not model or not _api_key():
-        raise CardReviewNotConfigured("Card review is not configured.")
-    if not is_model_allowed(model):
-        raise CardReviewNotConfigured("This review model is not allowed.")
-    return model
-
-
-def _parse_message_content(payload: dict[str, Any]) -> Any:
-    try:
-        content = payload["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise CardReviewFailed("The review response was invalid.") from exc
-    if isinstance(content, dict):
-        return content
-    if not isinstance(content, str):
-        raise CardReviewFailed("The review response was invalid.")
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise CardReviewFailed("The review response was invalid.") from exc
-
-
-def _result_from_parsed(parsed: Any) -> CardReviewResult:
-    serializer = CardReviewResponseSerializer(data=parsed)
-    if not serializer.is_valid():
-        raise CardReviewFailed("The review response was invalid.")
-    data = serializer.validated_data
-    return CardReviewResult(
-        verdict=data["verdict"],
-        findings=[
-            CardReviewFinding(
-                aspect=item["aspect"],
-                explanation=item["explanation"],
-                practice_directions=list(item["practice_directions"]),
-            )
-            for item in data["findings"]
-        ],
-        suggestions={field: data["suggestions"][field] for field in SUGGESTION_FIELDS},
-    )
-
-
-def review_card(word: Word) -> CardReviewResult:
+def review_card(word: Word) -> dict[str, Any]:
     """Read-only review of a saved word. Never writes."""
-    model = _require_configured_model()
-    body = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": REVIEW_PROMPT},
-            {
-                "role": "user",
-                "content": json.dumps(review_input(word), ensure_ascii=False),
-            },
-        ],
-        "response_format": OUTPUT_SCHEMA,
-        "provider": {"allow_fallbacks": False},
-    }
+    model = settings.CARD_REVIEW_MODEL.strip()
+    api_key = settings.OPENROUTER_API_KEY.strip()
+    if not model or not api_key:
+        raise CardReviewNotConfigured("Card review is not configured.")
+    if not _model_allowed(model):
+        raise CardReviewNotConfigured("This review model is not allowed.")
+
     try:
         response = requests.post(
             OPENROUTER_URL,
-            headers={"Authorization": f"Bearer {_api_key()}"},
-            json=body,
-            timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS),
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": REVIEW_PROMPT},
+                    {
+                        "role": "user",
+                        "content": json.dumps(review_input(word), ensure_ascii=False),
+                    },
+                ],
+                "response_format": OUTPUT_SCHEMA,
+                "provider": {"allow_fallbacks": False},
+            },
+            timeout=(5, 45),
         )
     except requests.Timeout as exc:
         raise CardReviewFailed("The review request timed out.") from exc
     except requests.RequestException as exc:
         raise CardReviewFailed("The review provider returned an error.") from exc
 
-    if response.status_code >= 500:
-        raise CardReviewFailed("The review provider returned an error.")
     if response.status_code >= 400:
         raise CardReviewFailed("The review provider returned an error.")
 
     try:
         payload = response.json()
-    except ValueError as exc:
+        parsed = parse_chat_json(payload)
+    except (ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise CardReviewFailed("The review response was invalid.") from exc
 
     if payload.get("model") != model:
         raise CardReviewFailed("The review used a different model than configured.")
 
-    return _result_from_parsed(_parse_message_content(payload))
+    serializer = CardReviewResponseSerializer(data=parsed)
+    if not serializer.is_valid():
+        raise CardReviewFailed("The review response was invalid.")
+    return serializer.validated_data

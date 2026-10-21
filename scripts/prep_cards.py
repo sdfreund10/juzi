@@ -28,6 +28,16 @@ from hsk_categories import STUDY_CATEGORIES
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from api.services.openrouter import (  # noqa: E402
+    OPENROUTER_URL,
+    example_sentence_schema,
+    parse_chat_json,
+    strict_json_schema,
+)
+
 DEFAULT_IN = ROOT / "data" / "hsk" / "cards.json"
 DEFAULT_OUT = ROOT / "data" / "hsk" / "prepped_cards.json"
 DEFAULT_LOG_DIR = ROOT / "data" / "hsk" / "logs"
@@ -72,60 +82,33 @@ learner at that stage.
 They may still be included in other categories.
 """
 
-OUTPUT_SCHEMA = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "card_data",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "meaning": {
-                    "type": "string",
-                    "description": "Meaning of the word or phrase in English",
-                },
-                "example_sentence": {
-                    "type": "object",
-                    "description": "An example sentence using the word",
-                    "properties": {
-                        "traditional": {
-                            "type": "string",
-                            "description": "The example sentence in traditional Chinese.",
-                        },
-                        "simplified": {
-                            "type": "string",
-                            "description": "The example sentence in simplified Chinese.",
-                        },
-                        "pinyin": {
-                            "type": "string",
-                            "description": "The example sentence in pinyin.",
-                        },
-                        "english": {
-                            "type": "string",
-                            "description": "The translation of the example sentence in English.",
-                        },
-                    },
-                    "additionalProperties": False,
-                    "required": ["traditional", "simplified", "pinyin", "english"],
-                },
-                "category": {
-                    "type": "string",
-                    "description": "The primary study category for this card.",
-                    "enum": STUDY_CATEGORIES,
-                },
-                "exclude": {
-                    "type": "boolean",
-                    "description": (
-                        "Whether the word should be excluded or recategorized from the "
-                        "provided HSK category."
-                    ),
-                },
+OUTPUT_SCHEMA = strict_json_schema(
+    "card_data",
+    {
+        "type": "object",
+        "properties": {
+            "meaning": {
+                "type": "string",
+                "description": "Meaning of the word or phrase in English",
             },
-            "required": ["meaning", "example_sentence", "category", "exclude"],
-            "additionalProperties": False,
+            "example_sentence": example_sentence_schema(),
+            "category": {
+                "type": "string",
+                "description": "The primary study category for this card.",
+                "enum": STUDY_CATEGORIES,
+            },
+            "exclude": {
+                "type": "boolean",
+                "description": (
+                    "Whether the word should be excluded or recategorized from the "
+                    "provided HSK category."
+                ),
+            },
         },
+        "required": ["meaning", "example_sentence", "category", "exclude"],
+        "additionalProperties": False,
     },
-}
+)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MODEL = "openai/gpt-6-luna"
@@ -144,7 +127,7 @@ def analyze_card(card: Card) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     started = time.perf_counter()
     response = requests.post(
-        url="https://openrouter.ai/api/v1/chat/completions",
+        url=OPENROUTER_URL,
         headers={
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         },
@@ -167,8 +150,8 @@ def analyze_card(card: Card) -> tuple[dict[str, Any], dict[str, Any]]:
     response.raise_for_status()
     payload = response.json()
     try:
-        content = payload["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
+        analysis = parse_chat_json(payload)
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"Unexpected OpenRouter response: {payload}") from exc
 
     usage = payload.get("usage") or {}
@@ -186,7 +169,6 @@ def analyze_card(card: Card) -> tuple[dict[str, Any], dict[str, Any]]:
         "completion_tokens": usage.get("completion_tokens"),
         "total_tokens": usage.get("total_tokens"),
     }
-    analysis = json.loads(content)
     if analysis.get("category") not in STUDY_CATEGORIES:
         raise ValueError(f"Model returned an invalid category: {analysis.get('category')!r}")
     return analysis, metrics

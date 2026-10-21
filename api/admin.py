@@ -215,7 +215,7 @@ class WordAdmin(admin.ModelAdmin):
             return JsonResponse({"detail": str(exc)}, status=503)
         except CardReviewFailed as exc:
             return JsonResponse({"detail": str(exc)}, status=502)
-        return JsonResponse(result.as_dict(), json_dumps_params={"ensure_ascii": False})
+        return JsonResponse(result, json_dumps_params={"ensure_ascii": False})
 
     def save_model(self, request, obj, form, change):
         if change and "_save_and_unflag" in request.POST:
