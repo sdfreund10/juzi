@@ -4,6 +4,7 @@ from django.contrib.auth.models import Permission, User
 from django.contrib.contenttypes.models import ContentType
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from api.models import Category, UserWord, Word, WordCategory
 
@@ -467,3 +468,168 @@ def test_save_and_unflag_requires_change_permission() -> None:
     word.refresh_from_db()
     assert word.english_basic == "allowed"
     assert word.flagged_by_id is None
+
+
+@pytest.mark.django_db
+def test_word_changelist_defaults_to_active_and_filters_archive_status() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    words["flagged"].archived_at = timezone.now()
+    words["flagged"].save(update_fields=["archived_at"])
+    client = Client()
+    client.force_login(admin)
+
+    default_list = client.get(CHANGE_LIST)
+    archived = client.get(f"{CHANGE_LIST}?archive_status=archived")
+    all_words = client.get(f"{CHANGE_LIST}?archive_status=all")
+    flagged_queue = client.get(FLAGGED_QUEUE)
+
+    assert default_list.status_code == 200
+    default_body = default_list.content.decode()
+    assert words["unflagged"].chinese in default_body
+    assert words["flagged"].chinese not in default_body
+
+    archived_body = archived.content.decode()
+    assert words["flagged"].chinese in archived_body
+    assert words["unflagged"].chinese not in archived_body
+
+    all_body = all_words.content.decode()
+    assert words["flagged"].chinese in all_body
+    assert words["unflagged"].chinese in all_body
+
+    # Default review queue stays on active flagged words.
+    flagged_body = flagged_queue.content.decode()
+    assert words["other_flagged"].chinese in flagged_body
+    assert words["flagged"].chinese not in flagged_body
+
+
+@pytest.mark.django_db
+def test_word_admin_disables_hard_delete() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    client = Client()
+    client.force_login(admin)
+
+    change = client.get(reverse("admin:api_word_change", args=[words["flagged"].pk]))
+    delete = client.get(
+        reverse("admin:api_word_delete", args=[words["flagged"].pk]),
+        follow=False,
+    )
+    bulk = client.post(
+        CHANGE_LIST,
+        {
+            "action": "delete_selected",
+            "_selected_action": [words["flagged"].pk],
+        },
+        follow=False,
+    )
+    body = change.content.decode()
+
+    assert change.status_code == 200
+    assert "Archive" in body
+    assert 'value="Delete"' not in body
+    assert ">Delete<" not in body
+    assert delete.status_code in {403, 302}
+    assert bulk.status_code in {200, 302}
+    assert Word.objects.filter(pk=words["flagged"].pk).exists()
+
+
+@pytest.mark.django_db
+def test_archive_and_restore_word_preserves_flag_progress_and_decks() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    word = words["flagged"]
+    learner = User.objects.create_user(
+        "alice@test.com",
+        "alice@test.com",
+        "local-test-password",
+    )
+    category = Category.objects.create(name="Food")
+    membership = WordCategory.objects.create(word=word, category=category)
+    progress = UserWord.objects.create(
+        user=learner,
+        word=word,
+        easy_streak=2,
+        easy_count=3,
+    )
+    reporter_id = words["reporter"].id
+    client = Client()
+    client.force_login(admin)
+
+    confirm = client.get(reverse("admin:api_word_archive", args=[word.pk]))
+    assert confirm.status_code == 200
+    assert "Archive" in confirm.content.decode()
+
+    archived = client.post(reverse("admin:api_word_archive", args=[word.pk]))
+    assert archived.status_code == 302
+    word.refresh_from_db()
+    assert word.archived_at is not None
+    assert word.flagged_by_id == reporter_id
+
+    restored = client.post(reverse("admin:api_word_restore", args=[word.pk]))
+    assert restored.status_code == 302
+    word.refresh_from_db()
+    progress.refresh_from_db()
+    membership.refresh_from_db()
+    assert word.archived_at is None
+    assert word.flagged_by_id == reporter_id
+    assert progress.easy_streak == 2
+    assert progress.easy_count == 3
+    assert membership.category_id == category.pk
+    logs = _change_logs_for(word)
+    assert any("archived_at" in entry.change_message for entry in logs)
+
+
+@pytest.mark.django_db
+def test_bulk_archive_and_restore_selected_words() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    client = Client()
+    client.force_login(admin)
+    selected = [words["flagged"].pk, words["unflagged"].pk]
+
+    confirm = client.post(
+        CHANGE_LIST,
+        {
+            "action": "archive_selected",
+            "_selected_action": selected,
+        },
+    )
+    assert confirm.status_code == 200
+    assert "Archive selected words" in confirm.content.decode()
+
+    archived = client.post(
+        CHANGE_LIST,
+        {
+            "action": "archive_selected",
+            "_selected_action": selected,
+            "post": "yes",
+        },
+    )
+    assert archived.status_code == 302
+    assert Word.objects.filter(pk__in=selected, archived_at__isnull=False).count() == 2
+
+    restored = client.post(
+        f"{CHANGE_LIST}?archive_status=archived",
+        {
+            "action": "restore_selected",
+            "_selected_action": selected,
+            "post": "yes",
+        },
+    )
+    assert restored.status_code == 302
+    assert Word.objects.filter(pk__in=selected, archived_at__isnull=True).count() == 2
+
+
+@pytest.mark.django_db
+def test_archive_requires_change_permission() -> None:
+    viewer = _staff_with_word_view()
+    words = _seed_words()
+    client = Client()
+    client.force_login(viewer)
+
+    response = client.post(reverse("admin:api_word_archive", args=[words["flagged"].pk]))
+
+    assert response.status_code == 403
+    words["flagged"].refresh_from_db()
+    assert words["flagged"].archived_at is None
