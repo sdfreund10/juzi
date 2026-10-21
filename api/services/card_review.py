@@ -120,6 +120,7 @@ class CardReviewResponseSerializer(serializers.Serializer):
 def review_input(word: Word) -> dict[str, Any]:
     return {
         **{name: getattr(word, name) for name in (*DICTIONARY_FIELDS, *SUGGESTION_FIELDS)},
+        "hsk_level": word.hsk_level,
         "decks": list(word.categories.order_by("name").values_list("name", flat=True)),
     }
 
