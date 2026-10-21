@@ -200,7 +200,7 @@ sudo usermod -s /bin/bash juzi
 | File | Role |
 | --- | --- |
 | `juzi.service` | systemd unit for gunicorn |
-| `nginx-juzi.conf` | HTTP reverse proxy (certbot adds SSL) |
+| `nginx-juzi.conf` | Reverse proxy; unknown hosts are dropped, certbot adds SSL for the domain |
 | `deploy.sh` | pull → sync → migrate → collectstatic → restart (expects `frontend/dist` already present) |
 
 ## Error and performance monitoring

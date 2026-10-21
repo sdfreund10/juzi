@@ -152,6 +152,12 @@ def test_categories_includes_difficulty_counts(
     topic_food: Category,
     seeded_words: dict[str, Word],
 ) -> None:
+    other = _make_user(email="bob@example.com", password="s3cret-bob")
+    UserWord.objects.create(
+        user=other,
+        word=seeded_words["novice"],
+        last_practiced_at=timezone.now(),
+    )
     headers = _login(client, user)
     response = client.get(reverse("categories"), **headers)
 
@@ -187,6 +193,11 @@ def test_categories_includes_per_user_last_practiced_at(
         user=user,
         word=seeded_words["advanced"],
         last_practiced_at=practiced_at - timedelta(days=1),
+    )
+    UserWord.objects.create(
+        user=other,
+        word=seeded_words["novice"],
+        last_practiced_at=timezone.now(),
     )
     UserWord.objects.create(
         user=other,

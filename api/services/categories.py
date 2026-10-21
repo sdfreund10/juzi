@@ -15,11 +15,14 @@ def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
         Category.objects.exclude(name__startswith=HSK_CATEGORY_PREFIX)
         .annotate(
             active_words=FilteredRelation("words", condition=Q(words__archived_at__isnull=True)),
+            user_progress=FilteredRelation(
+                "active_words__user_words",
+                condition=Q(active_words__user_words__user=user),
+            ),
         )
         .annotate(
             novice_count=Count(
                 "active_words",
-                distinct=True,
                 filter=Q(
                     active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
                         Learner.ProficiencyLevel.NOVICE
@@ -28,7 +31,6 @@ def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
             ),
             intermediate_count=Count(
                 "active_words",
-                distinct=True,
                 filter=Q(
                     active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
                         Learner.ProficiencyLevel.INTERMEDIATE
@@ -37,7 +39,6 @@ def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
             ),
             advanced_count=Count(
                 "active_words",
-                distinct=True,
                 filter=Q(
                     active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
                         Learner.ProficiencyLevel.ADVANCED
@@ -46,17 +47,13 @@ def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
             ),
             expert_count=Count(
                 "active_words",
-                distinct=True,
                 filter=Q(
                     active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
                         Learner.ProficiencyLevel.EXPERT
                     ]
                 ),
             ),
-            last_practiced_at=Max(
-                "active_words__user_words__last_practiced_at",
-                filter=Q(active_words__user_words__user=user),
-            ),
+            last_practiced_at=Max("user_progress__last_practiced_at"),
         )
         .order_by("-novice_count")
     )

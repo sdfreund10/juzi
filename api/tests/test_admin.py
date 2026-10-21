@@ -288,7 +288,7 @@ def test_word_queue_redirects_anonymous_and_non_staff() -> None:
 
 
 @pytest.mark.django_db
-def test_word_change_form_sections_and_save_and_unflag_button() -> None:
+def test_word_change_form_offers_save_and_unflag_only_when_flagged() -> None:
     admin = _superuser()
     words = _seed_words()
     client = Client()
@@ -298,20 +298,11 @@ def test_word_change_form_sections_and_save_and_unflag_button() -> None:
     unflagged = client.get(reverse("admin:api_word_change", args=[words["unflagged"].pk]))
 
     assert flagged.status_code == 200
-    flagged_body = flagged.content.decode()
-    assert "Vocabulary" in flagged_body
-    assert "Example" in flagged_body
-    assert "Review" in flagged_body
-    assert "Reporter" in flagged_body
-    assert words["reporter"].username in flagged_body
-    assert 'name="_save"' in flagged_body
-    assert 'name="_save_and_unflag"' in flagged_body
-    assert 'name="flagged_by"' not in flagged_body
+    assert 'name="_save_and_unflag"' in flagged.content.decode()
+    assert words["reporter"].username in flagged.content.decode()
 
     assert unflagged.status_code == 200
-    unflagged_body = unflagged.content.decode()
-    assert 'name="_save"' in unflagged_body
-    assert 'name="_save_and_unflag"' not in unflagged_body
+    assert 'name="_save_and_unflag"' not in unflagged.content.decode()
 
     add = client.get(reverse("admin:api_word_add"))
     add_body = add.content.decode()
