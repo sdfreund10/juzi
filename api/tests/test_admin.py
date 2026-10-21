@@ -581,47 +581,6 @@ def test_archive_and_restore_word_preserves_flag_progress_and_decks() -> None:
 
 
 @pytest.mark.django_db
-def test_bulk_archive_and_restore_selected_words() -> None:
-    admin = _superuser()
-    words = _seed_words()
-    client = Client()
-    client.force_login(admin)
-    selected = [words["flagged"].pk, words["unflagged"].pk]
-
-    confirm = client.post(
-        CHANGE_LIST,
-        {
-            "action": "archive_selected",
-            "_selected_action": selected,
-        },
-    )
-    assert confirm.status_code == 200
-    assert "Archive selected words" in confirm.content.decode()
-
-    archived = client.post(
-        CHANGE_LIST,
-        {
-            "action": "archive_selected",
-            "_selected_action": selected,
-            "post": "yes",
-        },
-    )
-    assert archived.status_code == 302
-    assert Word.objects.filter(pk__in=selected, archived_at__isnull=False).count() == 2
-
-    restored = client.post(
-        f"{CHANGE_LIST}?archive_status=archived",
-        {
-            "action": "restore_selected",
-            "_selected_action": selected,
-            "post": "yes",
-        },
-    )
-    assert restored.status_code == 302
-    assert Word.objects.filter(pk__in=selected, archived_at__isnull=True).count() == 2
-
-
-@pytest.mark.django_db
 def test_archive_requires_change_permission() -> None:
     viewer = _staff_with_word_view()
     words = _seed_words()

@@ -1,7 +1,5 @@
 from django.contrib import admin, messages
-from django.contrib.admin import helpers
-from django.contrib.admin.models import CHANGE, LogEntry
-from django.contrib.admin.utils import model_ngettext, unquote
+from django.contrib.admin.utils import unquote
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import (
     AdminUserCreationForm,
@@ -141,7 +139,6 @@ class WordAdmin(admin.ModelAdmin):
     list_select_related = ("flagged_by",)
     search_fields = ("chinese", "simplified", "pinyin", "english_basic")
     readonly_fields = ("reporter", "archived_at")
-    actions = ("archive_selected", "restore_selected")
     fieldsets = (
         (
             "Vocabulary",
@@ -238,57 +235,13 @@ class WordAdmin(admin.ModelAdmin):
     def restore_view(self, request, object_id):
         return self._object_archive_status_view(request, object_id, archive=False)
 
-    @admin.action(description="Archive selected words", permissions=["change"])
-    def archive_selected(self, request, queryset):
-        return self._bulk_archive_status_action(request, archive=True)
-
-    @admin.action(description="Restore selected words", permissions=["change"])
-    def restore_selected(self, request, queryset):
-        return self._bulk_archive_status_action(request, archive=False)
-
-    def _apply_archive_state(self, request, words, *, archive: bool) -> int:
-        words = list(words)
-        if not words:
-            return 0
-        word_ids = [word.pk for word in words]
-        Word.objects.filter(pk__in=word_ids).update(archived_at=timezone.now() if archive else None)
-        LogEntry.objects.log_actions(
-            user_id=request.user.pk,
-            queryset=words,
-            action_flag=CHANGE,
-            change_message=[{"changed": {"fields": ["archived_at"]}}],
-        )
-        return len(words)
-
-    def _archive_status_confirmation(
-        self,
-        request,
-        *,
-        title: str,
-        breadcrumb: str,
-        message: str,
-        empty_message: str = "",
-        obj: Word | None = None,
-        queryset=None,
-        action_name: str | None = None,
-    ):
-        request.current_app = self.admin_site.name
-        return TemplateResponse(
+    def _apply_archive_state(self, request, word: Word, *, archive: bool) -> None:
+        word.archived_at = timezone.now() if archive else None
+        word.save(update_fields=["archived_at"])
+        self.log_change(
             request,
-            "admin/api/word/archive_status_confirmation.html",
-            {
-                **self.admin_site.each_context(request),
-                "title": title,
-                "breadcrumb": breadcrumb,
-                "message": message,
-                "empty_message": empty_message,
-                "object": obj,
-                "queryset": queryset,
-                "opts": self.opts,
-                "action_checkbox_name": helpers.ACTION_CHECKBOX_NAME,
-                "action_name": action_name,
-                "media": self.media,
-            },
+            word,
+            [{"changed": {"fields": ["archived_at"]}}],
         )
 
     def _object_archive_status_view(self, request, object_id, *, archive: bool):
@@ -301,7 +254,7 @@ class WordAdmin(admin.ModelAdmin):
         eligible = word.archived_at is None if archive else word.archived_at is not None
         if request.method == "POST":
             if eligible:
-                self._apply_archive_state(request, [word], archive=archive)
+                self._apply_archive_state(request, word, archive=archive)
                 self.message_user(
                     request,
                     "Archived." if archive else "Restored.",
@@ -319,61 +272,19 @@ class WordAdmin(admin.ModelAdmin):
                 f"Restore “{word}”? Only the archive stamp is cleared; "
                 "flags, decks, and progress stay as they are."
             )
-        return self._archive_status_confirmation(
+        request.current_app = self.admin_site.name
+        return TemplateResponse(
             request,
-            title="Archive word" if archive else "Restore word",
-            breadcrumb="Archive" if archive else "Restore",
-            message=message,
-            obj=word,
-        )
-
-    def _bulk_archive_status_action(self, request, *, archive: bool):
-        # Selected IDs, not the changelist queryset: confirmation POSTs must not
-        # be limited by the default Active filter.
-        selected_ids = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
-        words = Word.objects.filter(
-            pk__in=selected_ids,
-            archived_at__isnull=archive,
-        )
-        action_name = "archive_selected" if archive else "restore_selected"
-        if request.POST.get("post"):
-            count = self._apply_archive_state(request, words, archive=archive)
-            if count:
-                verb = "Archived" if archive else "Restored"
-                self.message_user(
-                    request,
-                    f"{verb} {count} {model_ngettext(self.opts, count)}.",
-                    messages.SUCCESS,
-                )
-            else:
-                self.message_user(
-                    request,
-                    (
-                        "None of the selected words were active."
-                        if archive
-                        else "None of the selected words were archived."
-                    ),
-                    messages.WARNING,
-                )
-            return None
-
-        if archive:
-            message = (
-                "Archive the selected words? They leave practice and deck counts, "
-                "but keep progress, decks, and flags."
-            )
-            empty_message = "None of the selected words are active."
-        else:
-            message = "Restore the selected words? Only the archive stamp is cleared."
-            empty_message = "None of the selected words are archived."
-        return self._archive_status_confirmation(
-            request,
-            title="Archive selected words" if archive else "Restore selected words",
-            breadcrumb="Archive selected words" if archive else "Restore selected words",
-            message=message,
-            empty_message=empty_message,
-            queryset=words,
-            action_name=action_name,
+            "admin/api/word/archive_status_confirmation.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": "Archive word" if archive else "Restore word",
+                "breadcrumb": "Archive" if archive else "Restore",
+                "message": message,
+                "object": word,
+                "opts": self.opts,
+                "media": self.media,
+            },
         )
 
 
