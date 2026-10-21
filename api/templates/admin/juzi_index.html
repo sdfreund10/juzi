@@ -1,0 +1,29 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+{% if perms.api.view_word or perms.api.change_word %}
+<div class="module">
+  <table>
+    <caption>
+      <a href="{% url 'admin:api_word_changelist' %}?flag_status=flagged" class="section">
+        Flagged words
+      </a>
+    </caption>
+    <tr>
+      <th scope="row">
+        <a href="{% url 'admin:api_word_changelist' %}?flag_status=flagged">
+          Open the flagged-word review queue
+        </a>
+      </th>
+      <td></td>
+      <td>
+        <a href="{% url 'admin:api_word_changelist' %}?flag_status=flagged" class="viewlink">
+          View
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}

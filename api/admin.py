@@ -83,6 +83,7 @@ class EmailUserAdmin(DjangoUserAdmin):
 
 admin.site.unregister(User)
 admin.site.register(User, EmailUserAdmin)
+admin.site.index_template = "admin/juzi_index.html"
 
 
 @admin.register(Learner)
