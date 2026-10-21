@@ -18,35 +18,42 @@ def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
                 "words",
                 distinct=True,
                 filter=Q(
-                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.NOVICE]
+                    words__archived_at__isnull=True,
+                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.NOVICE],
                 ),
             ),
             intermediate_count=Count(
                 "words",
                 distinct=True,
                 filter=Q(
+                    words__archived_at__isnull=True,
                     words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
                         Learner.ProficiencyLevel.INTERMEDIATE
-                    ]
+                    ],
                 ),
             ),
             advanced_count=Count(
                 "words",
                 distinct=True,
                 filter=Q(
-                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.ADVANCED]
+                    words__archived_at__isnull=True,
+                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.ADVANCED],
                 ),
             ),
             expert_count=Count(
                 "words",
                 distinct=True,
                 filter=Q(
-                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.EXPERT]
+                    words__archived_at__isnull=True,
+                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.EXPERT],
                 ),
             ),
             last_practiced_at=Max(
                 "words__user_words__last_practiced_at",
-                filter=Q(words__user_words__user=user),
+                filter=Q(
+                    words__archived_at__isnull=True,
+                    words__user_words__user=user,
+                ),
             ),
         )
         .order_by("-novice_count")

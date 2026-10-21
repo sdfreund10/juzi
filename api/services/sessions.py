@@ -155,6 +155,7 @@ def build_session(
         Word.objects.filter(
             categories=category,
             hsk_level__in=levels,
+            archived_at__isnull=True,
         ).distinct()
     )
     if not words:

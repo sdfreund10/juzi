@@ -21,12 +21,17 @@ class Word(models.Model):
         on_delete=models.SET_NULL,
         related_name="flagged_words",
     )
+    archived_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["chinese"]
 
     def __str__(self) -> str:
         return self.chinese
+
+    @property
+    def is_archived(self) -> bool:
+        return self.archived_at is not None
 
 
 class Category(models.Model):

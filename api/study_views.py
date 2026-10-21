@@ -182,6 +182,12 @@ def flag_word(request: Request) -> Response:
             status=status.HTTP_404_NOT_FOUND,
         )
 
+    if word.archived_at is not None:
+        return Response(
+            {"detail": "Word not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
     if word.flagged_by_id is None:
         word.flagged_by = request.user
         word.save(update_fields=["flagged_by"])
