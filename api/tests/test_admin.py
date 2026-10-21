@@ -297,11 +297,11 @@ def test_word_change_form_offers_save_and_unflag_only_when_flagged() -> None:
     unflagged = client.get(reverse("admin:api_word_change", args=[words["unflagged"].pk]))
 
     assert flagged.status_code == 200
-    assert flagged.context["show_save_and_unflag"] is True
+    assert 'name="_save_and_unflag"' in flagged.content.decode()
     assert words["reporter"].username in flagged.content.decode()
 
     assert unflagged.status_code == 200
-    assert unflagged.context["show_save_and_unflag"] is False
+    assert 'name="_save_and_unflag"' not in unflagged.content.decode()
 
 
 @pytest.mark.django_db
