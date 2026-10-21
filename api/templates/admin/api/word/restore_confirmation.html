@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script src="{% static 'admin/js/cancel.js' %}" async></script>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }}{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumbs">
+<li><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+<li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+<li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+<li><a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">{{ object|truncatewords:"18" }}</a></li>
+<li aria-current="page">Restore</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<p>Restore “{{ object }}”? Only the archive stamp is cleared; flags, decks, and progress stay as they are.</p>
+<form method="post">{% csrf_token %}
+<div>
+<input type="submit" value="{% translate 'Yes, I’m sure' %}">
+<a role="button" href="#" class="button cancel-link">{% translate "No, take me back" %}</a>
+</div>
+</form>
+{% endblock %}
