@@ -13,31 +13,38 @@
 <li><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
 <li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
 <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
-<li aria-current="page">Restore selected words</li>
+{% if object %}
+<li><a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">{{ object|truncatewords:"18" }}</a></li>
+{% endif %}
+<li aria-current="page">{{ breadcrumb }}</li>
 </ol>
 {% endblock %}
 
 {% block content %}
-{% if not queryset %}
-    <p>None of the selected words are archived.</p>
+{% if action_name and not queryset %}
+    <p>{{ empty_message }}</p>
     <a role="button" href="{% url opts|admin_urlname:'changelist' %}" class="button cancel-link">
         {% translate "No, take me back" %}
     </a>
 {% else %}
-    <p>Restore the selected words? Only the archive stamp is cleared.</p>
+    <p>{{ message }}</p>
+    {% if queryset %}
     <h2>Words</h2>
     <ul>
     {% for word in queryset %}
         <li>{{ word }}</li>
     {% endfor %}
     </ul>
+    {% endif %}
     <form method="post">{% csrf_token %}
     <div>
+    {% if action_name %}
     {% for obj in queryset %}
     <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk|unlocalize }}">
     {% endfor %}
     <input type="hidden" name="action" value="{{ action_name }}">
     <input type="hidden" name="post" value="yes">
+    {% endif %}
     <input type="submit" value="{% translate 'Yes, I’m sure' %}">
     <a role="button" href="#" class="button cancel-link">{% translate "No, take me back" %}</a>
     </div>

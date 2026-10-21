@@ -29,10 +29,6 @@ class Word(models.Model):
     def __str__(self) -> str:
         return self.chinese
 
-    @property
-    def is_archived(self) -> bool:
-        return self.archived_at is not None
-
 
 class Category(models.Model):
     """Named deck of words."""
