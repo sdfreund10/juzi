@@ -175,14 +175,8 @@ def flag_word(request: Request) -> Response:
     serializer.is_valid(raise_exception=True)
 
     try:
-        word = Word.objects.get(pk=serializer.validated_data["word_id"])
+        word = Word.objects.active().get(pk=serializer.validated_data["word_id"])
     except Word.DoesNotExist:
-        return Response(
-            {"detail": "Word not found."},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-
-    if word.archived_at is not None:
         return Response(
             {"detail": "Word not found."},
             status=status.HTTP_404_NOT_FOUND,

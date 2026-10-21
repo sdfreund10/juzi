@@ -313,6 +313,13 @@ def test_word_change_form_sections_and_save_and_unflag_button() -> None:
     assert 'name="_save"' in unflagged_body
     assert 'name="_save_and_unflag"' not in unflagged_body
 
+    add = client.get(reverse("admin:api_word_add"))
+    add_body = add.content.decode()
+    assert add.status_code == 200
+    assert 'name="_save_and_unflag"' not in add_body
+    assert "/archive/" not in add_body
+    assert "/restore/" not in add_body
+
 
 @pytest.mark.django_db
 def test_ordinary_save_keeps_flag_and_updates_content() -> None:
@@ -524,9 +531,11 @@ def test_word_admin_disables_hard_delete() -> None:
         follow=False,
     )
     body = change.content.decode()
+    archive_url = reverse("admin:api_word_archive", args=[words["flagged"].pk])
 
     assert change.status_code == 200
-    assert "Archive" in body
+    assert archive_url in body
+    assert reverse("admin:api_word_restore", args=[words["flagged"].pk]) not in body
     assert 'value="Delete"' not in body
     assert ">Delete<" not in body
     assert delete.status_code in {403, 302}
@@ -563,8 +572,19 @@ def test_archive_and_restore_word_preserves_flag_progress_and_decks() -> None:
     archived = client.post(reverse("admin:api_word_archive", args=[word.pk]))
     assert archived.status_code == 302
     word.refresh_from_db()
-    assert word.archived_at is not None
+    archived_at = word.archived_at
+    assert archived_at is not None
     assert word.flagged_by_id == reporter_id
+
+    change = client.get(reverse("admin:api_word_change", args=[word.pk]))
+    change_body = change.content.decode()
+    assert reverse("admin:api_word_restore", args=[word.pk]) in change_body
+    assert reverse("admin:api_word_archive", args=[word.pk]) not in change_body
+
+    again = client.post(reverse("admin:api_word_archive", args=[word.pk]))
+    assert again.status_code == 302
+    word.refresh_from_db()
+    assert word.archived_at == archived_at
 
     restored = client.post(reverse("admin:api_word_restore", args=[word.pk]))
     assert restored.status_code == 302
@@ -581,14 +601,33 @@ def test_archive_and_restore_word_preserves_flag_progress_and_decks() -> None:
 
 
 @pytest.mark.django_db
-def test_archive_requires_change_permission() -> None:
+def test_archive_and_restore_require_change_permission() -> None:
     viewer = _staff_with_word_view()
+    editor = _superuser()
     words = _seed_words()
-    client = Client()
-    client.force_login(viewer)
+    word = words["flagged"]
+    archive_url = reverse("admin:api_word_archive", args=[word.pk])
+    restore_url = reverse("admin:api_word_restore", args=[word.pk])
+    viewer_client = Client()
+    viewer_client.force_login(viewer)
 
-    response = client.post(reverse("admin:api_word_archive", args=[words["flagged"].pk]))
+    change = viewer_client.get(reverse("admin:api_word_change", args=[word.pk]))
+    denied_get = viewer_client.get(archive_url)
+    denied_archive = viewer_client.post(archive_url)
 
-    assert response.status_code == 403
-    words["flagged"].refresh_from_db()
-    assert words["flagged"].archived_at is None
+    assert archive_url not in change.content.decode()
+    assert denied_get.status_code == 403
+    assert denied_archive.status_code == 403
+    word.refresh_from_db()
+    assert word.archived_at is None
+
+    editor_client = Client()
+    editor_client.force_login(editor)
+    assert editor_client.post(archive_url).status_code == 302
+    word.refresh_from_db()
+    assert word.archived_at is not None
+
+    denied_restore = viewer_client.post(restore_url)
+    assert denied_restore.status_code == 403
+    word.refresh_from_db()
+    assert word.archived_at is not None
