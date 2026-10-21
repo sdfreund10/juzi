@@ -442,3 +442,57 @@ def test_flag_word_missing_word(
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"detail": "Word not found."}
+
+
+@pytest.mark.django_db
+def test_create_session_excludes_archived_words(
+    client: APIClient,
+    user: User,
+    topic_food: Category,
+    seeded_words: dict[str, Word],
+) -> None:
+    seeded_words["novice"].archived_at = timezone.now()
+    seeded_words["novice"].save(update_fields=["archived_at"])
+    headers = _login(client, user)
+
+    response = client.post(
+        reverse("sessions-create"),
+        {"category_id": topic_food.id, "difficulties": ["novice"]},
+        format="json",
+        **headers,
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+def test_categories_exclude_archived_words_from_counts_and_last_practiced(
+    client: APIClient,
+    user: User,
+    topic_food: Category,
+    seeded_words: dict[str, Word],
+) -> None:
+    practiced_at = timezone.now() - timedelta(hours=1)
+    UserWord.objects.create(
+        user=user,
+        word=seeded_words["novice"],
+        last_practiced_at=practiced_at,
+    )
+    seeded_words["novice"].archived_at = timezone.now()
+    seeded_words["novice"].save(update_fields=["archived_at"])
+    headers = _login(client, user)
+
+    response = client.get(reverse("categories"), **headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == [
+        {
+            "id": topic_food.id,
+            "name": topic_food.name,
+            "novice_count": 0,
+            "intermediate_count": 1,
+            "advanced_count": 1,
+            "expert_count": 1,
+            "last_practiced_at": None,
+        }
+    ]

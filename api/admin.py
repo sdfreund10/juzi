@@ -5,6 +5,7 @@ from django.contrib.auth.forms import (
     UserChangeForm,
 )
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from api.services.accounts import apply_login_email
 
@@ -28,6 +29,33 @@ class FlagStatusFilter(admin.SimpleListFilter):
         if value == "unflagged":
             return queryset.filter(flagged_by__isnull=True)
         return queryset
+
+
+class ArchiveStatusFilter(admin.SimpleListFilter):
+    """Shows active words by default, replacing the stock "All" choice with "Active"."""
+
+    title = "archive status"
+    parameter_name = "archived"
+
+    def lookups(self, request, model_admin):
+        return (("yes", "Archived"),)
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(archived_at__isnull=False)
+        return queryset.active()
+
+    def choices(self, changelist):
+        yield {
+            "selected": self.value() is None,
+            "query_string": changelist.get_query_string(remove=[self.parameter_name]),
+            "display": "Active",
+        }
+        yield {
+            "selected": self.value() == "yes",
+            "query_string": changelist.get_query_string({self.parameter_name: "yes"}),
+            "display": "Archived",
+        }
 
 
 class EmailUsernameCreationForm(AdminUserCreationForm):
@@ -99,10 +127,10 @@ class LearnerAdmin(admin.ModelAdmin):
 class WordAdmin(admin.ModelAdmin):
     list_display = ("chinese", "pinyin", "english_basic", "hsk_level", "flagged_by")
     list_display_links = ("chinese",)
-    list_filter = (FlagStatusFilter, "flagged_by")
+    list_filter = (ArchiveStatusFilter, FlagStatusFilter, "flagged_by")
     list_select_related = ("flagged_by",)
     search_fields = ("chinese", "simplified", "pinyin", "english_basic")
-    readonly_fields = ("reporter",)
+    readonly_fields = ("reporter", "archived_at")
     fieldsets = (
         (
             "Vocabulary",
@@ -130,7 +158,7 @@ class WordAdmin(admin.ModelAdmin):
         (
             "Review",
             {
-                "fields": ("reporter",),
+                "fields": ("reporter", "archived_at"),
             },
         ),
     )
@@ -141,32 +169,38 @@ class WordAdmin(admin.ModelAdmin):
             return "—"
         return str(obj.flagged_by)
 
-    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
-        extra_context = extra_context or {}
-        if object_id is not None:
-            word = self.get_object(request, object_id)
-            extra_context["show_save_and_unflag"] = bool(
-                word is not None and word.flagged_by_id is not None
-            )
-        else:
-            extra_context["show_save_and_unflag"] = False
-        return super().changeform_view(request, object_id, form_url, extra_context)
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     def save_model(self, request, obj, form, change):
         if change and "_save_and_unflag" in request.POST:
             obj.flagged_by = None
+        if change and "_save_and_archive" in request.POST:
+            obj.archived_at = timezone.now()
+        if change and "_save_and_restore" in request.POST:
+            obj.archived_at = None
         super().save_model(request, obj, form, change)
 
     def construct_change_message(self, request, form, formsets, add=False):
         change_message = super().construct_change_message(request, form, formsets, add)
-        if not add and "_save_and_unflag" in request.POST:
-            change_message = list(change_message)
-            change_message.append({"changed": {"fields": ["flagged_by"]}})
+        if add:
+            return change_message
+        fields = []
+        if "_save_and_unflag" in request.POST:
+            fields.append("flagged_by")
+        if "_save_and_archive" in request.POST or "_save_and_restore" in request.POST:
+            fields.append("archived_at")
+        if fields:
+            change_message = [*change_message, {"changed": {"fields": fields}}]
         return change_message
 
     def response_change(self, request, obj):
         if "_save_and_unflag" in request.POST:
             self.message_user(request, "Saved and unflagged.", messages.SUCCESS)
+        if "_save_and_archive" in request.POST:
+            self.message_user(request, "Saved and archived.", messages.SUCCESS)
+        if "_save_and_restore" in request.POST:
+            self.message_user(request, "Saved and restored.", messages.SUCCESS)
         return super().response_change(request, obj)
 
 

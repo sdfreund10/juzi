@@ -10,40 +10,47 @@ HSK_CATEGORY_PREFIX = "HSK "
 
 
 def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
-    """Topic decks with difficulty-band word counts and per-user last practice."""
+    """Topic decks with difficulty-band active word counts and per-user last practice."""
     return (
         Category.objects.exclude(name__startswith=HSK_CATEGORY_PREFIX)
         .annotate(
+            active_words=FilteredRelation("words", condition=Q(words__archived_at__isnull=True)),
             user_progress=FilteredRelation(
-                "words__user_words",
-                condition=Q(words__user_words__user=user),
+                "active_words__user_words",
+                condition=Q(active_words__user_words__user=user),
             ),
         )
         .annotate(
             novice_count=Count(
-                "words",
+                "active_words",
                 filter=Q(
-                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.NOVICE]
+                    active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
+                        Learner.ProficiencyLevel.NOVICE
+                    ]
                 ),
             ),
             intermediate_count=Count(
-                "words",
+                "active_words",
                 filter=Q(
-                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
+                    active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
                         Learner.ProficiencyLevel.INTERMEDIATE
                     ]
                 ),
             ),
             advanced_count=Count(
-                "words",
+                "active_words",
                 filter=Q(
-                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.ADVANCED]
+                    active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
+                        Learner.ProficiencyLevel.ADVANCED
+                    ]
                 ),
             ),
             expert_count=Count(
-                "words",
+                "active_words",
                 filter=Q(
-                    words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[Learner.ProficiencyLevel.EXPERT]
+                    active_words__hsk_level__in=DIFFICULTY_HSK_LEVEL_MAP[
+                        Learner.ProficiencyLevel.EXPERT
+                    ]
                 ),
             ),
             last_practiced_at=Max("user_progress__last_practiced_at"),

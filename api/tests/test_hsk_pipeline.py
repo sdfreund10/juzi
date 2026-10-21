@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from django.core.management import call_command
+from django.utils import timezone
 
 from api.models import Category, Word, WordCategory
 
@@ -197,3 +198,37 @@ def test_seed_hsk_from_cards_file(tmp_path: Path) -> None:
     assert WordCategory.objects.count() == 2
     love.refresh_from_db()
     assert love.example_sentence_english == "I love drinking tea."
+
+
+@pytest.mark.django_db
+def test_seed_hsk_preserves_archived_at(tmp_path: Path) -> None:
+    cards = [
+        {
+            "hsk_level": 1,
+            "simplified": "爱",
+            "chinese": "愛",
+            "pinyin": "ài",
+            "english_basic": "to love",
+            "example_sentence_traditional": "",
+            "example_sentence_simplified": "",
+            "example_sentence_pinyin": "",
+            "example_sentence_english": "",
+        },
+    ]
+    path = tmp_path / "cards.json"
+    path.write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
+    call_command("seed_hsk", "--file", str(path))
+
+    love = Word.objects.get(chinese="愛", pinyin="ài")
+    archived_at = timezone.now()
+    love.archived_at = archived_at
+    love.save(update_fields=["archived_at"])
+
+    cards[0]["english_basic"] = "to love (updated)"
+    path.write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
+    call_command("seed_hsk", "--file", str(path))
+
+    love.refresh_from_db()
+    assert love.english_basic == "to love (updated)"
+    assert love.archived_at == archived_at
+    assert Word.objects.filter(chinese="愛", pinyin="ài").count() == 1

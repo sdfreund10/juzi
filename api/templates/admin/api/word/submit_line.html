@@ -3,7 +3,14 @@
 
 {% block submit-row %}
 {{ block.super }}
-{% if show_save_and_unflag and show_save %}
+{% if show_save and original %}
+{% if original.flagged_by_id %}
 <input type="submit" value="{% translate 'Save and unflag' %}" name="_save_and_unflag">
+{% endif %}
+{% if original.archived_at %}
+<input type="submit" value="{% translate 'Save and restore' %}" name="_save_and_restore">
+{% else %}
+<input type="submit" value="{% translate 'Save and archive' %}" name="_save_and_archive">
+{% endif %}
 {% endif %}
 {% endblock %}

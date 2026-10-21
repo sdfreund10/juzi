@@ -152,10 +152,12 @@ def build_session(
     """
     levels = hsk_levels_for_difficulties(difficulties)
     words = list(
-        Word.objects.filter(
+        Word.objects.active()
+        .filter(
             categories=category,
             hsk_level__in=levels,
-        ).distinct()
+        )
+        .distinct()
     )
     if not words:
         raise EmptySessionError()

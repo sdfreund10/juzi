@@ -2,6 +2,12 @@ from django.conf import settings
 from django.db import models
 
 
+class WordQuerySet(models.QuerySet):
+    def active(self):
+        """Words that are not archived and still show up in practice."""
+        return self.filter(archived_at__isnull=True)
+
+
 class Word(models.Model):
     """Vocabulary entry: traditional Chinese, pinyin with tone marks, and basic English."""
 
@@ -21,6 +27,13 @@ class Word(models.Model):
         on_delete=models.SET_NULL,
         related_name="flagged_words",
     )
+    archived_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Archived words are hidden from practice.",
+    )
+
+    objects = WordQuerySet.as_manager()
 
     class Meta:
         ordering = ["chinese"]
