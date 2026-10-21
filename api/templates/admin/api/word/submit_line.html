@@ -1,0 +1,9 @@
+{% extends "admin/submit_line.html" %}
+{% load i18n %}
+
+{% block submit-row %}
+{{ block.super }}
+{% if show_save_and_unflag and show_save %}
+<input type="submit" value="{% translate 'Save and unflag' %}" name="_save_and_unflag">
+{% endif %}
+{% endblock %}

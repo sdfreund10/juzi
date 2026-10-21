@@ -1,9 +1,11 @@
 import pytest
+from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.auth.models import Permission, User
+from django.contrib.contenttypes.models import ContentType
 from django.test import Client
 from django.urls import reverse
 
-from api.models import Word
+from api.models import Category, UserWord, Word, WordCategory
 
 CHANGE_LIST = "/admin/api/word/"
 FLAGGED_QUEUE = "/admin/api/word/?flag_status=flagged"
@@ -29,12 +31,53 @@ def _staff_with_word_view() -> User:
     return user
 
 
+def _staff_with_word_change() -> User:
+    user = User.objects.create_user(
+        "editor@test.com",
+        "editor@test.com",
+        "local-test-password",
+        is_staff=True,
+    )
+    user.user_permissions.add(
+        Permission.objects.get(codename="view_word"),
+        Permission.objects.get(codename="change_word"),
+    )
+    return user
+
+
 def _staff_without_word_perms() -> User:
     return User.objects.create_user(
         "staff@test.com",
         "staff@test.com",
         "local-test-password",
         is_staff=True,
+    )
+
+
+def _word_form_data(word: Word, **overrides: object) -> dict[str, object]:
+    data: dict[str, object] = {
+        "chinese": word.chinese,
+        "simplified": word.simplified,
+        "pinyin": word.pinyin,
+        "english_basic": word.english_basic,
+        "hsk_level": word.hsk_level,
+        "example_sentence_traditional": word.example_sentence_traditional,
+        "example_sentence_simplified": word.example_sentence_simplified,
+        "example_sentence_pinyin": word.example_sentence_pinyin,
+        "example_sentence_english": word.example_sentence_english,
+    }
+    data.update(overrides)
+    return data
+
+
+def _change_logs_for(word: Word) -> list[LogEntry]:
+    content_type = ContentType.objects.get_for_model(Word)
+    return list(
+        LogEntry.objects.filter(
+            content_type=content_type,
+            object_id=str(word.pk),
+            action_flag=CHANGE,
+        )
     )
 
 
@@ -241,3 +284,177 @@ def test_word_queue_redirects_anonymous_and_non_staff() -> None:
     assert "/admin/login/" in learner_queue["Location"]
     assert learner_change.status_code == 302
     assert "/admin/login/" in learner_change["Location"]
+
+
+@pytest.mark.django_db
+def test_word_change_form_offers_save_and_unflag_only_when_flagged() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    client = Client()
+    client.force_login(admin)
+
+    flagged = client.get(reverse("admin:api_word_change", args=[words["flagged"].pk]))
+    unflagged = client.get(reverse("admin:api_word_change", args=[words["unflagged"].pk]))
+
+    assert flagged.status_code == 200
+    assert 'name="_save_and_unflag"' in flagged.content.decode()
+    assert words["reporter"].username in flagged.content.decode()
+
+    assert unflagged.status_code == 200
+    assert 'name="_save_and_unflag"' not in unflagged.content.decode()
+
+
+@pytest.mark.django_db
+def test_ordinary_save_keeps_flag_and_updates_content() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    word = words["flagged"]
+    client = Client()
+    client.force_login(admin)
+
+    response = client.post(
+        reverse("admin:api_word_change", args=[word.pk]),
+        {
+            **_word_form_data(word, english_basic="to love deeply"),
+            "_save": "Save",
+        },
+    )
+
+    assert response.status_code == 302
+    word.refresh_from_db()
+    assert word.english_basic == "to love deeply"
+    assert word.flagged_by_id == words["reporter"].id
+
+
+@pytest.mark.django_db
+def test_save_and_unflag_clears_flag_atomically_with_content() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    word = words["flagged"]
+    client = Client()
+    client.force_login(admin)
+
+    response = client.post(
+        reverse("admin:api_word_change", args=[word.pk]),
+        {
+            **_word_form_data(word, english_basic="affection"),
+            "_save_and_unflag": "Save and unflag",
+        },
+    )
+
+    assert response.status_code == 302
+    word.refresh_from_db()
+    assert word.english_basic == "affection"
+    assert word.flagged_by_id is None
+    logs = _change_logs_for(word)
+    assert logs
+    assert any("flagged_by" in entry.change_message for entry in logs)
+
+
+@pytest.mark.django_db
+def test_invalid_save_and_unflag_leaves_content_and_flag_unchanged() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    word = words["flagged"]
+    original_english = word.english_basic
+    client = Client()
+    client.force_login(admin)
+
+    response = client.post(
+        reverse("admin:api_word_change", args=[word.pk]),
+        {
+            **_word_form_data(word, english_basic="x" * 300),
+            "_save_and_unflag": "Save and unflag",
+        },
+    )
+
+    assert response.status_code == 200
+    word.refresh_from_db()
+    assert word.english_basic == original_english
+    assert word.flagged_by_id == words["reporter"].id
+    assert not _change_logs_for(word)
+
+
+@pytest.mark.django_db
+def test_save_and_unflag_preserves_identity_progress_and_decks() -> None:
+    admin = _superuser()
+    words = _seed_words()
+    word = words["flagged"]
+    learner = User.objects.create_user(
+        "alice@test.com",
+        "alice@test.com",
+        "local-test-password",
+    )
+    category = Category.objects.create(name="Food")
+    membership = WordCategory.objects.create(word=word, category=category)
+    progress = UserWord.objects.create(
+        user=learner,
+        word=word,
+        easy_streak=2,
+        easy_count=3,
+    )
+    word_id = word.pk
+    client = Client()
+    client.force_login(admin)
+
+    response = client.post(
+        reverse("admin:api_word_change", args=[word.pk]),
+        {
+            **_word_form_data(word, pinyin="ài"),
+            "_save_and_unflag": "Save and unflag",
+        },
+    )
+
+    assert response.status_code == 302
+    word.refresh_from_db()
+    progress.refresh_from_db()
+    membership.refresh_from_db()
+    assert word.pk == word_id
+    assert word.flagged_by_id is None
+    assert progress.word_id == word_id
+    assert progress.easy_streak == 2
+    assert progress.easy_count == 3
+    assert membership.word_id == word_id
+    assert membership.category_id == category.pk
+
+
+@pytest.mark.django_db
+def test_save_and_unflag_requires_change_permission() -> None:
+    viewer = _staff_with_word_view()
+    editor = _staff_with_word_change()
+    words = _seed_words()
+    word = words["flagged"]
+    change_url = reverse("admin:api_word_change", args=[word.pk])
+
+    viewer_client = Client()
+    viewer_client.force_login(viewer)
+    viewer_get = viewer_client.get(change_url)
+    viewer_post = viewer_client.post(
+        change_url,
+        {
+            **_word_form_data(word, english_basic="blocked"),
+            "_save_and_unflag": "Save and unflag",
+        },
+    )
+
+    assert viewer_get.status_code == 200
+    assert 'name="_save_and_unflag"' not in viewer_get.content.decode()
+    assert viewer_post.status_code == 403
+    word.refresh_from_db()
+    assert word.english_basic == "to love"
+    assert word.flagged_by_id == words["reporter"].id
+
+    editor_client = Client()
+    editor_client.force_login(editor)
+    editor_post = editor_client.post(
+        change_url,
+        {
+            **_word_form_data(word, english_basic="allowed"),
+            "_save_and_unflag": "Save and unflag",
+        },
+    )
+
+    assert editor_post.status_code == 302
+    word.refresh_from_db()
+    assert word.english_basic == "allowed"
+    assert word.flagged_by_id is None
