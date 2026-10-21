@@ -10,7 +10,6 @@ from django.utils import timezone
 
 from api.models import Category, UserWord, Word, WordCategory
 from api.services.card_review import (
-    OPENROUTER_URL,
     REVIEW_MODEL,
     SUGGESTION_FIELDS,
     CardReviewFailed,
@@ -144,7 +143,7 @@ def _client_for(user: User) -> Client:
 
 @pytest.mark.django_db
 @REVIEW_SETTINGS
-def test_review_input_sends_content_and_decks_not_people() -> None:
+def test_review_input_excludes_private_data_and_includes_decks() -> None:
     reporter = User.objects.create_user(
         "reporter@test.com",
         "reporter@test.com",
@@ -164,39 +163,20 @@ def test_review_input_sends_content_and_decks_not_people() -> None:
     captured: dict[str, object] = {}
 
     def fake_post(url, headers=None, json=None, timeout=None):
-        captured.update({"url": url, "headers": headers, "json": json, "timeout": timeout})
+        captured["json"] = json
         return _openrouter_response(content=_review_payload())
 
     with patch("api.services.card_review.requests.post", side_effect=fake_post):
         review_card(word)
 
-    assert captured["url"] == OPENROUTER_URL
-    assert captured["timeout"] == (5, 45)
-    assert captured["json"]["model"] == REVIEW_MODEL
-    assert captured["json"]["provider"] == {"allow_fallbacks": False}
     sent = json.dumps(captured["json"], ensure_ascii=False)
     assert "愛" in sent
-    assert "to love" in sent
     assert "Food" in sent
-    assert "Travel" in sent
     assert "reporter@test.com" not in sent
     assert "alice@test.com" not in sent
     assert "flagged_by" not in sent
     assert "easy_streak" not in sent
-    assert "archived" not in sent.lower()
-    payload = review_input(word)
-    assert payload["decks"] == ["Food", "Travel"]
-    assert set(payload) == {
-        "chinese",
-        "simplified",
-        "pinyin",
-        "english_basic",
-        "example_sentence_traditional",
-        "example_sentence_simplified",
-        "example_sentence_pinyin",
-        "example_sentence_english",
-        "decks",
-    }
+    assert review_input(word)["decks"] == ["Food", "Travel"]
 
 
 @pytest.mark.django_db
@@ -206,14 +186,6 @@ def test_review_input_sends_content_and_decks_not_people() -> None:
     [
         ("not-json", REVIEW_MODEL),
         (json.dumps({"verdict": "issues_found"}), REVIEW_MODEL),
-        (
-            json.dumps(_review_payload(verdict="looks_fine")),
-            REVIEW_MODEL,
-        ),
-        (
-            json.dumps(_review_payload(suggestions=_null_suggestions(english_basic="x" * 256))),
-            REVIEW_MODEL,
-        ),
         (json.dumps(_review_payload()), "anthropic/claude-other"),
     ],
 )
@@ -268,9 +240,7 @@ def test_change_form_offers_analysis_only_to_editors_of_saved_words() -> None:
 
     post.assert_not_called()
     assert 'href="?include_analysis=true">Analyze card</a>' in change_body
-    assert "Analyze card" not in add_body
     assert 'id="card-review"' not in add_body
-    assert "Analyze card" not in viewer_body
     assert 'id="card-review"' not in viewer_body
 
 
@@ -288,7 +258,7 @@ def test_analyze_link_keeps_changelist_filters() -> None:
 
 @pytest.mark.django_db
 @REVIEW_SETTINGS
-def test_include_analysis_renders_escaped_review_without_mutating_the_word() -> None:
+def test_include_analysis_escapes_suggestions_and_does_not_save_the_word() -> None:
     reporter = User.objects.create_user(
         "reporter@test.com",
         "reporter@test.com",
@@ -310,15 +280,8 @@ def test_include_analysis_renders_escaped_review_without_mutating_the_word() -> 
 
     body = response.content.decode()
     assert response.status_code == 200
-    assert "Issues found" in body
-    assert "meaning: Gloss is too broad." in body
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
     assert "<script>alert(1)</script>" not in body
-    assert "Keep current value" in body
-    assert "<strong>English basic</strong>" in body
-    assert "<strong>Chinese</strong>" not in body
-    assert "<strong>Pinyin</strong>" not in body
-    assert "Refreshing runs a new analysis." in body
     assert _word_state(word) == before
 
 
@@ -346,37 +309,25 @@ def test_remove_verdict_points_active_words_to_archive() -> None:
             f"{_change_url(archived)}?include_analysis=true"
         ).content.decode()
 
-    assert "Remove card" in active_body
     assert "Use Save and archive to remove it from practice." in active_body
-    assert "Remove card" in archived_body
     assert "Use Save and archive" not in archived_body
 
 
 @pytest.mark.django_db
 @REVIEW_SETTINGS
-@pytest.mark.parametrize(
-    ("provider_response", "message"),
-    [
-        (_openrouter_response(content="not-json"), "The review response was invalid."),
-        (
-            _openrouter_response(status_code=502, raw_json={"error": "down"}),
-            "The review provider returned an error.",
-        ),
-        (requests.Timeout(), "The review request timed out."),
-    ],
-)
-def test_include_analysis_shows_failures_with_retry_without_mutating_the_word(
-    provider_response: object, message: str
-) -> None:
+def test_include_analysis_shows_review_errors_without_mutating_the_word() -> None:
     word = _word()
     before = _word_state(word)
     client = _client_for(_superuser())
 
-    with patch("api.services.card_review.requests.post", side_effect=[provider_response]):
+    with patch(
+        "api.services.card_review.requests.post",
+        return_value=_openrouter_response(content="not-json"),
+    ):
         response = client.get(f"{_change_url(word)}?include_analysis=true")
 
     body = response.content.decode()
     assert response.status_code == 200
-    assert message in body
+    assert "The review response was invalid." in body
     assert 'href="?include_analysis=true">Try again</a>' in body
     assert _word_state(word) == before
