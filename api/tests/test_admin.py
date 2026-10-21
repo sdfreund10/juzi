@@ -127,9 +127,7 @@ def test_word_changelist_combines_flag_status_with_search_and_reporter() -> None
     reporter_id = words["reporter"].id
 
     response = client.get(
-        f"{CHANGE_LIST}?flag_status=flagged"
-        f"&flagged_by__id__exact={reporter_id}"
-        f"&q=愛"
+        f"{CHANGE_LIST}?flag_status=flagged&flagged_by__id__exact={reporter_id}&q=愛"
     )
 
     assert response.status_code == 200
@@ -159,7 +157,7 @@ def test_word_changelist_shows_review_fields_and_edit_link() -> None:
     assert str(word.hsk_level) in body
     assert words["reporter"].username in body
     assert f'href="{change_url}' in body
-    assert f'>{word.chinese}</a>' in body
+    assert f">{word.chinese}</a>" in body
 
 
 @pytest.mark.django_db
@@ -229,15 +227,11 @@ def test_word_queue_redirects_anonymous_and_non_staff() -> None:
     client = Client()
 
     anonymous_queue = client.get(FLAGGED_QUEUE)
-    anonymous_change = client.get(
-        reverse("admin:api_word_change", args=[words["flagged"].pk])
-    )
+    anonymous_change = client.get(reverse("admin:api_word_change", args=[words["flagged"].pk]))
 
     client.force_login(learner)
     learner_queue = client.get(FLAGGED_QUEUE)
-    learner_change = client.get(
-        reverse("admin:api_word_change", args=[words["flagged"].pk])
-    )
+    learner_change = client.get(reverse("admin:api_word_change", args=[words["flagged"].pk]))
 
     assert anonymous_queue.status_code == 302
     assert "/admin/login/" in anonymous_queue["Location"]
