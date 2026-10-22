@@ -1,0 +1,46 @@
+{% extends "admin/change_form.html" %}
+
+{% block coltype %}{% if analyze_url %}colMS{% else %}{{ block.super }}{% endif %}{% endblock %}
+
+{% block sidebar %}
+{% if analyze_url %}
+<aside id="card-review" class="card-review">
+  <h2>Card review</h2>
+  {% if not card_review %}
+  <p class="card-review__notice">Reviews the saved card. Save your changes first.</p>
+  <a class="button" href="{{ analyze_url }}">Analyze card</a>
+  {% elif card_review.error %}
+  <p class="card-review__error">{{ card_review.error }}</p>
+  <a class="button" href="{{ analyze_url }}">Try again</a>
+  {% else %}
+  <p class="card-review__notice">Results aren't saved. Refreshing runs a new analysis.</p>
+  <h3>Verdict</h3>
+  <p>{{ card_review.verdict }}</p>
+  {% if card_review.recommends_removal and not original.archived_at %}
+  <p class="card-review__notice">Use Save and archive to remove it from practice.</p>
+  {% endif %}
+  <h3>Findings</h3>
+  <ul class="card-review__list">
+    {% for finding in card_review.findings %}
+    <li>{{ finding.aspect }}: {{ finding.explanation }}</li>
+    {% empty %}
+    <li>None.</li>
+    {% endfor %}
+  </ul>
+  <h3>Suggestions</h3>
+  <ul class="card-review__list">
+    {% for label, value in card_review.suggestions %}
+    <li>
+      <strong>{{ label }}</strong>
+      {% if value is None %}
+      <span class="card-review__keep">Keep current value</span>
+      {% else %}
+      <span class="card-review__suggestion">{{ value }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</aside>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,86 @@
+#content.colMS {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  column-gap: 1.5rem;
+  align-items: start;
+}
+
+#content.colMS .titles-and-tools {
+  grid-column: 1 / -1;
+}
+
+#content.colMS #content-main {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.card-review {
+  grid-column: 2;
+  grid-row: 2;
+  position: sticky;
+  top: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  background: var(--darkened-bg, var(--body-bg, #fff));
+  color: var(--body-fg, #333);
+}
+
+.card-review h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.card-review h3 {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 0.875rem;
+}
+
+.card-review__notice,
+.card-review__error {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.card-review__notice,
+.card-review__keep {
+  color: var(--body-quiet-color, #666);
+}
+
+.card-review__error {
+  color: var(--error-fg, #ba2121);
+}
+
+.card-review__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+}
+
+.card-review__list li {
+  margin-bottom: 0.65rem;
+}
+
+.card-review__keep,
+.card-review__suggestion {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.card-review__suggestion {
+  word-break: break-word;
+  white-space: pre-wrap;
+  user-select: all;
+}
+
+@media (max-width: 1024px) {
+  #content.colMS {
+    display: block;
+  }
+
+  .card-review {
+    position: static;
+    margin: 1rem 0;
+  }
+}

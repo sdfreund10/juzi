@@ -6,10 +6,19 @@ from django.contrib.auth.forms import (
 )
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.utils.text import capfirst
 
 from api.services.accounts import apply_login_email
+from api.services.card_review import SUGGESTION_FIELDS, CardReviewFailed, review_card
 
 from .models import Category, Learner, UserWord, Word, WordCategory
+
+VERDICT_LABELS = {
+    "no_clear_issue": "No clear issue",
+    "issues_found": "Issues found",
+    "remove": "Remove card",
+    "needs_human_review": "Needs human review",
+}
 
 
 class FlagStatusFilter(admin.SimpleListFilter):
@@ -123,6 +132,22 @@ class LearnerAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email")
 
 
+def card_review_context(word: Word) -> dict:
+    try:
+        review = review_card(word)
+    except CardReviewFailed as exc:
+        return {"error": str(exc)}
+    return {
+        "verdict": VERDICT_LABELS[review["verdict"]],
+        "recommends_removal": review["verdict"] == "remove",
+        "findings": review["findings"],
+        "suggestions": [
+            (capfirst(Word._meta.get_field(name).verbose_name), review["suggestions"][name])
+            for name in SUGGESTION_FIELDS
+        ],
+    }
+
+
 @admin.register(Word)
 class WordAdmin(admin.ModelAdmin):
     list_display = ("chinese", "pinyin", "english_basic", "hsk_level", "flagged_by")
@@ -131,6 +156,10 @@ class WordAdmin(admin.ModelAdmin):
     list_select_related = ("flagged_by",)
     search_fields = ("chinese", "simplified", "pinyin", "english_basic")
     readonly_fields = ("reporter", "archived_at")
+
+    class Media:
+        css = {"all": ("admin/css/card_review.css",)}
+
     fieldsets = (
         (
             "Vocabulary",
@@ -171,6 +200,15 @@ class WordAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        if obj and self.has_change_permission(request, obj):
+            query = request.GET.copy()
+            query["include_analysis"] = "true"
+            context["analyze_url"] = f"?{query.urlencode()}"
+            if request.method == "GET" and "include_analysis" in request.GET:
+                context["card_review"] = card_review_context(obj)
+        return super().render_change_form(request, context, add, change, form_url, obj)
 
     def save_model(self, request, obj, form, change):
         if change and "_save_and_unflag" in request.POST:

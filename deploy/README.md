@@ -88,10 +88,14 @@ DJANGO_DEBUG=false
 DJANGO_ALLOWED_HOSTS=YOUR_DOMAIN
 CSRF_TRUSTED_ORIGINS=https://YOUR_DOMAIN
 DATABASE_URL='postgres://juzi:choose-a-strong-password@localhost:5432/juzi'
+OPENROUTER_API_KEY=
 EOF
 sudo chown root:juzi /etc/juzi.env
 sudo chmod 640 /etc/juzi.env
 ```
+
+Word admin **Analyze card** reads `OPENROUTER_API_KEY`. Leave it blank to
+disable review.
 
 ### 6. Deploy key and clone
 

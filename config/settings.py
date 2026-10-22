@@ -184,6 +184,10 @@ WHITENOISE_MAX_AGE = 60
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# Word admin card review (OpenRouter). Blank key disables Analyze.
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+
+
 # Scheduling — streak ladder and mode unlock threshold (word-level easy_count)
 
 # Maps minimum easy_streak → days until next due. Highest matching floor wins.
