@@ -147,7 +147,7 @@ def review_card(word: Word) -> dict[str, Any]:
                 "response_format": OUTPUT_SCHEMA,
                 "provider": {"allow_fallbacks": False},
             },
-            timeout=(5, 45),
+            timeout=(5, 20),
         )
     except requests.Timeout as exc:
         raise CardReviewFailed("The review request timed out.") from exc

@@ -95,8 +95,7 @@ sudo chmod 640 /etc/juzi.env
 ```
 
 Word admin **Analyze card** reads `OPENROUTER_API_KEY`. Leave it blank to
-disable review. Gunicorn `--timeout 60` covers the review read timeout
-(45s) plus connect time.
+disable review.
 
 ### 6. Deploy key and clone
 
@@ -204,7 +203,7 @@ sudo usermod -s /bin/bash juzi
 
 | File | Role |
 | --- | --- |
-| `juzi.service` | systemd unit for gunicorn (`--timeout 60`) |
+| `juzi.service` | systemd unit for gunicorn |
 | `nginx-juzi.conf` | HTTP reverse proxy (certbot adds SSL) |
 | `deploy.sh` | pull → sync → migrate → collectstatic → restart (expects `frontend/dist` already present) |
 
