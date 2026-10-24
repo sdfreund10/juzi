@@ -936,13 +936,19 @@ body {
   z-index: 2;
   display: flex;
   align-items: center;
+  align-items: safe center;
   justify-content: center;
+  justify-content: safe center;
   padding: 24px 20px;
   background: color-mix(in srgb, var(--bg) 72%, transparent);
 }
 
 .study-flag-confirm-panel {
   width: min(100%, 320px);
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 20px 18px 16px;
   border-radius: 14px;
   background: var(--bg);
@@ -958,9 +964,17 @@ body {
 
 .study-flag-confirm-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 4px;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 16px;
+}
+
+.study-flag-confirm-actions .study-flag-reason {
+  width: 100%;
+}
+
+.study-flag-confirm-actions .btn.ghost {
+  width: 100%;
 }
 
 .grade-zones {

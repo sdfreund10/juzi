@@ -11,6 +11,12 @@ class WordQuerySet(models.QuerySet):
 class Word(models.Model):
     """Vocabulary entry: traditional Chinese, pinyin with tone marks, and basic English."""
 
+    class FlagReason(models.TextChoices):
+        WRONG_DECK = "wrong_deck", "Wrong deck"
+        BAD_TRANSLATION = "bad_translation", "Bad translation"
+        BAD_EXAMPLE = "bad_example", "Bad example"
+        OTHER = "other", "Other"
+
     chinese = models.CharField(max_length=64)
     simplified = models.CharField(max_length=64, blank=True, default="")
     pinyin = models.CharField(max_length=128)
@@ -26,6 +32,12 @@ class Word(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="flagged_words",
+    )
+    flag_reason = models.CharField(
+        max_length=32,
+        choices=FlagReason.choices,
+        blank=True,
+        default="",
     )
     archived_at = models.DateTimeField(
         null=True,

@@ -126,6 +126,7 @@ def _word_state(word: Word) -> dict[str, object]:
         "example_sentence_pinyin": word.example_sentence_pinyin,
         "example_sentence_english": word.example_sentence_english,
         "flagged_by_id": word.flagged_by_id,
+        "flag_reason": word.flag_reason,
         "archived_at": word.archived_at,
         "category_ids": list(word.categories.order_by("id").values_list("id", flat=True)),
     }

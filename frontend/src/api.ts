@@ -248,11 +248,17 @@ export function undoRating (
   })
 }
 
-export async function flagWord (wordId: number): Promise<void> {
+export type FlagReason =
+  | 'wrong_deck'
+  | 'bad_translation'
+  | 'bad_example'
+  | 'other'
+
+export async function flagWord (wordId: number, reason: FlagReason): Promise<void> {
   try {
     await apiRequest('/api/word-flags/', {
       method: 'POST',
-      body: { word_id: wordId }
+      body: { word_id: wordId, reason }
     })
     showToast('Marked for review')
   } catch (err) {

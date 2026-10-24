@@ -177,21 +177,21 @@ describe('rateCard', () => {
 })
 
 describe('flagWord', () => {
-  it('posts word_id and toasts on success', async () => {
+  it('posts word_id and reason and toasts on success', async () => {
     const toasts: string[] = []
     setToastHandler((toast) => toasts.push(toast))
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {}))
     vi.stubGlobal('fetch', fetchMock)
     document.cookie = 'csrftoken=test-token; path=/'
 
-    await flagWord(42)
+    await flagWord(42, 'bad_example')
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/word-flags/',
       expect.objectContaining({
         method: 'POST',
         credentials: 'same-origin',
-        body: JSON.stringify({ word_id: 42 })
+        body: JSON.stringify({ word_id: 42, reason: 'bad_example' })
       })
     )
     expect(toasts).toEqual(['Marked for review'])
@@ -207,7 +207,7 @@ describe('flagWord', () => {
       jsonResponse(status, { detail: 'Internal API wording' })
     ))
 
-    await expect(flagWord(1)).rejects.toMatchObject({ status })
+    await expect(flagWord(1, 'other')).rejects.toMatchObject({ status })
     expect(toasts).toEqual([message])
   })
 })

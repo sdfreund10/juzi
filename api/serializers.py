@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from api.models import Learner
+from api.models import Learner, Word
 from api.services.difficulty import KNOWN_DIFFICULTIES
 from api.services.scheduling import KNOWN_GRADES
 
@@ -68,3 +68,4 @@ class UndoRatingSerializer(serializers.Serializer):
 
 class FlagWordSerializer(serializers.Serializer):
     word_id = serializers.IntegerField(min_value=1)
+    reason = serializers.ChoiceField(choices=Word.FlagReason.choices)
