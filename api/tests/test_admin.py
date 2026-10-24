@@ -95,6 +95,7 @@ def _seed_words() -> dict[str, Word]:
         english_basic="to love",
         hsk_level=1,
         flagged_by=reporter,
+        flag_reason=Word.FlagReason.BAD_TRANSLATION,
     )
     unflagged = Word.objects.create(
         chinese="書",
@@ -110,6 +111,7 @@ def _seed_words() -> dict[str, Word]:
         english_basic="tea",
         hsk_level=1,
         flagged_by=reporter,
+        flag_reason=Word.FlagReason.WRONG_DECK,
     )
     return {
         "flagged": flagged,
@@ -298,8 +300,12 @@ def test_word_change_form_offers_save_and_unflag_only_when_flagged() -> None:
     unflagged = client.get(reverse("admin:api_word_change", args=[words["unflagged"].pk]))
 
     assert flagged.status_code == 200
-    assert 'name="_save_and_unflag"' in flagged.content.decode()
-    assert words["reporter"].username in flagged.content.decode()
+    flagged_body = flagged.content.decode()
+    assert 'name="_save_and_unflag"' in flagged_body
+    assert words["reporter"].username in flagged_body
+    assert "Reason" in flagged_body
+    assert "Bad translation" in flagged_body
+    assert 'name="flag_reason"' not in flagged_body
 
     assert unflagged.status_code == 200
     assert 'name="_save_and_unflag"' not in unflagged.content.decode()
@@ -331,6 +337,7 @@ def test_ordinary_save_keeps_flag_and_updates_content() -> None:
     word.refresh_from_db()
     assert word.english_basic == "to love deeply"
     assert word.flagged_by_id == words["reporter"].id
+    assert word.flag_reason == Word.FlagReason.BAD_TRANSLATION
 
 
 @pytest.mark.django_db
@@ -353,9 +360,11 @@ def test_save_and_unflag_clears_flag_atomically_with_content() -> None:
     word.refresh_from_db()
     assert word.english_basic == "affection"
     assert word.flagged_by_id is None
+    assert word.flag_reason == ""
     logs = _change_logs_for(word)
     assert logs
     assert any("flagged_by" in entry.change_message for entry in logs)
+    assert any("flag_reason" in entry.change_message for entry in logs)
 
 
 @pytest.mark.django_db
@@ -379,6 +388,7 @@ def test_invalid_save_and_unflag_leaves_content_and_flag_unchanged() -> None:
     word.refresh_from_db()
     assert word.english_basic == original_english
     assert word.flagged_by_id == words["reporter"].id
+    assert word.flag_reason == Word.FlagReason.BAD_TRANSLATION
     assert not _change_logs_for(word)
 
 

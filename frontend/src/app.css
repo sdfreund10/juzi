@@ -958,9 +958,17 @@ body {
 
 .study-flag-confirm-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 4px;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 16px;
+}
+
+.study-flag-confirm-actions .study-flag-reason {
+  width: 100%;
+}
+
+.study-flag-confirm-actions .btn.ghost {
+  width: 100%;
 }
 
 .grade-zones {

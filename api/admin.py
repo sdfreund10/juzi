@@ -150,12 +150,19 @@ def card_review_context(word: Word) -> dict:
 
 @admin.register(Word)
 class WordAdmin(admin.ModelAdmin):
-    list_display = ("chinese", "pinyin", "english_basic", "hsk_level", "flagged_by")
+    list_display = (
+        "chinese",
+        "pinyin",
+        "english_basic",
+        "hsk_level",
+        "flagged_by",
+        "flag_reason",
+    )
     list_display_links = ("chinese",)
     list_filter = (ArchiveStatusFilter, FlagStatusFilter, "flagged_by")
     list_select_related = ("flagged_by",)
     search_fields = ("chinese", "simplified", "pinyin", "english_basic")
-    readonly_fields = ("reporter", "archived_at")
+    readonly_fields = ("reporter", "reason", "archived_at")
 
     class Media:
         css = {"all": ("admin/css/card_review.css",)}
@@ -187,7 +194,7 @@ class WordAdmin(admin.ModelAdmin):
         (
             "Review",
             {
-                "fields": ("reporter", "archived_at"),
+                "fields": ("reporter", "reason", "archived_at"),
             },
         ),
     )
@@ -197,6 +204,12 @@ class WordAdmin(admin.ModelAdmin):
         if obj.flagged_by_id is None:
             return "—"
         return str(obj.flagged_by)
+
+    @admin.display(description="Reason")
+    def reason(self, obj: Word) -> str:
+        if not obj.flag_reason:
+            return "—"
+        return obj.get_flag_reason_display()
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -213,6 +226,7 @@ class WordAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if change and "_save_and_unflag" in request.POST:
             obj.flagged_by = None
+            obj.flag_reason = ""
         if change and "_save_and_archive" in request.POST:
             obj.archived_at = timezone.now()
         if change and "_save_and_restore" in request.POST:
@@ -225,7 +239,7 @@ class WordAdmin(admin.ModelAdmin):
             return change_message
         fields = []
         if "_save_and_unflag" in request.POST:
-            fields.append("flagged_by")
+            fields.extend(["flagged_by", "flag_reason"])
         if "_save_and_archive" in request.POST or "_save_and_restore" in request.POST:
             fields.append("archived_at")
         if fields:

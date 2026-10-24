@@ -367,7 +367,7 @@ def test_flag_word_requires_authentication(
     headers = _csrf_headers(client)
     response = client.post(
         reverse("word-flags-create"),
-        {"word_id": seeded_words["novice"].id},
+        {"word_id": seeded_words["novice"].id, "reason": "wrong_deck"},
         format="json",
         **headers,
     )
@@ -375,7 +375,7 @@ def test_flag_word_requires_authentication(
 
 
 @pytest.mark.django_db
-def test_flag_word_sets_flagged_by(
+def test_flag_word_sets_flagged_by_and_reason(
     client: APIClient,
     user: User,
     seeded_words: dict[str, Word],
@@ -384,7 +384,7 @@ def test_flag_word_sets_flagged_by(
     headers = _login(client, user)
     response = client.post(
         reverse("word-flags-create"),
-        {"word_id": word.id},
+        {"word_id": word.id, "reason": "bad_translation"},
         format="json",
         **headers,
     )
@@ -392,10 +392,11 @@ def test_flag_word_sets_flagged_by(
     assert response.status_code == status.HTTP_200_OK
     word.refresh_from_db()
     assert word.flagged_by_id == user.id
+    assert word.flag_reason == Word.FlagReason.BAD_TRANSLATION
 
 
 @pytest.mark.django_db
-def test_flag_word_keeps_first_reporter(
+def test_flag_word_keeps_first_reporter_and_reason(
     client: APIClient,
     user: User,
     seeded_words: dict[str, Word],
@@ -408,7 +409,7 @@ def test_flag_word_keeps_first_reporter(
     assert (
         client.post(
             reverse("word-flags-create"),
-            {"word_id": word.id},
+            {"word_id": word.id, "reason": "wrong_deck"},
             format="json",
             **headers,
         ).status_code
@@ -418,7 +419,7 @@ def test_flag_word_keeps_first_reporter(
     headers = _login(client, second, password="s3cret-bob")
     response = client.post(
         reverse("word-flags-create"),
-        {"word_id": word.id},
+        {"word_id": word.id, "reason": "other"},
         format="json",
         **headers,
     )
@@ -426,6 +427,28 @@ def test_flag_word_keeps_first_reporter(
     assert response.status_code == status.HTTP_200_OK
     word.refresh_from_db()
     assert word.flagged_by_id == first.id
+    assert word.flag_reason == Word.FlagReason.WRONG_DECK
+
+
+@pytest.mark.django_db
+def test_flag_word_rejects_invalid_reason(
+    client: APIClient,
+    user: User,
+    seeded_words: dict[str, Word],
+) -> None:
+    word = seeded_words["novice"]
+    headers = _login(client, user)
+    response = client.post(
+        reverse("word-flags-create"),
+        {"word_id": word.id, "reason": "typo"},
+        format="json",
+        **headers,
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    word.refresh_from_db()
+    assert word.flagged_by_id is None
+    assert word.flag_reason == ""
 
 
 @pytest.mark.django_db
@@ -436,7 +459,7 @@ def test_flag_word_missing_word(
     headers = _login(client, user)
     response = client.post(
         reverse("word-flags-create"),
-        {"word_id": 999_999},
+        {"word_id": 999_999, "reason": "other"},
         format="json",
         **headers,
     )

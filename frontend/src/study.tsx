@@ -5,8 +5,16 @@ import {
   createSession,
   flagWord,
   type Difficulty,
+  type FlagReason,
   type StudySession
 } from './api'
+
+const FLAG_REASONS: { value: FlagReason, label: string }[] = [
+  { value: 'wrong_deck', label: 'Wrong deck' },
+  { value: 'bad_translation', label: 'Bad translation' },
+  { value: 'bad_example', label: 'Bad example' },
+  { value: 'other', label: 'Other' }
+]
 import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
 import { navigate } from './routes'
@@ -149,11 +157,11 @@ function StudySessionView ({ session }: { session: StudySession }) {
     setConfirmFlag(true)
   }
 
-  function onConfirmFlag () {
+  function onConfirmFlag (reason: FlagReason) {
     if (!card || flagged || undoing) return
     const wordId = card.word_id
     setConfirmFlag(false)
-    flagWord(wordId)
+    flagWord(wordId, reason)
       .then(() => setFlagged(true))
       .catch(() => {
         // flagWord shows the failure toast.
@@ -304,23 +312,27 @@ function StudySessionView ({ session }: { session: StudySession }) {
                         class='study-flag-confirm study-flag-enter'
                         role='dialog'
                         aria-modal='true'
-                        aria-describedby='flag-confirm-copy'
+                        aria-labelledby='flag-confirm-copy'
                       >
                         <div class='study-flag-confirm-panel'>
-                          <p id='flag-confirm-copy'>
-                            This will notify the team there may be a problem with this
-                            study card.
-                          </p>
+                          <p id='flag-confirm-copy'>What's wrong with this card?</p>
                           <div class='study-flag-confirm-actions'>
+                            {FLAG_REASONS.map(({ value, label }) => (
+                              <button
+                                key={value}
+                                type='button'
+                                class='btn study-flag-reason'
+                                onClick={() => onConfirmFlag(value)}
+                              >
+                                {label}
+                              </button>
+                            ))}
                             <button
                               type='button'
                               class='btn ghost'
                               onClick={() => setConfirmFlag(false)}
                             >
                               Cancel
-                            </button>
-                            <button type='button' class='btn' onClick={onConfirmFlag}>
-                              Flag
                             </button>
                           </div>
                         </div>
