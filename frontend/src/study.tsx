@@ -8,13 +8,6 @@ import {
   type FlagReason,
   type StudySession
 } from './api'
-
-const FLAG_REASONS: { value: FlagReason, label: string }[] = [
-  { value: 'wrong_deck', label: 'Wrong deck' },
-  { value: 'bad_translation', label: 'Bad translation' },
-  { value: 'bad_example', label: 'Bad example' },
-  { value: 'other', label: 'Other' }
-]
 import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
 import { navigate } from './routes'
@@ -28,6 +21,13 @@ import {
 import { StudyProgress } from './studyProgress'
 import { useCategory } from './useCategories'
 import { useGrading } from './useGrading'
+
+const FLAG_REASONS: { value: FlagReason, label: string }[] = [
+  { value: 'wrong_deck', label: 'Wrong deck' },
+  { value: 'bad_translation', label: 'Bad translation' },
+  { value: 'bad_example', label: 'Bad example' },
+  { value: 'other', label: 'Other' }
+]
 
 type StudyProps = {
   categoryId: number
