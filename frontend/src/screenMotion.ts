@@ -43,13 +43,14 @@ export function screenMotion (
 ): ScreenMotionKind {
   if (options.skipStack || from === null) return 'none'
   if (
-    from.name === 'session' ||
-    to.name === 'session' ||
     from.name === 'card' ||
     to.name === 'card' ||
     from.name === 'card-lookup' ||
     to.name === 'card-lookup'
   ) {
+    return 'none'
+  }
+  if (from.name === 'session' || to.name === 'session') {
     return 'fade'
   }
   const fromDepth = routeDepth(from)

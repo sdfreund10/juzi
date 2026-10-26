@@ -2,7 +2,11 @@ import { useEffect, useState } from 'preact/hooks'
 import { parsePath, pathFor, type Route } from './routes'
 
 function readRoute (): Route {
-  return parsePath(window.location.pathname)
+  return parsePath(window.location.pathname, window.location.search)
+}
+
+function currentLocation (): string {
+  return `${window.location.pathname}${window.location.search}`
 }
 
 export function useRoute (): Route {
@@ -18,7 +22,7 @@ export function useRoute (): Route {
 
   useEffect(() => {
     const canonical = pathFor(route)
-    if (canonical !== window.location.pathname) {
+    if (canonical !== currentLocation()) {
       window.history.replaceState(null, '', canonical)
     }
   }, [route])

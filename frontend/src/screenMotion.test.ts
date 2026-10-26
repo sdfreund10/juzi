@@ -67,9 +67,13 @@ describe('screenMotion', () => {
     expect(screenMotion(home, session)).toBe('fade')
     expect(screenMotion(session, home)).toBe('fade')
     expect(screenMotion(session, sessionNew)).toBe('fade')
-    expect(screenMotion(home, card)).toBe('fade')
-    expect(screenMotion(card, home)).toBe('fade')
-    expect(screenMotion(home, cardLookup)).toBe('fade')
+  })
+
+  it('skips motion for audit card routes', () => {
+    expect(screenMotion(home, card)).toBe('none')
+    expect(screenMotion(card, home)).toBe('none')
+    expect(screenMotion(home, cardLookup)).toBe('none')
+    expect(screenMotion(card, cardLookup)).toBe('none')
   })
 
   it('stays still across same-depth stack screens', () => {
