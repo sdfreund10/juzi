@@ -57,4 +57,58 @@ describe('parsePath / pathFor', () => {
     expect(parsePath('/nope')).toEqual({ name: 'home' })
     expect(parsePath('/category/abc/sessions/new')).toEqual({ name: 'home' })
   })
+
+  it('parses card by id with mode query', () => {
+    expect(parsePath('/cards/4821', '?mode=zh_to_en')).toEqual({
+      name: 'card',
+      mode: 'zh_to_en',
+      wordId: 4821
+    })
+    expect(pathFor({ name: 'card', mode: 'zh_to_en', wordId: 4821 })).toBe(
+      '/cards/4821?mode=zh_to_en'
+    )
+  })
+
+  it('defaults card mode to pinyin_to_en when omitted', () => {
+    expect(parsePath('/cards/4821')).toEqual({
+      name: 'card',
+      mode: 'pinyin_to_en',
+      wordId: 4821
+    })
+    expect(parsePath('/cards/4821', '?')).toEqual({
+      name: 'card',
+      mode: 'pinyin_to_en',
+      wordId: 4821
+    })
+  })
+
+  it('parses card character lookup with mode query', () => {
+    expect(parsePath('/cards/的', '?mode=en_to_zh')).toEqual({
+      name: 'card-lookup',
+      mode: 'en_to_zh',
+      chinese: '的'
+    })
+    expect(parsePath('/cards/%E7%9A%84', '?mode=en_to_zh')).toEqual({
+      name: 'card-lookup',
+      mode: 'en_to_zh',
+      chinese: '的'
+    })
+    expect(
+      pathFor({ name: 'card-lookup', mode: 'en_to_zh', chinese: '的' })
+    ).toBe('/cards/的?mode=en_to_zh')
+  })
+
+  it('rejects unknown card modes', () => {
+    expect(parsePath('/cards/4821', '?mode=latin_to_zh')).toEqual({
+      name: 'home'
+    })
+    expect(parsePath('/cards/的', '?mode=latin_to_zh')).toEqual({
+      name: 'home'
+    })
+  })
+
+  it('rejects the old mode-in-path card URLs', () => {
+    expect(parsePath('/cards/zh_to_en/4821')).toEqual({ name: 'home' })
+    expect(parsePath('/cards/en_to_zh/的')).toEqual({ name: 'home' })
+  })
 })

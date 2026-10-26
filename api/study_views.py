@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import unicodedata
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -81,6 +83,18 @@ def _user_word_payload(user_word: UserWord) -> dict:
                 user_word.last_practiced_at.isoformat() if user_word.last_practiced_at else None
             ),
         },
+    }
+
+
+def _word_payload(word: Word) -> dict:
+    return {
+        "id": word.id,
+        "chinese": word.chinese,
+        "pinyin": word.pinyin,
+        "english_basic": word.english_basic,
+        "example_chinese": word.example_sentence_traditional,
+        "example_pinyin": word.example_sentence_pinyin,
+        "example_english": word.example_sentence_english,
     }
 
 
@@ -188,3 +202,37 @@ def flag_word(request: Request) -> Response:
         word.save(update_fields=["flagged_by", "flag_reason"])
 
     return Response({}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def words(request: Request) -> Response:
+    chinese = request.query_params.get("chinese")
+    if chinese is None:
+        return Response(
+            {"detail": "Query parameter chinese is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    needle = unicodedata.normalize("NFC", chinese.strip())
+    if not needle:
+        return Response(
+            {"detail": "Query parameter chinese is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    matches = Word.objects.filter(chinese=needle).order_by("id")
+    return Response([_word_payload(word) for word in matches])
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def word_detail(request: Request, word_id: int) -> Response:
+    try:
+        word = Word.objects.get(pk=word_id)
+    except Word.DoesNotExist:
+        return Response(
+            {"detail": "Word not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    return Response(_word_payload(word))

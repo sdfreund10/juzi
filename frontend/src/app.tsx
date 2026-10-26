@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'preact/hooks'
 import './app.css'
 import { AuthProvider, useAuth } from './auth'
 import { Brand } from './brand'
+import { CardById, CardLookup } from './cardAudit'
 import { Decks } from './decks'
 import { DifficultyStep } from './difficulty'
 import { Install } from './install'
@@ -67,19 +68,26 @@ function RoutedScreen ({ route }: { route: Route }) {
   }
 
   const motion = motionRef.current
-  const isStudy = route.name === 'session'
+  const isStudy =
+    route.name === 'session' ||
+    route.name === 'card' ||
+    route.name === 'card-lookup'
   let body
   if (route.name === 'proficiency') {
     body = <ProficiencyStep />
   } else if (route.name === 'session-new') {
     body = <DifficultyStep categoryId={route.categoryId} />
-  } else if (isStudy) {
+  } else if (route.name === 'session') {
     body = (
       <Study
         categoryId={route.categoryId}
         difficulties={route.difficulties}
       />
     )
+  } else if (route.name === 'card') {
+    body = <CardById mode={route.mode} wordId={route.wordId} />
+  } else if (route.name === 'card-lookup') {
+    body = <CardLookup mode={route.mode} chinese={route.chinese} />
   } else if (route.name === 'install') {
     body = <Install />
   } else {

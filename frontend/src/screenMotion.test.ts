@@ -11,6 +11,8 @@ const session: Route = {
   categoryId: 3,
   difficulties: ['novice', 'advanced']
 }
+const card: Route = { name: 'card', mode: 'zh_to_en', wordId: 4821 }
+const cardLookup: Route = { name: 'card-lookup', mode: 'zh_to_en', chinese: '的' }
 
 describe('routeDepth', () => {
   it('places home at the root', () => {
@@ -25,6 +27,8 @@ describe('routeDepth', () => {
 
   it('places study deeper than the deck stack', () => {
     expect(routeDepth(session)).toBe(2)
+    expect(routeDepth(card)).toBe(2)
+    expect(routeDepth(cardLookup)).toBe(2)
   })
 })
 
@@ -32,6 +36,11 @@ describe('routeKey', () => {
   it('keys session by category and difficulties', () => {
     expect(routeKey(session)).toBe('session:3:novice-advanced')
     expect(routeKey(sessionNew)).toBe('session-new:3')
+  })
+
+  it('keys card audit routes by mode and id or headword', () => {
+    expect(routeKey(card)).toBe('card:zh_to_en:4821')
+    expect(routeKey(cardLookup)).toBe('card-lookup:zh_to_en:的')
   })
 })
 
@@ -58,6 +67,13 @@ describe('screenMotion', () => {
     expect(screenMotion(home, session)).toBe('fade')
     expect(screenMotion(session, home)).toBe('fade')
     expect(screenMotion(session, sessionNew)).toBe('fade')
+  })
+
+  it('skips motion for audit card routes', () => {
+    expect(screenMotion(home, card)).toBe('none')
+    expect(screenMotion(card, home)).toBe('none')
+    expect(screenMotion(home, cardLookup)).toBe('none')
+    expect(screenMotion(card, cardLookup)).toBe('none')
   })
 
   it('stays still across same-depth stack screens', () => {
