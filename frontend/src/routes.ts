@@ -9,12 +9,20 @@ export const DIFFICULTY_ORDER: Difficulty[] = [
 
 const DIFFICULTY_SET = new Set<string>(DIFFICULTY_ORDER)
 
+export const STUDY_MODES = ['pinyin_to_en', 'en_to_zh', 'zh_to_en'] as const
+
+export type StudyMode = (typeof STUDY_MODES)[number]
+
+const STUDY_MODE_SET = new Set<string>(STUDY_MODES)
+
 export type Route =
   | { name: 'home' }
   | { name: 'install' }
   | { name: 'proficiency' }
   | { name: 'session-new'; categoryId: number }
   | { name: 'session'; categoryId: number; difficulties: Difficulty[] }
+  | { name: 'card'; mode: StudyMode; wordId: number; trailing?: string }
+  | { name: 'card-lookup'; mode: StudyMode; chinese: string }
 
 export function serializeDifficulties (difficulties: Difficulty[]): string {
   return DIFFICULTY_ORDER.filter((id) => difficulties.includes(id)).join('-')
@@ -32,11 +40,49 @@ export function parseDifficulties (slug: string): Difficulty[] | null {
   return DIFFICULTY_ORDER.filter((id) => seen.has(id))
 }
 
+function parseStudyMode (value: string): StudyMode | null {
+  if (!STUDY_MODE_SET.has(value)) return null
+  return value as StudyMode
+}
+
+function parseCardPath (path: string): Route | null {
+  const match = path.match(/^\/cards\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/)
+  if (!match) return null
+
+  const mode = parseStudyMode(match[1])
+  if (!mode) return null
+
+  const key = match[2]
+  const trailing = match[3]
+  if (/^\d+$/.test(key)) {
+    const wordId = Number(key)
+    if (!Number.isInteger(wordId) || wordId < 1) return null
+    if (trailing !== undefined) {
+      return { name: 'card', mode, wordId, trailing }
+    }
+    return { name: 'card', mode, wordId }
+  }
+
+  if (trailing !== undefined) return null
+  return { name: 'card-lookup', mode, chinese: key }
+}
+
+function decodePathname (pathname: string): string {
+  try {
+    return decodeURIComponent(pathname)
+  } catch {
+    return pathname
+  }
+}
+
 export function parsePath (pathname: string): Route {
-  const path = pathname.replace(/\/+$/, '') || '/'
+  const path = decodePathname(pathname).replace(/\/+$/, '') || '/'
   if (path === '/') return { name: 'home' }
   if (path === '/install') return { name: 'install' }
   if (path === '/proficiency') return { name: 'proficiency' }
+
+  const card = parseCardPath(path)
+  if (card) return card
 
   const match = path.match(/^\/category\/(\d+)\/sessions\/([^/]+)$/)
   if (!match) return { name: 'home' }
@@ -67,6 +113,12 @@ export function pathFor (route: Route): string {
       return `/category/${route.categoryId}/sessions/new`
     case 'session':
       return `/category/${route.categoryId}/sessions/${serializeDifficulties(route.difficulties)}`
+    case 'card':
+      return route.trailing === undefined
+        ? `/cards/${route.mode}/${route.wordId}`
+        : `/cards/${route.mode}/${route.wordId}/${route.trailing}`
+    case 'card-lookup':
+      return `/cards/${route.mode}/${route.chinese}`
   }
 }
 

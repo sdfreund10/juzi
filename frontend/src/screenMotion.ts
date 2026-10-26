@@ -11,6 +11,8 @@ export function routeDepth (route: Route): number {
     case 'session-new':
       return 1
     case 'session':
+    case 'card':
+    case 'card-lookup':
       return 2
   }
 }
@@ -27,6 +29,10 @@ export function routeKey (route: Route): string {
       return `session-new:${route.categoryId}`
     case 'session':
       return `session:${route.categoryId}:${serializeDifficulties(route.difficulties)}`
+    case 'card':
+      return `card:${route.mode}:${route.wordId}`
+    case 'card-lookup':
+      return `card-lookup:${route.mode}:${route.chinese}`
   }
 }
 
@@ -36,7 +42,16 @@ export function screenMotion (
   options: { skipStack?: boolean } = {}
 ): ScreenMotionKind {
   if (options.skipStack || from === null) return 'none'
-  if (from.name === 'session' || to.name === 'session') return 'fade'
+  if (
+    from.name === 'session' ||
+    to.name === 'session' ||
+    from.name === 'card' ||
+    to.name === 'card' ||
+    from.name === 'card-lookup' ||
+    to.name === 'card-lookup'
+  ) {
+    return 'fade'
+  }
   const fromDepth = routeDepth(from)
   const toDepth = routeDepth(to)
   if (toDepth > fromDepth) return 'forward'

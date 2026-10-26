@@ -194,6 +194,25 @@ export type StudyCard = {
   progress: CardProgress
 }
 
+export type WordDetail = {
+  id: number
+  chinese: string
+  pinyin: string
+  english_basic: string
+  example_chinese: string
+  example_pinyin: string
+  example_english: string
+}
+
+export function fetchWord (wordId: number): Promise<WordDetail> {
+  return apiRequest<WordDetail>(`/api/words/${wordId}/`)
+}
+
+export function lookupWords (chinese: string): Promise<WordDetail[]> {
+  const params = new URLSearchParams({ chinese })
+  return apiRequest<WordDetail[]>(`/api/words/?${params.toString()}`)
+}
+
 export type StudySession = {
   category: { id: number; name: string }
   difficulties: Difficulty[]
