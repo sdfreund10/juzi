@@ -1,4 +1,10 @@
+import { useLayoutEffect, useRef } from 'preact/hooks'
+import type { StudyCard } from './api'
+import { brandMarkSrc } from './brandMark.ts'
+import { navigate } from './routes'
 import {
+  cardPrompt,
+  cardReveal,
   highlightHeadword,
   type DisplayBlock,
   type DisplayLine
@@ -85,6 +91,87 @@ export function DisplayBlocks ({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+export function StudyTopBar ({ title }: { title: string }) {
+  return (
+    <div class='study-top-bar'>
+      <p class='study-category'>
+        <img
+          class='brand-mark study-mark'
+          src={brandMarkSrc}
+          alt=''
+          width='22'
+          height='22'
+        />
+        <span class='study-category-name'>{title}</span>
+      </p>
+      <button
+        type='button'
+        class='text-btn study-close'
+        aria-label='Exit'
+        onClick={() => navigate({ name: 'home' })}
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+export function StudyCardFace ({
+  card,
+  revealed,
+  onReveal,
+  faceKey
+}: {
+  card: StudyCard
+  revealed: boolean
+  onReveal: () => void
+  faceKey: string | number
+}) {
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0
+  }, [faceKey, revealed])
+
+  return (
+    <div
+      class={`study-body study-card-enter${revealed ? '' : ' reveal-target'}`}
+      ref={bodyRef}
+      role={revealed ? 'region' : 'button'}
+      aria-label={revealed ? 'Study card' : undefined}
+      tabIndex={0}
+      onClick={revealed ? undefined : onReveal}
+      onKeyDown={
+        revealed
+          ? undefined
+          : (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onReveal()
+              }
+            }
+      }
+    >
+      <DisplayBlocks
+        blocks={cardPrompt(card)}
+        face='prompt'
+        headword={card.answer_chinese}
+      />
+      {revealed
+        ? (
+          <DisplayBlocks
+            blocks={cardReveal(card)}
+            face='answer'
+            headword={card.answer_chinese}
+          />
+          )
+        : (
+          <p class='hint'>Tap anywhere to reveal</p>
+          )}
     </div>
   )
 }

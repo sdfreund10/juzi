@@ -1,28 +1,22 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
 import { finishSessionTiming, startSessionTiming, withSessionTiming } from './monitoring'
 import {
   ApiError,
   createSession,
-  flagWord,
   type Difficulty,
-  type FlagReason,
   type StudySession
 } from './api'
-import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
 import { navigate } from './routes'
-import { cardPrompt, cardReveal } from './studyCard'
-import { DisplayBlocks } from './studyDisplay'
+import { StudyCardFace, StudyTopBar } from './studyDisplay'
+import {
+  FlagActionButton,
+  FlagConfirmDialog,
+  useCardFlag
+} from './studyFlag'
 import { StudyProgress } from './studyProgress'
 import { useCategory } from './useCategories'
 import { useGrading } from './useGrading'
-
-const FLAG_REASONS: { value: FlagReason, label: string }[] = [
-  { value: 'wrong_deck', label: 'Wrong deck' },
-  { value: 'bad_translation', label: 'Bad translation' },
-  { value: 'bad_example', label: 'Bad example' },
-  { value: 'other', label: 'Other' }
-]
 
 type StudyProps = {
   categoryId: number
@@ -31,77 +25,37 @@ type StudyProps = {
 
 function StudySessionView ({ session }: { session: StudySession }) {
   const [revealed, setRevealed] = useState(false)
-  const [flagged, setFlagged] = useState(false)
-  const [confirmFlag, setConfirmFlag] = useState(false)
   const { queue, progress, canUndo, undoing, grade, undo } = useGrading(session.cards)
-  const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
   const done = !card
-
-  useLayoutEffect(() => {
-    if (bodyRef.current) bodyRef.current.scrollTop = 0
-  }, [card, revealed])
-
-  useEffect(() => {
-    setFlagged(false)
-    setConfirmFlag(false)
-  }, [card?.word_id])
+  const {
+    flagged,
+    confirmFlag,
+    requestFlag,
+    confirmReason,
+    cancelFlag
+  } = useCardFlag(card?.word_id ?? null)
 
   function onGrade (hard: boolean) {
     if (!card || !revealed || undoing) return
     grade(card, hard)
     setRevealed(false)
-    setConfirmFlag(false)
+    cancelFlag()
   }
 
   async function onUndo () {
-    setConfirmFlag(false)
+    cancelFlag()
     if (await undo()) {
       setRevealed(true)
     }
-  }
-
-  function onFlag () {
-    if (!card || flagged || undoing) return
-    setConfirmFlag(true)
-  }
-
-  function onConfirmFlag (reason: FlagReason) {
-    if (!card || flagged || undoing) return
-    const wordId = card.word_id
-    setConfirmFlag(false)
-    flagWord(wordId, reason)
-      .then(() => setFlagged(true))
-      .catch(() => {
-        // flagWord shows the failure toast.
-      })
   }
 
   return (
     <div class={`study-shell${revealed && !done ? ' revealed' : ''}`}>
       <div class='study-top'>
         <StudyProgress total={session.total} progress={progress} />
-        <div class='study-top-bar'>
-          <p class='study-category'>
-            <img
-              class='brand-mark study-mark'
-              src={brandMarkSrc}
-              alt=''
-              width='22'
-              height='22'
-            />
-            <span class='study-category-name'>{session.category.name}</span>
-          </p>
-          <button
-            type='button'
-            class='text-btn study-close'
-            aria-label='Exit'
-            onClick={() => navigate({ name: 'home' })}
-          >
-            ×
-          </button>
-        </div>
+        <StudyTopBar title={session.category.name} />
       </div>
 
       <div class='study-actions' role='group' aria-label='Card actions'>
@@ -129,22 +83,11 @@ function StudySessionView ({ session }: { session: StudySession }) {
         </button>
         {revealed && !done
           ? (
-            <button
-              type='button'
-              class='study-action study-flag'
-              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
-              aria-pressed={flagged}
-              disabled={flagged || undoing}
-              onClick={onFlag}
-            >
-              <img
-                class='study-flag-icon'
-                src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
-                alt=''
-                width='14'
-                height='14'
-              />
-            </button>
+            <FlagActionButton
+              flagged={flagged}
+              disabled={undoing}
+              onClick={() => requestFlag({ disabled: undoing })}
+            />
             )
           : null}
       </div>
@@ -157,42 +100,13 @@ function StudySessionView ({ session }: { session: StudySession }) {
           )
         : (
           <>
-            <div
+            <StudyCardFace
               key={card.word_id}
-              class={`study-body study-card-enter${revealed ? '' : ' reveal-target'}`}
-              ref={bodyRef}
-              role={revealed ? 'region' : 'button'}
-              aria-label={revealed ? 'Study card' : undefined}
-              tabIndex={0}
-              onClick={revealed ? undefined : () => setRevealed(true)}
-              onKeyDown={
-                revealed
-                  ? undefined
-                  : (event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        setRevealed(true)
-                      }
-                    }
-              }
-            >
-              <DisplayBlocks
-                blocks={cardPrompt(card)}
-                face='prompt'
-                headword={card.answer_chinese}
-              />
-              {revealed
-                ? (
-                  <DisplayBlocks
-                    blocks={cardReveal(card)}
-                    face='answer'
-                    headword={card.answer_chinese}
-                  />
-                  )
-                : (
-                  <p class='hint'>Tap anywhere to reveal</p>
-                  )}
-            </div>
+              card={card}
+              revealed={revealed}
+              onReveal={() => setRevealed(true)}
+              faceKey={card.word_id}
+            />
             {revealed
               ? (
                 <>
@@ -218,35 +132,11 @@ function StudySessionView ({ session }: { session: StudySession }) {
                   </div>
                   {confirmFlag
                     ? (
-                      <div
-                        class='study-flag-confirm study-flag-enter'
-                        role='dialog'
-                        aria-modal='true'
-                        aria-labelledby='flag-confirm-copy'
-                      >
-                        <div class='study-flag-confirm-panel'>
-                          <p id='flag-confirm-copy'>What's wrong with this card?</p>
-                          <div class='study-flag-confirm-actions'>
-                            {FLAG_REASONS.map(({ value, label }) => (
-                              <button
-                                key={value}
-                                type='button'
-                                class='btn study-flag-reason'
-                                onClick={() => onConfirmFlag(value)}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                            <button
-                              type='button'
-                              class='btn ghost'
-                              onClick={() => setConfirmFlag(false)}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      <FlagConfirmDialog
+                        onConfirm={(reason) =>
+                          confirmReason(reason, { disabled: undoing })}
+                        onCancel={cancelFlag}
+                      />
                       )
                     : null}
                 </>

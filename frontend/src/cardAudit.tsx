@@ -1,31 +1,25 @@
 import { type ComponentChildren } from 'preact'
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import {
   ApiError,
   fetchWord,
-  flagWord,
   lookupWords,
-  type FlagReason,
   type StudyCard,
   type WordDetail
 } from './api'
-import { brandMarkSrc } from './brandMark.ts'
 import { navigate, STUDY_MODES, type StudyMode } from './routes'
-import { cardPrompt, cardReveal } from './studyCard'
-import { DisplayBlocks } from './studyDisplay'
+import { StudyCardFace, StudyTopBar } from './studyDisplay'
+import {
+  FlagActionButton,
+  FlagConfirmDialog,
+  useCardFlag
+} from './studyFlag'
 
 const MODE_LABELS: Record<StudyMode, string> = {
   pinyin_to_en: 'Pinyin to English',
   en_to_zh: 'English to Chinese',
   zh_to_en: 'Chinese to English'
 }
-
-const FLAG_REASONS: { value: FlagReason, label: string }[] = [
-  { value: 'wrong_deck', label: 'Wrong deck' },
-  { value: 'bad_translation', label: 'Bad translation' },
-  { value: 'bad_example', label: 'Bad example' },
-  { value: 'other', label: 'Other' }
-]
 
 const EMPTY_PROGRESS = {
   easy_streak: 0,
@@ -58,26 +52,7 @@ function AuditChrome ({
   return (
     <div class='study-shell audit-shell'>
       <div class='study-top'>
-        <div class='study-top-bar'>
-          <p class='study-category'>
-            <img
-              class='brand-mark study-mark'
-              src={brandMarkSrc}
-              alt=''
-              width='22'
-              height='22'
-            />
-            <span class='study-category-name'>{title}</span>
-          </p>
-          <button
-            type='button'
-            class='text-btn study-close'
-            aria-label='Exit'
-            onClick={() => navigate({ name: 'home' })}
-          >
-            ×
-          </button>
-        </div>
+        <StudyTopBar title={title} />
       </div>
       {children}
     </div>
@@ -107,35 +82,18 @@ function ModeSwitcher ({ mode, wordId }: { mode: StudyMode; wordId: number }) {
 
 function AuditCardView ({ word, mode }: { word: WordDetail; mode: StudyMode }) {
   const [revealed, setRevealed] = useState(false)
-  const [flagged, setFlagged] = useState(false)
-  const [confirmFlag, setConfirmFlag] = useState(false)
-  const bodyRef = useRef<HTMLDivElement>(null)
   const card = studyCardFromWord(word, mode)
-
-  useLayoutEffect(() => {
-    if (bodyRef.current) bodyRef.current.scrollTop = 0
-  }, [word.id, mode, revealed])
+  const {
+    flagged,
+    confirmFlag,
+    requestFlag,
+    confirmReason,
+    cancelFlag
+  } = useCardFlag(word.id)
 
   useEffect(() => {
     setRevealed(false)
-    setFlagged(false)
-    setConfirmFlag(false)
   }, [word.id, mode])
-
-  function onFlag () {
-    if (flagged) return
-    setConfirmFlag(true)
-  }
-
-  function onConfirmFlag (reason: FlagReason) {
-    if (flagged) return
-    setConfirmFlag(false)
-    flagWord(word.id, reason)
-      .then(() => setFlagged(true))
-      .catch(() => {
-        // flagWord shows the failure toast.
-      })
-  }
 
   return (
     <AuditChrome title={`Card ${word.id}`}>
@@ -143,92 +101,26 @@ function AuditCardView ({ word, mode }: { word: WordDetail; mode: StudyMode }) {
       <div class='study-actions' role='group' aria-label='Card actions'>
         {revealed
           ? (
-            <button
-              type='button'
-              class='study-action study-flag'
-              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
-              aria-pressed={flagged}
-              disabled={flagged}
-              onClick={onFlag}
-            >
-              <img
-                class='study-flag-icon'
-                src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
-                alt=''
-                width='14'
-                height='14'
-              />
-            </button>
+            <FlagActionButton
+              flagged={flagged}
+              onClick={() => requestFlag()}
+            />
             )
           : null}
       </div>
-      <div
+      <StudyCardFace
         key={`${word.id}-${mode}`}
-        class={`study-body study-card-enter${revealed ? '' : ' reveal-target'}`}
-        ref={bodyRef}
-        role={revealed ? 'region' : 'button'}
-        aria-label={revealed ? 'Study card' : undefined}
-        tabIndex={0}
-        onClick={revealed ? undefined : () => setRevealed(true)}
-        onKeyDown={
-          revealed
-            ? undefined
-            : (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  setRevealed(true)
-                }
-              }
-        }
-      >
-        <DisplayBlocks
-          blocks={cardPrompt(card)}
-          face='prompt'
-          headword={card.answer_chinese}
-        />
-        {revealed
-          ? (
-            <DisplayBlocks
-              blocks={cardReveal(card)}
-              face='answer'
-              headword={card.answer_chinese}
-            />
-            )
-          : (
-            <p class='hint'>Tap anywhere to reveal</p>
-            )}
-      </div>
+        card={card}
+        revealed={revealed}
+        onReveal={() => setRevealed(true)}
+        faceKey={`${word.id}-${mode}`}
+      />
       {revealed && confirmFlag
         ? (
-          <div
-            class='study-flag-confirm study-flag-enter'
-            role='dialog'
-            aria-modal='true'
-            aria-labelledby='flag-confirm-copy'
-          >
-            <div class='study-flag-confirm-panel'>
-              <p id='flag-confirm-copy'>What's wrong with this card?</p>
-              <div class='study-flag-confirm-actions'>
-                {FLAG_REASONS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type='button'
-                    class='btn study-flag-reason'
-                    onClick={() => onConfirmFlag(value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-                <button
-                  type='button'
-                  class='btn ghost'
-                  onClick={() => setConfirmFlag(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
+          <FlagConfirmDialog
+            onConfirm={confirmReason}
+            onCancel={cancelFlag}
+          />
           )
         : null}
     </AuditChrome>
@@ -250,16 +142,16 @@ function MatchList ({
         {matches.length} readings for this headword. Pick one.
       </p>
       <ul class='audit-matches'>
-        {matches.map((word) => (
-          <li key={word.id}>
+        {matches.map((match) => (
+          <li key={match.id}>
             <button
               type='button'
               class='audit-match'
-              onClick={() => navigate({ name: 'card', mode, wordId: word.id })}
+              onClick={() => navigate({ name: 'card', mode, wordId: match.id })}
             >
-              <span class='audit-match-pinyin'>{word.pinyin}</span>
-              <span class='audit-match-english'>{word.english_basic}</span>
-              <span class='audit-match-id'>#{word.id}</span>
+              <span class='audit-match-pinyin'>{match.pinyin}</span>
+              <span class='audit-match-english'>{match.english_basic}</span>
+              <span class='audit-match-id'>#{match.id}</span>
             </button>
           </li>
         ))}
