@@ -1,18 +1,30 @@
 import { useEffect, useState } from 'preact/hooks'
 import { ApiError, fetchCategories, type Category } from './api'
 import { useAuth } from './auth'
+import { startOfflinePrefetch, stopOfflinePrefetch } from './offlinePrefetch'
+import {
+  readOfflineCategories,
+  writeOfflineCategories
+} from './offlineStore'
 
 export function useCategories (): {
   categories: Category[] | null
   error: string | null
   } {
-  const { user, clearUser } = useAuth()
+  const { user, offline, clearUser } = useAuth()
   const [categories, setCategories] = useState<Category[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
       setCategories(null)
+      setError(null)
+      stopOfflinePrefetch()
+      return
+    }
+
+    if (offline) {
+      setCategories(readOfflineCategories())
       setError(null)
       return
     }
@@ -22,14 +34,21 @@ export function useCategories (): {
     async function load () {
       try {
         const rows = await fetchCategories()
-        if (!cancelled) {
-          setCategories(rows)
-          setError(null)
-        }
+        if (cancelled) return
+        writeOfflineCategories(rows)
+        setCategories(rows)
+        setError(null)
+        startOfflinePrefetch(rows, user!.proficiency_level)
       } catch (err) {
         if (cancelled) return
         if (err instanceof ApiError && err.status === 401) {
           clearUser()
+          return
+        }
+        const cached = readOfflineCategories()
+        if (cached) {
+          setCategories(cached)
+          setError(null)
           return
         }
         setError('Could not load decks. Try again.')
@@ -41,7 +60,7 @@ export function useCategories (): {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, offline])
 
   return { categories, error }
 }

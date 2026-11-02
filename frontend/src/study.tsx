@@ -8,8 +8,14 @@ import {
   type FlagReason,
   type StudySession
 } from './api'
+import { useAuth } from './auth'
 import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
+import {
+  beginLearnerSessionBuild,
+  endLearnerSessionBuild
+} from './offlinePrefetch'
+import { cacheOfflineDeck, findOfflineDeck } from './offlineStore'
 import { navigate } from './routes'
 import {
   cardPrompt,
@@ -119,11 +125,20 @@ function DisplayBlocks ({
   )
 }
 
-function StudySessionView ({ session }: { session: StudySession }) {
+function StudySessionView ({
+  session,
+  offline
+}: {
+  session: StudySession
+  offline: boolean
+}) {
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
-  const { queue, progress, canUndo, undoing, grade, undo } = useGrading(session.cards)
+  const { queue, progress, canUndo, undoing, grade, undo } = useGrading(
+    session.cards,
+    !offline
+  )
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
@@ -153,12 +168,12 @@ function StudySessionView ({ session }: { session: StudySession }) {
   }
 
   function onFlag () {
-    if (!card || flagged || undoing) return
+    if (offline || !card || flagged || undoing) return
     setConfirmFlag(true)
   }
 
   function onConfirmFlag (reason: FlagReason) {
-    if (!card || flagged || undoing) return
+    if (offline || !card || flagged || undoing) return
     const wordId = card.word_id
     setConfirmFlag(false)
     flagWord(wordId, reason)
@@ -219,14 +234,14 @@ function StudySessionView ({ session }: { session: StudySession }) {
         </button>
         {revealed && !done
           ? (
-            <button
-              type='button'
-              class='study-action study-flag'
-              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
-              aria-pressed={flagged}
-              disabled={flagged || undoing}
-              onClick={onFlag}
-            >
+        <button
+          type='button'
+          class='study-action study-flag'
+          aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
+          aria-pressed={flagged}
+          disabled={offline || flagged || undoing}
+          onClick={onFlag}
+        >
               <img
                 class='study-flag-icon'
                 src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
@@ -349,6 +364,7 @@ function StudySessionView ({ session }: { session: StudySession }) {
 }
 
 export function Study ({ categoryId, difficulties }: StudyProps) {
+  const { offline } = useAuth()
   const { category, ready, missing, error: categoryError } = useCategory(categoryId)
   const [session, setSession] = useState<StudySession | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -381,7 +397,18 @@ export function Study ({ categoryId, difficulties }: StudyProps) {
     setError(null)
     setEmpty(false)
 
+    if (offline) {
+      const cached = findOfflineDeck(categoryId, difficulties)
+      if (!cached) {
+        navigate({ name: 'home' }, { replace: true })
+        return
+      }
+      setSession(cached.session)
+      return
+    }
+
     async function build () {
+      beginLearnerSessionBuild()
       try {
         const next = await withSessionTiming(() => createSession(categoryId, difficulties))
         if (cancelled) return
@@ -389,6 +416,7 @@ export function Study ({ categoryId, difficulties }: StudyProps) {
           setEmpty(true)
           return
         }
+        cacheOfflineDeck(next, 'studied')
         setSession(next)
       } catch (err) {
         if (cancelled) return
@@ -405,6 +433,8 @@ export function Study ({ categoryId, difficulties }: StudyProps) {
             ? err.message
             : 'Could not build deck. Try again.'
         setError(message)
+      } finally {
+        endLearnerSessionBuild()
       }
     }
 
@@ -412,7 +442,7 @@ export function Study ({ categoryId, difficulties }: StudyProps) {
     return () => {
       cancelled = true
     }
-  }, [ready, missing, categoryError, categoryId, difficultyKey])
+  }, [ready, missing, categoryError, categoryId, difficultyKey, offline])
 
   if (categoryError) {
     return (
@@ -479,5 +509,5 @@ export function Study ({ categoryId, difficulties }: StudyProps) {
     )
   }
 
-  return <StudySessionView session={session} />
+  return <StudySessionView session={session} offline={offline} />
 }
