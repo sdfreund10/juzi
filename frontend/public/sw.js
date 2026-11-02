@@ -1,5 +1,5 @@
 /* App-shell cache only. Never cache /api or /admin. */
-const CACHE = 'juzi-shell-v2'
+const CACHE = 'juzi-shell-v3'
 
 const PRECACHE = ['/site.webmanifest', '/favicon.svg']
 
@@ -17,6 +17,20 @@ function isShellAsset (url) {
       url.pathname === '/' ||
       url.pathname === '/index.html')
   )
+}
+
+async function networkFirstShell (request) {
+  try {
+    const response = await fetch(request)
+    if (response.ok) {
+      const copy = response.clone()
+      const cache = await caches.open(CACHE)
+      await cache.put('/', copy)
+    }
+    return response
+  } catch {
+    return (await caches.match('/')) ?? caches.match('/index.html')
+  }
 }
 
 self.addEventListener('install', (event) => {
@@ -50,24 +64,13 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (!isShellAsset(url)) {
+  // Navigations: network first, fall back to cached shell for any SPA path.
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirstShell(request))
     return
   }
 
-  // Navigations: network first, fall back to cached shell.
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then(async (response) => {
-          if (response.ok) {
-            const copy = response.clone()
-            const cache = await caches.open(CACHE)
-            await cache.put('/', copy)
-          }
-          return response
-        })
-        .catch(async () => (await caches.match('/')) ?? caches.match('/index.html'))
-    )
+  if (!isShellAsset(url)) {
     return
   }
 
