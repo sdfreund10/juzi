@@ -1175,6 +1175,49 @@ body {
   line-height: 1.45;
 }
 
+.connection-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(30, 32, 36, 0.45);
+}
+
+.connection-overlay-panel {
+  width: min(100%, 360px);
+  padding: 1.25rem 1.25rem 1rem;
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: 0 16px 40px rgba(30, 32, 36, 0.22);
+}
+
+.connection-overlay-panel .title {
+  margin-bottom: 0.35rem;
+}
+
+.connection-overlay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.connection-overlay-actions .cta.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line, #d7d9de);
+}
+
+.row-group.unavailable .row {
+  opacity: 0.45;
+}
+
+.row-group.unavailable .row:disabled {
+  cursor: not-allowed;
+}
+
 .toast {
   position: fixed;
   left: 50%;

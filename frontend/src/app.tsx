@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'preact/hooks'
 import './app.css'
 import { AuthProvider, useAuth } from './auth'
 import { Brand } from './brand'
+import { ConnectionOverlay } from './connectionOverlay'
 import { Decks } from './decks'
 import { DifficultyStep } from './difficulty'
 import { Install } from './install'
@@ -24,20 +25,6 @@ export function App () {
       <AppShell />
       <ToastHost />
     </AuthProvider>
-  )
-}
-
-function ServiceUnavailable () {
-  return (
-    <main class='app'>
-      <h1 class='title'>Service unavailable</h1>
-      <p class='lede'>juzi cannot reach the server right now. Try again in a moment.</p>
-      <div class='picker-actions'>
-        <button type='button' class='cta' onClick={() => window.location.reload()}>
-          Try again
-        </button>
-      </div>
-    </main>
   )
 }
 
@@ -101,21 +88,30 @@ function RoutedScreen ({ route }: { route: Route }) {
 }
 
 function AppShell () {
-  const { ready, user, bootError, serviceUnavailable, setUser } = useAuth()
+  const {
+    ready,
+    user,
+    bootError,
+    offline,
+    connectionLost,
+    setUser
+  } = useAuth()
   const route = useRoute()
+  const isStudyRoute = route.name === 'session'
+  const showConnectionOverlay = connectionLost && !isStudyRoute
 
   useEffect(() => {
-    if (ready && !user && !serviceUnavailable && route.name !== 'home') {
+    if (ready && !user && !connectionLost && route.name !== 'home') {
       navigate({ name: 'home' }, { replace: true })
     }
-  }, [ready, user, serviceUnavailable, route.name])
+  }, [ready, user, connectionLost, route.name])
 
   useEffect(() => {
-    if (!ready || !user || serviceUnavailable) return
+    if (!ready || !user || connectionLost || offline) return
     if (user.proficiency_level === null && route.name === 'home') {
       navigate({ name: 'proficiency' }, { replace: true })
     }
-  }, [ready, user, serviceUnavailable, route.name])
+  }, [ready, user, connectionLost, offline, route.name])
 
   if (!ready) {
     return (
@@ -126,22 +122,24 @@ function AppShell () {
     )
   }
 
-  if (serviceUnavailable) {
-    return <ServiceUnavailable />
-  }
-
+  let body
   if (!user) {
-    return <Login bootError={bootError} onSuccess={setUser} />
-  }
-
-  if (user.proficiency_level === null && route.name === 'home') {
-    return (
+    body = <Login bootError={bootError} onSuccess={setUser} />
+  } else if (user.proficiency_level === null && route.name === 'home' && !offline) {
+    body = (
       <main class='app'>
         <Brand />
         <p class='building-status'>Loading…</p>
       </main>
     )
+  } else {
+    body = <RoutedScreen route={route} />
   }
 
-  return <RoutedScreen route={route} />
+  return (
+    <>
+      {body}
+      {showConnectionOverlay ? <ConnectionOverlay /> : null}
+    </>
+  )
 }
