@@ -109,12 +109,23 @@ function DeckSection ({
 }
 
 export function Decks () {
-  const { offline } = useAuth()
+  const { offline, retryConnection } = useAuth()
   const { categories, error } = useCategories()
   const [query, setQuery] = useState('')
+  const [retrying, setRetrying] = useState(false)
   const [pinnedIds, setPinnedIds] = useState<number[]>(() =>
     readPinnedDeckIds()
   )
+
+  async function onRetryConnection () {
+    if (retrying) return
+    setRetrying(true)
+    try {
+      await retryConnection()
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   function onTogglePin (id: number) {
     setPinnedIds((current) => {
@@ -149,8 +160,18 @@ export function Decks () {
       <h1 class='title'>Choose a deck</h1>
 
       {offline && (
-        <p class='subtitle' role='status'>
-          Offline · progress will not be saved.
+        <p class='subtitle offline-status' role='status'>
+          Offline · progress not saved.{' '}
+          <button
+            type='button'
+            class='offline-retry'
+            disabled={retrying}
+            onClick={() => {
+              onRetryConnection().catch(() => {})
+            }}
+          >
+            {retrying ? 'Reconnecting…' : 'Reconnect?'}
+          </button>
         </p>
       )}
 
