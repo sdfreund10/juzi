@@ -516,6 +516,23 @@ body {
   color: var(--muted);
 }
 
+.difficulty-option:disabled,
+.difficulty-option.unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--chip) 55%, transparent);
+  border-left-color: transparent;
+  border-right-color: transparent;
+  pointer-events: none;
+}
+
+.difficulty-option:disabled .g b,
+.difficulty-option.unavailable .g b {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .proficiency-field {
   margin: 12px 20px 0;
   padding: 0;

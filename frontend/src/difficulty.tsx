@@ -124,11 +124,6 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
         </button>
       </div>
       <p class='subtitle'>{selectedCategory.name}</p>
-      {offline && (
-        <p class='subtitle' role='status'>
-          Offline · only the cached levels are available.
-        </p>
-      )}
 
       <section class='difficulty-grid' aria-label='Difficulty levels'>
         {OPTIONS.map((opt) => {
@@ -139,7 +134,7 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
             <button
               key={opt.id}
               type='button'
-              class={`difficulty-option${isSelected ? ' selected' : ''}`}
+              class={`difficulty-option${isSelected ? ' selected' : ''}${enabled ? '' : ' unavailable'}`}
               aria-pressed={isSelected}
               disabled={!enabled}
               onClick={() => toggle(opt.id)}
@@ -147,8 +142,14 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
               <span class='g'>
                 <b>{opt.label}</b>
                 <span class='s'>
-                  {opt.detail}
-                  {typeof count === 'number' ? ` · ${count} words` : ''}
+                  {enabled
+                    ? (
+                        <>
+                          {opt.detail}
+                          {typeof count === 'number' ? ` · ${count} words` : ''}
+                        </>
+                      )
+                    : 'Not available offline'}
                 </span>
               </span>
             </button>

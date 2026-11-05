@@ -232,16 +232,16 @@ function StudySessionView ({
           </svg>
           {undoing ? 'Undoing…' : 'Undo'}
         </button>
-        {revealed && !done
+        {revealed && !done && !offline
           ? (
-        <button
-          type='button'
-          class='study-action study-flag'
-          aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
-          aria-pressed={flagged}
-          disabled={offline || flagged || undoing}
-          onClick={onFlag}
-        >
+            <button
+              type='button'
+              class='study-action study-flag'
+              aria-label={flagged ? 'Flagged for review' : 'Flag for review'}
+              aria-pressed={flagged}
+              disabled={flagged || undoing}
+              onClick={onFlag}
+            >
               <img
                 class='study-flag-icon'
                 src={flagged ? '/icons/flag-filled.png' : '/icons/flag-outline.png'}
