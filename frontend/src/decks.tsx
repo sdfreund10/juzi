@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { Category } from './api'
+import { useAuth } from './auth'
 import { Brand } from './brand'
 import {
   decksMatchingName,
@@ -9,25 +10,31 @@ import {
   togglePinnedDeckId,
   writePinnedDeckIds
 } from './deckList'
+import { hasOfflineDeck } from './offlineStore'
 import { navigate } from './routes'
 import { useCategories } from './useCategories'
 
 function DeckRow ({
   category,
   pinned,
+  available,
   onTogglePin
 }: {
   category: Category
   pinned: boolean
+  available: boolean
   onTogglePin: (id: number) => void
 }) {
   return (
-    <div class='row-group'>
+    <div class={`row-group${available ? '' : ' unavailable'}`}>
       <button
         type='button'
         class='row'
-        onClick={() =>
-          navigate({ name: 'session-new', categoryId: category.id })}
+        disabled={!available}
+        onClick={() => {
+          if (!available) return
+          navigate({ name: 'session-new', categoryId: category.id })
+        }}
       >
         <span class='g'>
           <b>{category.name}</b>
@@ -61,11 +68,13 @@ function DeckSection ({
   label,
   categories,
   pinnedIds,
+  availableIds,
   onTogglePin
 }: {
   label: string
   categories: Category[]
   pinnedIds: number[]
+  availableIds: Set<number> | null
   onTogglePin: (id: number) => void
 }) {
   if (categories.length === 0) return null
@@ -91,6 +100,7 @@ function DeckSection ({
           key={category.id}
           category={category}
           pinned={pinnedIds.includes(category.id)}
+          available={availableIds === null || availableIds.has(category.id)}
           onTogglePin={onTogglePin}
         />
       ))}
@@ -99,11 +109,23 @@ function DeckSection ({
 }
 
 export function Decks () {
+  const { offline, retryConnection } = useAuth()
   const { categories, error } = useCategories()
   const [query, setQuery] = useState('')
+  const [retrying, setRetrying] = useState(false)
   const [pinnedIds, setPinnedIds] = useState<number[]>(() =>
     readPinnedDeckIds()
   )
+
+  async function onRetryConnection () {
+    if (retrying) return
+    setRetrying(true)
+    try {
+      await retryConnection()
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   function onTogglePin (id: number) {
     setPinnedIds((current) => {
@@ -124,11 +146,34 @@ export function Decks () {
       : recentlyPracticedDecks(visible).filter(
         (category) => !pinnedIds.includes(category.id)
       )
+  const availableIds = offline
+    ? new Set(
+      (categories ?? [])
+        .filter((category) => hasOfflineDeck(category.id))
+        .map((category) => category.id)
+    )
+    : null
 
   return (
     <>
       <Brand />
       <h1 class='title'>Choose a deck</h1>
+
+      {offline && (
+        <p class='subtitle offline-status' role='status'>
+          Offline · progress not saved.{' '}
+          <button
+            type='button'
+            class='offline-retry'
+            disabled={retrying}
+            onClick={() => {
+              onRetryConnection().catch(() => {})
+            }}
+          >
+            {retrying ? 'Reconnecting…' : 'Reconnect?'}
+          </button>
+        </p>
+      )}
 
       {error && (
         <p class='error' role='alert' aria-live='polite'>
@@ -187,6 +232,10 @@ export function Decks () {
                             key={category.id}
                             category={category}
                             pinned={pinnedIds.includes(category.id)}
+                            available={
+                              availableIds === null ||
+                              availableIds.has(category.id)
+                            }
                             onTogglePin={onTogglePin}
                           />
                         ))}
@@ -198,12 +247,14 @@ export function Decks () {
                           label='Pinned'
                           categories={pinned}
                           pinnedIds={pinnedIds}
+                          availableIds={availableIds}
                           onTogglePin={onTogglePin}
                         />
                         <DeckSection
                           label='Recent'
                           categories={recent}
                           pinnedIds={pinnedIds}
+                          availableIds={availableIds}
                           onTogglePin={onTogglePin}
                         />
                         <DeckSection
@@ -214,6 +265,7 @@ export function Decks () {
                 }
                           categories={visible ?? []}
                           pinnedIds={pinnedIds}
+                          availableIds={availableIds}
                           onTogglePin={onTogglePin}
                         />
                       </>

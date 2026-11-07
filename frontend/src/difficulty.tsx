@@ -1,7 +1,9 @@
 import { startSessionTiming } from './monitoring'
 import { useEffect, useState } from 'preact/hooks'
 import type { Difficulty } from './api'
+import { useAuth } from './auth'
 import { Brand } from './brand'
+import { findOfflineDeck } from './offlineStore'
 import { navigate } from './routes'
 import { useCategory } from './useCategories'
 
@@ -23,7 +25,10 @@ type DifficultyProps = {
 }
 
 export function DifficultyStep ({ categoryId }: DifficultyProps) {
+  const { offline } = useAuth()
   const { category, ready, missing, error } = useCategory(categoryId)
+  const cached = offline ? findOfflineDeck(categoryId) : null
+  const allowed = cached ? new Set<Difficulty>(cached.difficulties) : null
   const [selected, setSelected] = useState<Set<Difficulty>>(() => new Set())
 
   useEffect(() => {
@@ -31,6 +36,16 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
       navigate({ name: 'home' }, { replace: true })
     }
   }, [missing])
+
+  useEffect(() => {
+    if (!offline) return
+    const entry = findOfflineDeck(categoryId)
+    if (!entry) {
+      navigate({ name: 'home' }, { replace: true })
+      return
+    }
+    setSelected(new Set(entry.difficulties))
+  }, [offline, categoryId])
 
   if (error) {
     return (
@@ -65,6 +80,7 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
   const selectedCategory = category
 
   function toggle (id: Difficulty) {
+    if (allowed && !allowed.has(id)) return
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -78,7 +94,15 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
 
   function submit () {
     if (selected.size === 0) return
-    startSessionTiming()
+    if (allowed) {
+      for (const id of allowed) {
+        if (!selected.has(id)) return
+      }
+      for (const id of selected) {
+        if (!allowed.has(id)) return
+      }
+    }
+    if (!offline) startSessionTiming()
     navigate({
       name: 'session',
       categoryId: selectedCategory.id,
@@ -105,19 +129,27 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
         {OPTIONS.map((opt) => {
           const isSelected = selected.has(opt.id)
           const count = selectedCategory[opt.countKey]
+          const enabled = allowed === null || allowed.has(opt.id)
           return (
             <button
               key={opt.id}
               type='button'
-              class={`difficulty-option${isSelected ? ' selected' : ''}`}
+              class={`difficulty-option${isSelected ? ' selected' : ''}${enabled ? '' : ' unavailable'}`}
               aria-pressed={isSelected}
+              disabled={!enabled}
               onClick={() => toggle(opt.id)}
             >
               <span class='g'>
                 <b>{opt.label}</b>
                 <span class='s'>
-                  {opt.detail}
-                  {typeof count === 'number' ? ` · ${count} words` : ''}
+                  {enabled
+                    ? (
+                      <>
+                        {opt.detail}
+                        {typeof count === 'number' ? ` · ${count} words` : ''}
+                      </>
+                      )
+                    : 'Not available offline'}
                 </span>
               </span>
             </button>

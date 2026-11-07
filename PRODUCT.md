@@ -24,7 +24,7 @@ juzi is opinionated directional practice for traditional Chinese vocabulary — 
 
 ## Operating Context
 
-- Learners use the same-origin web app (Django serving the Preact SPA) in a browser or as an installable online-first PWA. Session cookies are the auth mechanism. Study requires network; the service worker only caches the app shell.
+- Learners use the same-origin web app (Django serving the Preact SPA) in a browser or as an installable online-first PWA. Session cookies are the auth mechanism. The service worker caches the app shell. When the server is unreachable, learners can continue from up to ten cached decks with in-memory Hard/Easy only; progress is not saved until they are online again.
 - The operator creates study accounts and vocabulary in Django admin. There is no in-app registration or password reset.
 - Study content is entered as words (traditional Chinese, tone-marked pinyin, basic English gloss) grouped into named decks (`Category` in the data model).
 - Production is a single DigitalOcean droplet (documented around `juzi.sfreund.tools`). Local work is Django on `:8000` with optional Vite HMR on `:5173`.

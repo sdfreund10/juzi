@@ -32,7 +32,7 @@ function progressAfterHard (progress: CardProgress, lastPracticedAt: string): Ca
   }
 }
 
-export function useGrading (cards: StudyCard[]) {
+export function useGrading (cards: StudyCard[], persist = true) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...cards])
   const [progress, setProgress] = useState(emptyProgress)
   // Right now just store one checkpoint for the latest graded card.
@@ -47,14 +47,17 @@ export function useGrading (cards: StudyCard[]) {
 
     const lastPracticedAt = new Date().toISOString()
 
-    // Add the rating to the request queue.
-    const savedRating = pendingSave.current.then(() =>
-      rateCard(card.word_id, hard ? 'hard' : 'easy', lastPracticedAt)
-    )
-    // Keep saves ordered without making the learner wait before the next card.
-    pendingSave.current = savedRating.catch(() => {
-      setCheckpoint((current) => current?.savedRating === savedRating ? null : current)
-    })
+    const savedRating = persist
+      ? pendingSave.current.then(() =>
+        rateCard(card.word_id, hard ? 'hard' : 'easy', lastPracticedAt)
+      )
+      : Promise.resolve()
+    if (persist) {
+      // Keep saves ordered without making the learner wait before the next card.
+      pendingSave.current = savedRating.catch(() => {
+        setCheckpoint((current) => current?.savedRating === savedRating ? null : current)
+      })
+    }
 
     setCheckpoint({ queue, progress, card, lastPracticedAt, savedRating })
     setProgress((current) =>
@@ -76,17 +79,19 @@ export function useGrading (cards: StudyCard[]) {
     undoInFlight.current = true
     setUndoing(true)
     try {
-      try {
-        // Wait for the rating to be saved before attempting to undo.
-        await checkpoint.savedRating
-      } catch {
-        return false
+      if (persist) {
+        try {
+          // Wait for the rating to be saved before attempting to undo.
+          await checkpoint.savedRating
+        } catch {
+          return false
+        }
+        await undoRating(
+          checkpoint.card.word_id,
+          checkpoint.lastPracticedAt,
+          checkpoint.card.progress
+        )
       }
-      await undoRating(
-        checkpoint.card.word_id,
-        checkpoint.lastPracticedAt,
-        checkpoint.card.progress
-      )
       setQueue(checkpoint.queue)
       setProgress(checkpoint.progress)
       setCheckpoint(null)
