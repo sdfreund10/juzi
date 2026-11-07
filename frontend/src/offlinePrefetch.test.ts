@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Category, StudySession } from './api'
+import { createSession, type Category, type StudySession } from './api'
 import { PINNED_DECK_IDS_KEY, writePinnedDeckIds } from './deckList'
 import {
   beginLearnerSessionBuild,
@@ -21,8 +21,6 @@ vi.mock('./api', async () => {
     createSession: vi.fn()
   }
 })
-
-import { createSession } from './api'
 
 function category (
   partial: Partial<Category> & Pick<Category, 'id' | 'name'>

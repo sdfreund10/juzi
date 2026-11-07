@@ -144,10 +144,10 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
                 <span class='s'>
                   {enabled
                     ? (
-                        <>
-                          {opt.detail}
-                          {typeof count === 'number' ? ` · ${count} words` : ''}
-                        </>
+                      <>
+                        {opt.detail}
+                        {typeof count === 'number' ? ` · ${count} words` : ''}
+                      </>
                       )
                     : 'Not available offline'}
                 </span>
