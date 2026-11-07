@@ -371,15 +371,17 @@ export function Study ({ categoryId, difficulties }: StudyProps) {
   const [empty, setEmpty] = useState(false)
 
   useLayoutEffect(() => {
+    if (offline) return
     startSessionTiming()
     return () => finishSessionTiming('cancelled')
-  }, [categoryId, difficulties.join(',')])
+  }, [offline, categoryId, difficulties.join(',')])
 
   useLayoutEffect(() => {
+    if (offline) return
     if (session) finishSessionTiming('ready')
     else if (empty) finishSessionTiming('empty')
     else if (error || categoryError || missing) finishSessionTiming('failed')
-  }, [session, empty, error, categoryError, missing])
+  }, [offline, session, empty, error, categoryError, missing])
 
   const difficultyKey = difficulties.join(',')
 

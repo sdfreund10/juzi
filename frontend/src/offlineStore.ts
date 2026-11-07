@@ -57,6 +57,32 @@ export function readOfflineCategories (): Category[] | null {
   return Array.isArray(value) ? value : null
 }
 
+function categoryFromDeck (entry: OfflineDeckEntry): Category {
+  const { id, name } = entry.session.category
+  return {
+    id,
+    name,
+    novice_count: 0,
+    intermediate_count: 0,
+    advanced_count: 0,
+    expert_count: 0,
+    last_practiced_at: null
+  }
+}
+
+/** Stored category list, or one row per cached category when that list is missing. */
+export function categoriesAvailableOffline (): Category[] | null {
+  const stored = readOfflineCategories()
+  if (stored) return stored
+
+  const byId = new Map<number, Category>()
+  for (const entry of readOfflineDecks()) {
+    const category = categoryFromDeck(entry)
+    if (!byId.has(category.id)) byId.set(category.id, category)
+  }
+  return byId.size > 0 ? [...byId.values()] : null
+}
+
 export function writeOfflineCategories (categories: Category[]): void {
   writeJson(OFFLINE_CATEGORIES_KEY, categories)
 }

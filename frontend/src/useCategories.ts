@@ -3,6 +3,7 @@ import { ApiError, fetchCategories, type Category } from './api'
 import { useAuth } from './auth'
 import { startOfflinePrefetch, stopOfflinePrefetch } from './offlinePrefetch'
 import {
+  categoriesAvailableOffline,
   readOfflineCategories,
   writeOfflineCategories
 } from './offlineStore'
@@ -24,8 +25,9 @@ export function useCategories (): {
     }
 
     if (offline) {
-      setCategories(readOfflineCategories())
-      setError(null)
+      const rows = categoriesAvailableOffline()
+      setCategories(rows)
+      setError(rows ? null : 'No decks saved for offline study.')
       return
     }
 

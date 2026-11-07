@@ -6,6 +6,7 @@ import {
   OFFLINE_DECK_LIMIT,
   OFFLINE_USER_KEY,
   cacheOfflineDeck,
+  categoriesAvailableOffline,
   clearOfflineStore,
   findOfflineDeck,
   hasOfflineDeck,
@@ -100,6 +101,64 @@ describe('syncOfflineUser', () => {
     expect(offlineDeckCount()).toBe(0)
     expect(localStorage.getItem(OFFLINE_CATEGORIES_KEY)).toBeNull()
     expect(localStorage.getItem(OFFLINE_DECKS_KEY)).toBeNull()
+  })
+})
+
+describe('categoriesAvailableOffline', () => {
+  it('returns the stored category list', () => {
+    writeOfflineCategories([
+      {
+        id: 1,
+        name: 'Food',
+        novice_count: 4,
+        intermediate_count: 0,
+        advanced_count: 0,
+        expert_count: 0,
+        last_practiced_at: null
+      }
+    ])
+
+    expect(categoriesAvailableOffline()).toEqual([
+      {
+        id: 1,
+        name: 'Food',
+        novice_count: 4,
+        intermediate_count: 0,
+        advanced_count: 0,
+        expert_count: 0,
+        last_practiced_at: null
+      }
+    ])
+  })
+
+  it('derives one row per cached category when the category list is missing', () => {
+    cacheOfflineDeck(session(2, 'Travel'), 'studied')
+    cacheOfflineDeck(session(3, 'Food'), 'prefetch')
+
+    expect(categoriesAvailableOffline()).toEqual([
+      {
+        id: 3,
+        name: 'Food',
+        novice_count: 0,
+        intermediate_count: 0,
+        advanced_count: 0,
+        expert_count: 0,
+        last_practiced_at: null
+      },
+      {
+        id: 2,
+        name: 'Travel',
+        novice_count: 0,
+        intermediate_count: 0,
+        advanced_count: 0,
+        expert_count: 0,
+        last_practiced_at: null
+      }
+    ])
+  })
+
+  it('returns null when nothing is cached', () => {
+    expect(categoriesAvailableOffline()).toBeNull()
   })
 })
 

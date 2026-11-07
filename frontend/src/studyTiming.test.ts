@@ -4,6 +4,8 @@ import { act } from 'preact/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Study } from './study'
 
+const authState = vi.hoisted(() => ({ offline: false }))
+
 vi.mock('./useCategories', () => ({
   useCategory: () => ({ category: { id: 1, name: 'Test deck' }, ready: true, missing: false, error: null })
 }))
@@ -13,7 +15,7 @@ vi.mock('./auth', () => ({
     ready: true,
     user: { authenticated: true, email: 't@example.com', proficiency_level: 'novice' },
     bootError: null,
-    offline: false,
+    offline: authState.offline,
     connectionLost: false,
     hasOfflineCache: true,
     setUser: () => {},
@@ -29,6 +31,7 @@ const renderedAtEnd: string[] = []
 let host: HTMLDivElement
 
 beforeEach(() => {
+  authState.offline = false
   transactions.length = 0
   renderedAtEnd.length = 0
   host = document.createElement('div')
@@ -52,6 +55,14 @@ afterEach(async () => {
   host.remove()
   await Sentry.close()
   vi.unstubAllGlobals()
+})
+
+it('does not record session timing while offline', async () => {
+  authState.offline = true
+  await act(() => render(h(Study, { categoryId: 1, difficulties: ['novice'] }), host))
+  await act(() => render(null, host))
+  await Sentry.flush()
+  expect(transactions).toHaveLength(0)
 })
 
 it('finishes only after the first card is committed to the DOM', async () => {
