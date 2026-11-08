@@ -1224,9 +1224,19 @@ body {
   position: fixed;
   inset: 0;
   z-index: 90;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: 1.5rem;
+  background: transparent;
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+}
+
+.connection-overlay::backdrop {
   background: rgba(30, 32, 36, 0.45);
 }
 

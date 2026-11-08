@@ -10,7 +10,7 @@ import {
   togglePinnedDeckId,
   writePinnedDeckIds
 } from './deckList'
-import { hasOfflineDeck } from './offlineStore'
+import { cachedCategoryIds } from './offlineStore'
 import { navigate } from './routes'
 import { useCategories } from './useCategories'
 
@@ -146,13 +146,7 @@ export function Decks () {
       : recentlyPracticedDecks(visible).filter(
         (category) => !pinnedIds.includes(category.id)
       )
-  const availableIds = offline
-    ? new Set(
-      (categories ?? [])
-        .filter((category) => hasOfflineDeck(category.id))
-        .map((category) => category.id)
-    )
-    : null
+  const availableIds = offline ? cachedCategoryIds() : null
 
   return (
     <>

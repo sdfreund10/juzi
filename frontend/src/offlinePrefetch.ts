@@ -40,6 +40,7 @@ export function endLearnerSessionBuild (): void {
 export function stopOfflinePrefetch (): void {
   fillGeneration += 1
   fillQueued = null
+  fillRunning = false
 }
 
 export function prefetchCandidateIds (categories: Category[]): number[] {

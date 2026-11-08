@@ -19,10 +19,15 @@ function isShellAsset (url) {
   )
 }
 
+function isHtmlResponse (response) {
+  const type = response.headers.get('content-type') ?? ''
+  return type.toLowerCase().startsWith('text/html')
+}
+
 async function networkFirstShell (request) {
   try {
     const response = await fetch(request)
-    if (response.ok) {
+    if (response.ok && isHtmlResponse(response)) {
       const copy = response.clone()
       const cache = await caches.open(CACHE)
       await cache.put('/', copy)

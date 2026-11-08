@@ -149,4 +149,33 @@ describe('startOfflinePrefetch', () => {
     resolveSession(session(1))
     await vi.waitFor(() => expect(offlineDeckCount()).toBe(1))
   })
+
+  it('resumes a prefetch queued after a running fill is stopped', async () => {
+    const categories = [category({ id: 1, name: 'A' })]
+    let releaseFirst!: (value: StudySession) => void
+    vi.mocked(createSession)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirst = resolve
+          })
+      )
+      .mockResolvedValue(session(1))
+
+    startOfflinePrefetch(categories, 'novice')
+    await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(1))
+
+    beginLearnerSessionBuild()
+    stopOfflinePrefetch()
+    releaseFirst(session(1))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(offlineDeckCount()).toBe(0)
+
+    startOfflinePrefetch(categories, 'novice')
+    expect(createSession).toHaveBeenCalledTimes(1)
+
+    endLearnerSessionBuild()
+    await vi.waitFor(() => expect(createSession).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(offlineDeckCount()).toBe(1))
+  })
 })

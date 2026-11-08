@@ -24,6 +24,17 @@ type DifficultyProps = {
   categoryId: number
 }
 
+function sameDifficulties (
+  selected: Set<Difficulty>,
+  allowed: Set<Difficulty>
+): boolean {
+  if (selected.size !== allowed.size) return false
+  for (const id of selected) {
+    if (!allowed.has(id)) return false
+  }
+  return true
+}
+
 export function DifficultyStep ({ categoryId }: DifficultyProps) {
   const { offline } = useAuth()
   const { category, ready, missing, error } = useCategory(categoryId)
@@ -161,7 +172,10 @@ export function DifficultyStep ({ categoryId }: DifficultyProps) {
         <button
           type='button'
           class='cta'
-          disabled={selected.size === 0}
+          disabled={
+            selected.size === 0 ||
+            (allowed !== null && !sameDifficulties(selected, allowed))
+          }
           onClick={submit}
         >
           {selected.size > 1

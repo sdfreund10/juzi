@@ -49,8 +49,22 @@ function session (
 }
 
 afterEach(() => {
-  clearOfflineStore()
   vi.restoreAllMocks()
+  clearOfflineStore()
+})
+
+describe('readOfflineUser', () => {
+  it('treats a storage read error as a cache miss', () => {
+    const original = localStorage.getItem.bind(localStorage)
+    localStorage.getItem = () => {
+      throw new DOMException('denied', 'SecurityError')
+    }
+    try {
+      expect(readOfflineUser()).toBeNull()
+    } finally {
+      localStorage.getItem = original
+    }
+  })
 })
 
 describe('syncOfflineUser', () => {
