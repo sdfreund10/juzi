@@ -9,6 +9,21 @@ vi.mock('./useCategories', () => ({
   useCategory: () => ({ category: { id: 1, name: 'Test deck' }, ready: true, missing: false, error: null })
 }))
 
+vi.mock('./auth', () => ({
+  useAuth: () => ({
+    ready: true,
+    user: { authenticated: true, email: 't@example.com', proficiency_level: 'novice' },
+    bootError: null,
+    offline: false,
+    connectionLost: false,
+    hasOfflineCache: true,
+    setUser: () => {},
+    clearUser: () => {},
+    enterOffline: () => {},
+    retryConnection: async () => true
+  })
+}))
+
 const emptyProgress = {
   easy_streak: 0,
   easy_count: 0,

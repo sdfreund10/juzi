@@ -5,7 +5,7 @@ import { isIosDevice, isStandaloneDisplay } from './platform'
 import { navigate } from './routes'
 
 export function SessionFooter () {
-  const { user, clearUser } = useAuth()
+  const { user, offline, clearUser } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const showInstallLink = isIosDevice() && !isStandaloneDisplay()
@@ -13,6 +13,7 @@ export function SessionFooter () {
   if (!user) return null
 
   async function onSignOut () {
+    if (offline) return
     setError(null)
     setSigningOut(true)
     try {
@@ -51,6 +52,7 @@ export function SessionFooter () {
         <button
           type='button'
           class='link-btn'
+          disabled={offline}
           onClick={() => navigate({ name: 'proficiency' })}
         >
           Proficiency level
@@ -59,7 +61,7 @@ export function SessionFooter () {
           type='button'
           class='link-btn'
           onClick={onSignOut}
-          disabled={signingOut}
+          disabled={offline || signingOut}
         >
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>

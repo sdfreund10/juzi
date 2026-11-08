@@ -241,6 +241,34 @@ body {
   cursor: wait;
 }
 
+.offline-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.35em;
+}
+
+.offline-retry {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.offline-retry:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .text-btn {
   appearance: none;
   margin: 12px 8px 0 0;
@@ -514,6 +542,23 @@ body {
 .difficulty-option span.s {
   font-size: 12px;
   color: var(--muted);
+}
+
+.difficulty-option:disabled,
+.difficulty-option.unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--chip) 55%, transparent);
+  border-left-color: transparent;
+  border-right-color: transparent;
+  pointer-events: none;
+}
+
+.difficulty-option:disabled .g b,
+.difficulty-option.unavailable .g b {
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .proficiency-field {
@@ -1173,6 +1218,59 @@ body {
   font-size: 14px;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.connection-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: 1.5rem;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+.connection-overlay::backdrop {
+  background: rgba(30, 32, 36, 0.45);
+}
+
+.connection-overlay-panel {
+  width: min(100%, 360px);
+  padding: 1.25rem 1.25rem 1rem;
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: 0 16px 40px rgba(30, 32, 36, 0.22);
+}
+
+.connection-overlay-panel .title {
+  margin-bottom: 0.35rem;
+}
+
+.connection-overlay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.connection-overlay-actions .cta.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line, #d7d9de);
+}
+
+.row-group.unavailable .row {
+  opacity: 0.45;
+}
+
+.row-group.unavailable .row:disabled {
+  cursor: not-allowed;
 }
 
 .toast {
