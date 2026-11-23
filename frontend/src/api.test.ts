@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiRequest, checkHealth, flagWord, login, rateCard } from './api'
+import { ApiError, apiRequest, checkHealth, flagWord, login, rateCard, setConnectionHandler } from './api'
 import { setToastHandler } from './toast'
 
 afterEach(() => {
   vi.unstubAllGlobals()
   document.cookie = 'csrftoken=; Max-Age=0; path=/'
   setToastHandler(null)
+  setConnectionHandler(null)
 })
 
 function jsonResponse (status: number, body: unknown): Response {
@@ -148,6 +149,50 @@ describe('apiRequest', () => {
 
     await expect(apiRequest('/api/auth/me/')).rejects.toBeInstanceOf(ApiError)
     expect(toasts).toEqual([])
+  })
+
+  it('marks the connection lost when the server is unreachable', async () => {
+    const states: boolean[] = []
+    setConnectionHandler((lost) => states.push(lost))
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    await expect(apiRequest('/api/categories/')).rejects.toThrow('Failed to fetch')
+    expect(states).toEqual([true])
+  })
+
+  it('leaves the connection alone when the server is still healthy', async () => {
+    const states: boolean[] = []
+    setConnectionHandler((lost) => states.push(lost))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValueOnce(jsonResponse(200, { status: 'ok' }))
+    )
+
+    await expect(apiRequest('/api/categories/')).rejects.toThrow('Failed to fetch')
+    expect(states).toEqual([])
+  })
+
+  it('does not mark the connection lost for an HTTP error', async () => {
+    const states: boolean[] = []
+    setConnectionHandler((lost) => states.push(lost))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(500, { detail: 'nope' }))
+    )
+
+    await expect(apiRequest('/api/categories/')).rejects.toBeInstanceOf(ApiError)
+    expect(states).toEqual([])
+  })
+
+  it('clears a lost connection after a successful request', async () => {
+    const states: boolean[] = []
+    setConnectionHandler((lost) => states.push(lost))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, { ok: true })))
+
+    await apiRequest('/api/categories/')
+    expect(states).toEqual([false])
   })
 })
 

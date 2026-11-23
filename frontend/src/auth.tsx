@@ -1,6 +1,6 @@
 import { createContext, type ComponentChildren } from 'preact'
-import { useContext, useEffect, useState } from 'preact/hooks'
-import { ApiError, checkHealth, fetchMe, type AuthUser } from './api'
+import { useContext, useEffect, useRef, useState } from 'preact/hooks'
+import { ApiError, checkHealth, fetchMe, setConnectionHandler, type AuthUser } from './api'
 import {
   clearOfflineStore,
   readOfflineUser,
@@ -41,6 +41,16 @@ export function AuthProvider ({ children }: { children: ComponentChildren }) {
   const [hasOfflineCache, setHasOfflineCache] = useState(
     () => readOfflineUser() !== null
   )
+  const offlineRef = useRef(offline)
+  offlineRef.current = offline
+
+  useEffect(() => {
+    setConnectionHandler((lost) => {
+      if (lost && offlineRef.current) return
+      setConnectionLost(lost)
+    })
+    return () => setConnectionHandler(null)
+  }, [])
 
   useEffect(() => {
     let cancelled = false

@@ -1,6 +1,18 @@
 import { reportApiFailure } from './monitoring'
 import { showToast } from './toast'
 
+type ConnectionHandler = (lost: boolean) => void
+
+let connectionHandler: ConnectionHandler | null = null
+
+export function setConnectionHandler (next: ConnectionHandler | null): void {
+  connectionHandler = next
+}
+
+function reportConnection (lost: boolean): void {
+  connectionHandler?.(lost)
+}
+
 export class ApiError extends Error {
   status: number
 
@@ -102,6 +114,8 @@ export async function apiRequest<T> (path: string, options: RequestOptions = {})
     if (options.toast) {
       showToast('Could not reach the server.')
     }
+    const healthy = await checkHealth()
+    if (!healthy) reportConnection(true)
     throw err
   }
 
@@ -118,6 +132,8 @@ export async function apiRequest<T> (path: string, options: RequestOptions = {})
     }
     throw new ApiError(response.status, message)
   }
+
+  reportConnection(false)
 
   if (response.status === 204) {
     return undefined as T
