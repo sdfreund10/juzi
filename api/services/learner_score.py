@@ -5,8 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import AbstractBaseUser
-from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db import transaction
 from django.utils import timezone
 
 from api.models import Learner, LearnerScore
@@ -71,21 +70,23 @@ def record_completion(
     """Create or bump today's LearnerScore for a finished deck."""
     today = timezone.localdate()
     points = points_for_difficulties(difficulties)
-    starting = _starting_score_for(user, today)
 
-    try:
-        with transaction.atomic():
-            row = LearnerScore.objects.create(
-                user=user,
-                date=today,
-                starting_score=starting,
-                score=starting,
-            )
-    except IntegrityError:
-        row = LearnerScore.objects.get(user=user, date=today)
+    row = (
+        LearnerScore.objects.select_for_update()
+        .filter(user=user, date=today)
+        .first()
+    )
+    if row is None:
+        starting = _starting_score_for(user, today)
+        return LearnerScore.objects.create(
+            user=user,
+            date=today,
+            starting_score=starting,
+            score=starting + points,
+        )
 
-    LearnerScore.objects.filter(pk=row.pk).update(score=F("score") + points)
-    row.refresh_from_db(fields=["score", "starting_score", "date"])
+    row.score += points
+    row.save(update_fields=["score"])
     return row
 
 
@@ -99,17 +100,16 @@ def get_learner_score(
     window = max(1, min(days, MAX_SERIES_DAYS))
     start = today - timedelta(days=window - 1)
 
-    rows = list(
-        LearnerScore.objects.filter(user=user, date__lte=today).order_by("date")
+    by_date = {
+        row.date: row
+        for row in LearnerScore.objects.filter(
+            user=user, date__gte=start, date__lte=today
+        )
+    }
+    # Quiet days at the start of the window still decay from the latest earlier row.
+    anchor = (
+        LearnerScore.objects.filter(user=user, date__lt=start).order_by("-date").first()
     )
-    by_date = {row.date: row for row in rows if row.date >= start}
-
-    anchor: LearnerScore | None = None
-    for row in rows:
-        if row.date < start:
-            anchor = row
-        else:
-            break
 
     series: list[LearnerScorePoint] = []
     day = start

@@ -13,8 +13,8 @@ from rest_framework.test import APIClient
 from api.models import LearnerScore
 from api.services.accounts import apply_login_email
 from api.services.learner_score import (
-    points_for_difficulties,
     get_learner_score,
+    points_for_difficulties,
     record_completion,
 )
 
@@ -210,6 +210,33 @@ def test_read_days_window_longer_than_default(user: User) -> None:
     assert snapshot.days[0].date == today - timedelta(days=20)
     assert snapshot.days[0].score == Decimal("100")
     assert snapshot.score == Decimal("0")
+
+
+@pytest.mark.django_db
+def test_read_decays_from_row_before_window(user: User) -> None:
+    today = timezone.localdate()
+    LearnerScore.objects.create(
+        user=user,
+        date=today - timedelta(days=5),
+        starting_score=Decimal("0"),
+        score=Decimal("30"),
+    )
+    # Older row must not become the anchor when a newer prior row exists.
+    LearnerScore.objects.create(
+        user=user,
+        date=today - timedelta(days=10),
+        starting_score=Decimal("0"),
+        score=Decimal("100"),
+    )
+
+    snapshot = get_learner_score(user=user, days=3)
+
+    assert [point.score for point in snapshot.days] == [
+        Decimal("15"),
+        Decimal("10"),
+        Decimal("5"),
+    ]
+    assert snapshot.score == Decimal("5")
 
 
 @pytest.mark.django_db
