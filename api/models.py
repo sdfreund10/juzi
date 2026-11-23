@@ -153,3 +153,35 @@ class Learner(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id}:{self.proficiency_level or 'unset'}"
+
+
+class LearnerScore(models.Model):
+    """Learner score for one calendar day when practice was recorded.
+
+    Rows exist only on dates a deck completion was posted. ``starting_score`` is
+    the previous row's score minus daily decay across the gap; ``score`` grows as
+    more decks finish that same day.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="learner_scores",
+    )
+    date = models.DateField()
+    starting_score = models.DecimalField(max_digits=8, decimal_places=2)
+    score = models.DecimalField(max_digits=8, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "date"],
+                name="uniq_learnerscore_user_date",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "date"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user_id}:{self.date}:{self.score}"
