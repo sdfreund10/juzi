@@ -274,9 +274,7 @@ def test_get_learner_score_is_scoped_to_user(
 
 
 @pytest.mark.django_db
-def test_post_completion_creates_and_bumps(
-    client: APIClient, user: User
-) -> None:
+def test_post_completion_creates_and_bumps(client: APIClient, user: User) -> None:
     headers = _login(client, user, "s3cret-alice")
 
     first = client.post(
@@ -304,9 +302,7 @@ def test_post_completion_creates_and_bumps(
 
 
 @pytest.mark.django_db
-def test_post_completion_rejects_unknown_difficulty(
-    client: APIClient, user: User
-) -> None:
+def test_post_completion_rejects_unknown_difficulty(client: APIClient, user: User) -> None:
     headers = _login(client, user, "s3cret-alice")
     response = client.post(
         reverse("learner-score-completions"),

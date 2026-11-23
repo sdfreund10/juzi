@@ -202,8 +202,7 @@ def _learner_score_payload(snapshot: LearnerScoreSnapshot) -> dict:
     return {
         "score": float(snapshot.score),
         "days": [
-            {"date": point.date.isoformat(), "score": float(point.score)}
-            for point in snapshot.days
+            {"date": point.date.isoformat(), "score": float(point.score)} for point in snapshot.days
         ],
     }
 

@@ -53,9 +53,7 @@ def decayed_score(score: Decimal, *, from_date: date, to_date: date) -> Decimal:
 
 
 def _starting_score_for(user: AbstractBaseUser, on_date: date) -> Decimal:
-    previous = (
-        LearnerScore.objects.filter(user=user, date__lt=on_date).order_by("-date").first()
-    )
+    previous = LearnerScore.objects.filter(user=user, date__lt=on_date).order_by("-date").first()
     if previous is None:
         return Decimal("0")
     return decayed_score(previous.score, from_date=previous.date, to_date=on_date)
@@ -71,11 +69,7 @@ def record_completion(
     today = timezone.localdate()
     points = points_for_difficulties(difficulties)
 
-    row = (
-        LearnerScore.objects.select_for_update()
-        .filter(user=user, date=today)
-        .first()
-    )
+    row = LearnerScore.objects.select_for_update().filter(user=user, date=today).first()
     if row is None:
         starting = _starting_score_for(user, today)
         return LearnerScore.objects.create(
@@ -102,14 +96,10 @@ def get_learner_score(
 
     by_date = {
         row.date: row
-        for row in LearnerScore.objects.filter(
-            user=user, date__gte=start, date__lte=today
-        )
+        for row in LearnerScore.objects.filter(user=user, date__gte=start, date__lte=today)
     }
     # Quiet days at the start of the window still decay from the latest earlier row.
-    anchor = (
-        LearnerScore.objects.filter(user=user, date__lt=start).order_by("-date").first()
-    )
+    anchor = LearnerScore.objects.filter(user=user, date__lt=start).order_by("-date").first()
 
     series: list[LearnerScorePoint] = []
     day = start
