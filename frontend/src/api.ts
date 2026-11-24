@@ -291,3 +291,17 @@ export function recordDeckCompletion (opts: {
     }
   })
 }
+
+export type LearnerScorePoint = {
+  date: string
+  score: number
+}
+
+export type LearnerScoreSnapshot = {
+  score: number
+  days: LearnerScorePoint[]
+}
+
+export function fetchLearnerScore (): Promise<LearnerScoreSnapshot> {
+  return apiRequest<LearnerScoreSnapshot>('/api/learner-score/')
+}

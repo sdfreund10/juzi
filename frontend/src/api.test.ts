@@ -3,6 +3,7 @@ import {
   ApiError,
   apiRequest,
   checkHealth,
+  fetchLearnerScore,
   flagWord,
   login,
   rateCard,
@@ -247,6 +248,23 @@ describe('recordDeckCompletion', () => {
           client_id: 'abc'
         })
       })
+    )
+  })
+})
+
+describe('fetchLearnerScore', () => {
+  it('gets the learner score snapshot', async () => {
+    const body = {
+      score: 12.5,
+      days: [{ date: '2026-10-15', score: 12.5 }]
+    }
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, body))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchLearnerScore()).resolves.toEqual(body)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/learner-score/',
+      expect.objectContaining({ method: 'GET', credentials: 'same-origin' })
     )
   })
 })

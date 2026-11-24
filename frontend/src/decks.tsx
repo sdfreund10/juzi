@@ -10,9 +10,11 @@ import {
   togglePinnedDeckId,
   writePinnedDeckIds
 } from './deckList'
+import { LearnerScoreStrip } from './learnerScoreStrip'
 import { cachedCategoryIds } from './offlineStore'
 import { navigate } from './routes'
 import { useCategories } from './useCategories'
+import { useLearnerScore } from './useLearnerScore'
 
 function DeckRow ({
   category,
@@ -111,6 +113,7 @@ function DeckSection ({
 export function Decks () {
   const { offline, retryConnection } = useAuth()
   const { categories, error } = useCategories()
+  const { snapshot } = useLearnerScore()
   const [query, setQuery] = useState('')
   const [retrying, setRetrying] = useState(false)
   const [pinnedIds, setPinnedIds] = useState<number[]>(() =>
@@ -150,7 +153,9 @@ export function Decks () {
 
   return (
     <>
-      <Brand />
+      <Brand
+        end={snapshot ? <LearnerScoreStrip snapshot={snapshot} /> : null}
+      />
       <h1 class='title'>Choose a deck</h1>
 
       {offline && (

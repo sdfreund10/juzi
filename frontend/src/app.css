@@ -139,6 +139,18 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+.masthead-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.masthead-end {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -198,6 +210,45 @@ body {
   padding: 0 20px 4px;
   font-size: 13px;
   color: var(--muted);
+}
+
+.learner-score-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.learner-score-strip-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+
+.learner-score-strip-label {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.learner-score-strip-value {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.learner-score-sparkline {
+  flex: 0 0 auto;
+  color: var(--ink);
+  opacity: 0.65;
 }
 
 .session-footer {

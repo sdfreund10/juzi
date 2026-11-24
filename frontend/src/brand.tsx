@@ -1,8 +1,9 @@
+import type { ComponentChildren } from 'preact'
 import { brandMarkSrc } from './brandMark.ts'
 
-export function Brand () {
+export function Brand ({ end }: { end?: ComponentChildren } = {}) {
   return (
-    <header class='masthead'>
+    <header class={`masthead${end ? ' masthead-split' : ''}`}>
       <p class='brand'>
         <img
           class='brand-mark'
@@ -13,6 +14,7 @@ export function Brand () {
         />
         juzi
       </p>
+      {end != null ? <div class='masthead-end'>{end}</div> : null}
     </header>
   )
 }
