@@ -1,9 +1,11 @@
-import { useRef, useState } from 'preact/hooks'
+import { useMemo, useRef, useState } from 'preact/hooks'
 import {
   ApiError,
   rateCard,
+  recordDeckCompletion,
   undoRating,
   type CardProgress,
+  type Difficulty,
   type StudyCard
 } from './api'
 import { gradeEasy, gradeHard } from './studyCard'
@@ -32,17 +34,21 @@ function progressAfterHard (progress: CardProgress, lastPracticedAt: string): Ca
   }
 }
 
-export function useGrading (cards: StudyCard[], persist = true) {
+export function useGrading (
+  cards: StudyCard[],
+  persist = true,
+  deckMetadata: { difficulties: Difficulty[] } | null = null
+) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...cards])
   const [progress, setProgress] = useState(emptyProgress)
   // Right now just store one checkpoint for the latest graded card.
   const [checkpoint, setCheckpoint] = useState<RatingCheckpoint | null>(null)
-  const checkpointRef = useRef<RatingCheckpoint | null>(null)
-  checkpointRef.current = checkpoint
+  const [bumpPoints, setBumpPoints] = useState<number | null>(null)
   const [undoing, setUndoing] = useState(false)
   const undoInFlight = useRef(false)
   // Pending serves as a request queue. Append new requests by chaining via a then().
   const pendingSave = useRef<Promise<void>>(Promise.resolve())
+  const completionClientId = useMemo(() => crypto.randomUUID(), [])
 
   function grade (card: StudyCard, hard: boolean) {
     if (undoInFlight.current) return
@@ -61,18 +67,37 @@ export function useGrading (cards: StudyCard[], persist = true) {
       })
     }
 
+    const nextQueue = hard
+      ? gradeHard([
+        {
+          ...card,
+          progress: progressAfterHard(card.progress, lastPracticedAt)
+        },
+        ...queue.slice(1)
+      ])
+      : gradeEasy(queue)
+
     setCheckpoint({ queue, progress, card, lastPracticedAt, savedRating })
     setProgress((current) =>
       hard ? recordHard(current, card.word_id) : recordEasy(current, card.word_id)
     )
-    setQueue((current) => {
-      if (!hard) return gradeEasy(current)
-      const ratedCard = {
-        ...card,
-        progress: progressAfterHard(card.progress, lastPracticedAt)
-      }
-      return gradeHard([ratedCard, ...current.slice(1)])
-    })
+    setQueue(nextQueue)
+
+    if (persist && deckMetadata && nextQueue.length === 0) {
+      savedRating
+        .then(() =>
+          recordDeckCompletion({
+            difficulties: deckMetadata.difficulties,
+            clientId: completionClientId
+          })
+        )
+        .then((result) => {
+          if (result.points > 0) setBumpPoints(result.points)
+        })
+        .catch(() => {
+          // Rating failures already toast; completion failure stays silent.
+        })
+    }
   }
 
   async function undo (): Promise<boolean> {
@@ -111,26 +136,13 @@ export function useGrading (cards: StudyCard[], persist = true) {
     }
   }
 
-  async function waitForSaves (): Promise<boolean> {
-    if (!persist) return true
-    const current = checkpointRef.current
-    // Missing checkpoint usually means the latest rating failed and cleared it.
-    if (!current) return false
-    try {
-      await current.savedRating
-      return true
-    } catch {
-      return false
-    }
-  }
-
   return {
     queue,
     progress,
     canUndo: checkpoint !== null,
     undoing,
+    bumpPoints,
     grade,
-    undo,
-    waitForSaves
+    undo
   }
 }

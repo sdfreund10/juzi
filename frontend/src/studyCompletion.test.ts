@@ -156,13 +156,14 @@ it('posts a completion and shows the score bump when the deck finishes', async (
   expect(host.textContent).toContain('Learner score increased')
 })
 
-it('keeps a single completion client id after undo and finish again', async () => {
+it('reuses the same completion client id after undo and finish again', async () => {
   await mount([cards[0]!])
   await gradeEasy()
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
   expect(completionCalls()).toHaveLength(1)
+  const firstBody = completionCalls()[0]?.[1]?.body
 
   await click('.study-undo')
   await click('.grade-zone.easy')
@@ -170,8 +171,9 @@ it('keeps a single completion client id after undo and finish again', async () =
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
 
-  // Client posts at most once per view; server idempotency covers retries.
-  expect(completionCalls()).toHaveLength(1)
+  // Grade posts again; server idempotency keeps the score from double-counting.
+  expect(completionCalls()).toHaveLength(2)
+  expect(completionCalls()[1]?.[1]?.body).toBe(firstBody)
   expect(host.textContent).toContain('Deck complete')
 })
 

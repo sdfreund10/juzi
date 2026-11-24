@@ -4,7 +4,6 @@ import {
   ApiError,
   createSession,
   flagWord,
-  recordDeckCompletion,
   type Difficulty,
   type FlagReason,
   type StudySession
@@ -137,15 +136,12 @@ function StudySessionView ({
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
-  const [bumpPoints, setBumpPoints] = useState<number | null>(null)
-  const completionClientId = useRef(crypto.randomUUID())
-  const completionPosted = useRef(false)
-  const { queue, progress, canUndo, undoing, grade, undo, waitForSaves } = useGrading(
+  const { queue, progress, canUndo, undoing, bumpPoints, grade, undo } = useGrading(
     session.cards,
-    !offline
+    !offline,
+    offline ? null : { difficulties: session.difficulties }
   )
-  const waitForSavesRef = useRef(waitForSaves)
-  waitForSavesRef.current = waitForSaves
+
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
@@ -159,33 +155,6 @@ function StudySessionView ({
     setFlagged(false)
     setConfirmFlag(false)
   }, [card?.word_id])
-
-  useEffect(() => {
-    if (!done || offline || completionPosted.current) return
-    completionPosted.current = true
-
-    let cancelled = false
-    async function postCompletion () {
-      const saved = await waitForSavesRef.current()
-      if (cancelled || !saved) return
-      try {
-        const result = await recordDeckCompletion({
-          difficulties: session.difficulties,
-          clientId: completionClientId.current
-        })
-        if (!cancelled && result.points > 0) {
-          setBumpPoints(result.points)
-        }
-      } catch {
-        // Score is secondary; rating failures already toast.
-      }
-    }
-
-    postCompletion().catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [done, offline, session.difficulties])
 
   function onGrade (hard: boolean) {
     if (!card || !revealed || undoing) return
