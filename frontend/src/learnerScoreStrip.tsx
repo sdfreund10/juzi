@@ -1,8 +1,8 @@
 import type { LearnerScoreSnapshot } from './api'
 import { floorScore, sparklinePath } from './sparkline'
 
-const SPARK_WIDTH = 120
-const SPARK_HEIGHT = 28
+const SPARK_WIDTH = 72
+const SPARK_HEIGHT = 22
 
 export function LearnerScoreStrip ({
   snapshot
@@ -18,10 +18,6 @@ export function LearnerScoreStrip ({
       class='learner-score-strip'
       aria-label={`Learner score ${display}`}
     >
-      <div class='learner-score-strip-text'>
-        <p class='learner-score-strip-label'>Learner score</p>
-        <p class='learner-score-strip-value'>{display}</p>
-      </div>
       <svg
         class='learner-score-sparkline'
         width={SPARK_WIDTH}
@@ -42,6 +38,7 @@ export function LearnerScoreStrip ({
             )
           : null}
       </svg>
+      <p class='learner-score-strip-value'>{display}</p>
     </div>
   )
 }

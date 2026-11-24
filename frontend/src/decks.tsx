@@ -153,9 +153,10 @@ export function Decks () {
 
   return (
     <>
-      <Brand />
+      <Brand
+        end={snapshot ? <LearnerScoreStrip snapshot={snapshot} /> : null}
+      />
       <h1 class='title'>Choose a deck</h1>
-      {snapshot ? <LearnerScoreStrip snapshot={snapshot} /> : null}
 
       {offline && (
         <p class='subtitle offline-status' role='status'>
