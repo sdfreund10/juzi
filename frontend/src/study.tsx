@@ -11,6 +11,7 @@ import {
 import { useAuth } from './auth'
 import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
+import { DeckComplete } from './deckComplete'
 import {
   beginLearnerSessionBuild,
   endLearnerSessionBuild
@@ -135,10 +136,12 @@ function StudySessionView ({
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
-  const { queue, progress, canUndo, undoing, grade, undo } = useGrading(
+  const { queue, progress, canUndo, undoing, scoreIncrease, grade, undo } = useGrading(
     session.cards,
-    !offline
+    !offline,
+    { difficulties: session.difficulties }
   )
+
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
@@ -256,8 +259,8 @@ function StudySessionView ({
 
       {done
         ? (
-          <div key='caught-up' class='study-body study-card-enter'>
-            <CaughtUp />
+          <div key='deck-complete' class='study-body study-card-enter'>
+            <DeckComplete scoreIncrease={scoreIncrease} />
           </div>
           )
         : (

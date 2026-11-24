@@ -138,18 +138,18 @@ it('removes the Hard reinsert and restores its progress before rerating', async 
   await click('.grade-zone.easy')
   await grade('easy')
   await grade('easy')
-  expect(host.textContent).toContain('All caught up')
+  expect(host.textContent).toContain('Deck complete')
 })
 
 it('can undo the final card and rate it again', async () => {
   await mount([cards[0]!])
   await grade('easy')
-  expect(host.textContent).toContain('All caught up')
+  expect(host.textContent).toContain('Deck complete')
   await click('.study-undo')
   expect(host.textContent).toContain('answer-1')
-  expect(host.textContent).not.toContain('All caught up')
+  expect(host.textContent).not.toContain('Deck complete')
   await click('.grade-zone.easy')
-  expect(host.textContent).toContain('All caught up')
+  expect(host.textContent).toContain('Deck complete')
   expect(undoButton().disabled).toBe(false)
 })
 
