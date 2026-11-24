@@ -7,7 +7,8 @@ export function sparklinePath (
 ): string {
   if (values.length === 0 || width <= 0 || height <= 0) return ''
 
-  const min = Math.min(...values)
+  // Keep zero in the scale so positive dips don't sit on the chart floor.
+  const min = Math.min(0, ...values)
   const max = Math.max(...values)
   const span = max - min
   const innerWidth = Math.max(width - padding * 2, 0)

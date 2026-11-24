@@ -14,10 +14,7 @@ export function LearnerScoreStrip ({
   const path = sparklinePath(values, SPARK_WIDTH, SPARK_HEIGHT)
 
   return (
-    <div
-      class='learner-score-strip'
-      aria-label={`Learner score ${display}`}
-    >
+    <div class='learner-score-strip'>
       <svg
         class='learner-score-sparkline'
         width={SPARK_WIDTH}
@@ -38,7 +35,10 @@ export function LearnerScoreStrip ({
             )
           : null}
       </svg>
-      <p class='learner-score-strip-value'>{display}</p>
+      <div class='learner-score-strip-text'>
+        <p class='learner-score-strip-label'>Learner score</p>
+        <p class='learner-score-strip-value'>{display}</p>
+      </div>
     </div>
   )
 }
