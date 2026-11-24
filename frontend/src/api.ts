@@ -270,3 +270,24 @@ export async function flagWord (wordId: number, reason: FlagReason): Promise<voi
     throw err
   }
 }
+
+export type DeckCompletionResult = {
+  date: string
+  starting_score: number
+  score: number
+  points: number
+  client_id: string
+}
+
+export function recordDeckCompletion (opts: {
+  difficulties: Difficulty[]
+  clientId: string
+}): Promise<DeckCompletionResult> {
+  return apiRequest<DeckCompletionResult>('/api/learner-score/completions/', {
+    method: 'POST',
+    body: {
+      difficulties: opts.difficulties,
+      client_id: opts.clientId
+    }
+  })
+}

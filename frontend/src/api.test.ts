@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiRequest, checkHealth, flagWord, login, rateCard } from './api'
+import {
+  ApiError,
+  apiRequest,
+  checkHealth,
+  flagWord,
+  login,
+  rateCard,
+  recordDeckCompletion
+} from './api'
 import { setToastHandler } from './toast'
 
 afterEach(() => {
@@ -209,6 +217,37 @@ describe('flagWord', () => {
 
     await expect(flagWord(1, 'other')).rejects.toMatchObject({ status })
     expect(toasts).toEqual([message])
+  })
+})
+
+describe('recordDeckCompletion', () => {
+  it('posts difficulties and client_id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        date: '2026-10-15',
+        starting_score: 0,
+        score: 10,
+        points: 10,
+        client_id: 'abc'
+      })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    document.cookie = 'csrftoken=test-token; path=/'
+
+    await expect(
+      recordDeckCompletion({ difficulties: ['novice'], clientId: 'abc' })
+    ).resolves.toMatchObject({ points: 10, client_id: 'abc' })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/learner-score/completions/',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          difficulties: ['novice'],
+          client_id: 'abc'
+        })
+      })
+    )
   })
 })
 

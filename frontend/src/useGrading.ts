@@ -37,6 +37,8 @@ export function useGrading (cards: StudyCard[], persist = true) {
   const [progress, setProgress] = useState(emptyProgress)
   // Right now just store one checkpoint for the latest graded card.
   const [checkpoint, setCheckpoint] = useState<RatingCheckpoint | null>(null)
+  const checkpointRef = useRef<RatingCheckpoint | null>(null)
+  checkpointRef.current = checkpoint
   const [undoing, setUndoing] = useState(false)
   const undoInFlight = useRef(false)
   // Pending serves as a request queue. Append new requests by chaining via a then().
@@ -109,5 +111,26 @@ export function useGrading (cards: StudyCard[], persist = true) {
     }
   }
 
-  return { queue, progress, canUndo: checkpoint !== null, undoing, grade, undo }
+  async function waitForSaves (): Promise<boolean> {
+    if (!persist) return true
+    const current = checkpointRef.current
+    // Missing checkpoint usually means the latest rating failed and cleared it.
+    if (!current) return false
+    try {
+      await current.savedRating
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  return {
+    queue,
+    progress,
+    canUndo: checkpoint !== null,
+    undoing,
+    grade,
+    undo,
+    waitForSaves
+  }
 }

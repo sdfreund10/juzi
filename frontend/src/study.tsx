@@ -4,6 +4,7 @@ import {
   ApiError,
   createSession,
   flagWord,
+  recordDeckCompletion,
   type Difficulty,
   type FlagReason,
   type StudySession
@@ -11,6 +12,7 @@ import {
 import { useAuth } from './auth'
 import { brandMarkSrc } from './brandMark.ts'
 import { CaughtUp } from './caughtUp'
+import { DeckComplete } from './deckComplete'
 import {
   beginLearnerSessionBuild,
   endLearnerSessionBuild
@@ -135,10 +137,15 @@ function StudySessionView ({
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
-  const { queue, progress, canUndo, undoing, grade, undo } = useGrading(
+  const [bumpPoints, setBumpPoints] = useState<number | null>(null)
+  const completionClientId = useRef(crypto.randomUUID())
+  const completionPosted = useRef(false)
+  const { queue, progress, canUndo, undoing, grade, undo, waitForSaves } = useGrading(
     session.cards,
     !offline
   )
+  const waitForSavesRef = useRef(waitForSaves)
+  waitForSavesRef.current = waitForSaves
   const bodyRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
@@ -152,6 +159,33 @@ function StudySessionView ({
     setFlagged(false)
     setConfirmFlag(false)
   }, [card?.word_id])
+
+  useEffect(() => {
+    if (!done || offline || completionPosted.current) return
+    completionPosted.current = true
+
+    let cancelled = false
+    async function postCompletion () {
+      const saved = await waitForSavesRef.current()
+      if (cancelled || !saved) return
+      try {
+        const result = await recordDeckCompletion({
+          difficulties: session.difficulties,
+          clientId: completionClientId.current
+        })
+        if (!cancelled && result.points > 0) {
+          setBumpPoints(result.points)
+        }
+      } catch {
+        // Score is secondary; rating failures already toast.
+      }
+    }
+
+    postCompletion().catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [done, offline, session.difficulties])
 
   function onGrade (hard: boolean) {
     if (!card || !revealed || undoing) return
@@ -256,8 +290,8 @@ function StudySessionView ({
 
       {done
         ? (
-          <div key='caught-up' class='study-body study-card-enter'>
-            <CaughtUp />
+          <div key='deck-complete' class='study-body study-card-enter'>
+            <DeckComplete points={bumpPoints} />
           </div>
           )
         : (
