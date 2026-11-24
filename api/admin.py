@@ -11,7 +11,7 @@ from django.utils.text import capfirst
 from api.services.accounts import apply_login_email
 from api.services.card_review import SUGGESTION_FIELDS, CardReviewFailed, review_card
 
-from .models import Category, Learner, UserWord, Word, WordCategory
+from .models import Category, Learner, LearnerScore, UserWord, Word, WordCategory
 
 VERDICT_LABELS = {
     "no_clear_issue": "No clear issue",
@@ -130,6 +130,16 @@ class LearnerAdmin(admin.ModelAdmin):
     list_filter = ("proficiency_level",)
     autocomplete_fields = ("user",)
     search_fields = ("user__username", "user__email")
+
+
+@admin.register(LearnerScore)
+class LearnerScoreAdmin(admin.ModelAdmin):
+    list_display = ("user", "date", "starting_score", "score")
+    list_select_related = ("user",)
+    list_filter = ("date",)
+    autocomplete_fields = ("user",)
+    search_fields = ("user__username", "user__email")
+    ordering = ("-date",)
 
 
 def card_review_context(word: Word) -> dict:

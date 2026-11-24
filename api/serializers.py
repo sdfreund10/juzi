@@ -69,3 +69,34 @@ class UndoRatingSerializer(serializers.Serializer):
 class FlagWordSerializer(serializers.Serializer):
     word_id = serializers.IntegerField(min_value=1)
     reason = serializers.ChoiceField(choices=Word.FlagReason.choices)
+
+
+class DeckCompletionSerializer(serializers.Serializer):
+    difficulties = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=False,
+    )
+    client_id = serializers.CharField(max_length=64, trim_whitespace=True)
+
+    def validate_difficulties(self, value: list[str]) -> list[str]:
+        unknown = [item for item in value if item not in KNOWN_DIFFICULTIES]
+        if unknown:
+            raise serializers.ValidationError(
+                f"Unknown difficulty values: {', '.join(sorted(set(unknown)))}."
+            )
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for item in value:
+            if item not in seen:
+                seen.add(item)
+                ordered.append(item)
+        return ordered
+
+    def validate_client_id(self, value: str) -> str:
+        if not value:
+            raise serializers.ValidationError("This field may not be blank.")
+        return value
+
+
+class LearnerScoreQuerySerializer(serializers.Serializer):
+    days = serializers.IntegerField(required=False, min_value=1)

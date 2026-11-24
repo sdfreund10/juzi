@@ -43,10 +43,11 @@ Confirmed:
 - Accounts are admin-provisioned (email + password, stored lowercase). No public registration.
 - App chrome stays in English. Chinese appears as study content, not UI language.
 - This is a web product, not a native iOS or Android app.
+- Learners can see a learner score derived from finished study sessions (API available; deck-list display follows).
 
 Undecided (do not invent):
 
-- Whether a learner can see or edit their own progress beyond practicing.
+- Whether a learner can edit their own progress beyond practicing.
 
 ## Brand Commitments
 

@@ -1,7 +1,15 @@
 from django.urls import path
 
 from .auth_views import login_view, logout_view, me, set_proficiency_level
-from .study_views import categories, create_session, flag_word, rate_card, undo_card_rating
+from .study_views import (
+    categories,
+    create_session,
+    flag_word,
+    learner_score,
+    rate_card,
+    record_deck_completion,
+    undo_card_rating,
+)
 from .views import health
 
 urlpatterns = [
@@ -15,4 +23,10 @@ urlpatterns = [
     path("ratings/", rate_card, name="ratings-create"),
     path("ratings/undo/", undo_card_rating, name="ratings-undo"),
     path("word-flags/", flag_word, name="word-flags-create"),
+    path("learner-score/", learner_score, name="learner-score"),
+    path(
+        "learner-score/completions/",
+        record_deck_completion,
+        name="learner-score-completions",
+    ),
 ]

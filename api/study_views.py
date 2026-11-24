@@ -9,11 +9,19 @@ from rest_framework.response import Response
 from api.models import Category, UserWord, Word
 from api.serializers import (
     CreateSessionSerializer,
+    DeckCompletionSerializer,
     FlagWordSerializer,
+    LearnerScoreQuerySerializer,
     RateCardSerializer,
     UndoRatingSerializer,
 )
 from api.services.categories import list_topic_categories
+from api.services.learner_score import (
+    DEFAULT_SERIES_DAYS,
+    LearnerScoreSnapshot,
+    get_learner_score,
+    record_completion,
+)
 from api.services.scheduling import (
     RatingNotUndoableError,
     UserWordNotFoundError,
@@ -188,3 +196,45 @@ def flag_word(request: Request) -> Response:
         word.save(update_fields=["flagged_by", "flag_reason"])
 
     return Response({}, status=status.HTTP_200_OK)
+
+
+def _learner_score_payload(snapshot: LearnerScoreSnapshot) -> dict:
+    return {
+        "score": float(snapshot.score),
+        "days": [
+            {"date": point.date.isoformat(), "score": float(point.score)} for point in snapshot.days
+        ],
+    }
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def learner_score(request: Request) -> Response:
+    query = LearnerScoreQuerySerializer(data=request.query_params)
+    query.is_valid(raise_exception=True)
+    days = query.validated_data.get("days", DEFAULT_SERIES_DAYS)
+    snapshot = get_learner_score(user=request.user, days=days)
+    return Response(_learner_score_payload(snapshot))
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def record_deck_completion(request: Request) -> Response:
+    serializer = DeckCompletionSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    result = record_completion(
+        user=request.user,
+        difficulties=serializer.validated_data["difficulties"],
+        client_id=serializer.validated_data["client_id"],
+    )
+    row = result.row
+    return Response(
+        {
+            "date": row.date.isoformat(),
+            "starting_score": float(row.starting_score),
+            "score": float(row.score),
+            "points": float(result.points),
+            "client_id": result.client_id,
+        },
+        status=status.HTTP_200_OK,
+    )
