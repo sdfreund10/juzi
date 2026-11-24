@@ -11,7 +11,7 @@ function prefersReducedMotion (): boolean {
 function TrendingUpIcon () {
   return (
     <svg
-      class='learner-score-bump-icon'
+      class='learner-score-increase-icon'
       width='20'
       height='20'
       viewBox='0 0 24 24'
@@ -28,35 +28,35 @@ function TrendingUpIcon () {
   )
 }
 
-export function DeckComplete ({ points }: { points: number | null }) {
-  const showBump = points != null && points > 0
-  const floored = showBump ? Math.floor(points) : 0
-  const [showMeta, setShowMeta] = useState(() => !showBump || prefersReducedMotion())
+export function DeckComplete ({ scoreIncrease }: { scoreIncrease: number | null }) {
+  const showIncrease = scoreIncrease != null && scoreIncrease > 0
+  const floored = showIncrease ? Math.floor(scoreIncrease) : 0
+  const [showMeta, setShowMeta] = useState(() => !showIncrease || prefersReducedMotion())
 
   useEffect(() => {
-    if (!showBump || prefersReducedMotion()) {
+    if (!showIncrease || prefersReducedMotion()) {
       setShowMeta(true)
     }
-  }, [showBump])
+  }, [showIncrease])
 
   return (
     <section class='caught-up deck-complete'>
       <h1 class='caught-up-title'>Deck complete</h1>
-      {showBump
+      {showIncrease
         ? (
           <div
-            class='learner-score-bump'
+            class='learner-score-increase'
             aria-live='polite'
             aria-label={`Learner score increased by ${floored}`}
           >
             <p
-              class={`learner-score-bump-delta${prefersReducedMotion() ? ' instant' : ''}`}
+              class={`learner-score-increase-delta${prefersReducedMotion() ? ' instant' : ''}`}
               onAnimationEnd={() => setShowMeta(true)}
             >
               +{floored}
             </p>
-            <div class={`learner-score-bump-meta${showMeta ? ' visible' : ''}`}>
-              <p class='learner-score-bump-label'>Learner score increased</p>
+            <div class={`learner-score-increase-meta${showMeta ? ' visible' : ''}`}>
+              <p class='learner-score-increase-label'>Learner score increased</p>
               <TrendingUpIcon />
             </div>
           </div>

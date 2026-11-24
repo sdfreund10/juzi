@@ -136,10 +136,10 @@ function StudySessionView ({
   const [revealed, setRevealed] = useState(false)
   const [flagged, setFlagged] = useState(false)
   const [confirmFlag, setConfirmFlag] = useState(false)
-  const { queue, progress, canUndo, undoing, bumpPoints, grade, undo } = useGrading(
+  const { queue, progress, canUndo, undoing, scoreIncrease, grade, undo } = useGrading(
     session.cards,
     !offline,
-    offline ? null : { difficulties: session.difficulties }
+    { difficulties: session.difficulties }
   )
 
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -260,7 +260,7 @@ function StudySessionView ({
       {done
         ? (
           <div key='deck-complete' class='study-body study-card-enter'>
-            <DeckComplete points={bumpPoints} />
+            <DeckComplete scoreIncrease={scoreIncrease} />
           </div>
           )
         : (

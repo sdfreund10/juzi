@@ -37,13 +37,13 @@ function progressAfterHard (progress: CardProgress, lastPracticedAt: string): Ca
 export function useGrading (
   cards: StudyCard[],
   persist = true,
-  deckMetadata: { difficulties: Difficulty[] } | null = null
+  deckMetadata: { difficulties: Difficulty[] }
 ) {
   const [queue, setQueue] = useState<StudyCard[]>(() => [...cards])
   const [progress, setProgress] = useState(emptyProgress)
   // Right now just store one checkpoint for the latest graded card.
   const [checkpoint, setCheckpoint] = useState<RatingCheckpoint | null>(null)
-  const [bumpPoints, setBumpPoints] = useState<number | null>(null)
+  const [scoreIncrease, setScoreIncrease] = useState<number | null>(null)
   const [undoing, setUndoing] = useState(false)
   const undoInFlight = useRef(false)
   // Pending serves as a request queue. Append new requests by chaining via a then().
@@ -83,7 +83,7 @@ export function useGrading (
     )
     setQueue(nextQueue)
 
-    if (persist && deckMetadata && nextQueue.length === 0) {
+    if (persist && nextQueue.length === 0) {
       savedRating
         .then(() =>
           recordDeckCompletion({
@@ -92,7 +92,7 @@ export function useGrading (
           })
         )
         .then((result) => {
-          if (result.points > 0) setBumpPoints(result.points)
+          if (result.points > 0) setScoreIncrease(result.points)
         })
         .catch(() => {
           // Rating failures already toast; completion failure stays silent.
@@ -141,7 +141,7 @@ export function useGrading (
     progress,
     canUndo: checkpoint !== null,
     undoing,
-    bumpPoints,
+    scoreIncrease,
     grade,
     undo
   }

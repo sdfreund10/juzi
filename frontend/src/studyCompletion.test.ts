@@ -132,7 +132,7 @@ function completionCalls () {
   )
 }
 
-it('posts a completion and shows the score bump when the deck finishes', async () => {
+it('posts a completion and shows the score increase when the deck finishes', async () => {
   await mount()
   await gradeEasy()
   await gradeEasy()
@@ -207,7 +207,7 @@ it('skips the completion post when the last rating fails', async () => {
   expect(host.textContent).not.toContain('+10')
 })
 
-it('skips the bump when the completion request fails', async () => {
+it('skips the score increase when the completion request fails', async () => {
   await mount([cards[0]!])
   fetchMock.mockImplementation((path: string) => {
     if (path === '/api/learner-score/completions/') {
