@@ -36,6 +36,13 @@ class LearnerScoreSnapshot:
     days: list[LearnerScorePoint]
 
 
+@dataclass(frozen=True)
+class CompletionResult:
+    row: LearnerScore
+    points: Decimal
+    client_id: str
+
+
 def points_for_difficulties(difficulties: list[str]) -> Decimal:
     """Points for one finished session from its difficulty bands."""
     weights = [BAND_WEIGHT[band] for band in difficulties]
@@ -59,29 +66,50 @@ def _starting_score_for(user: AbstractBaseUser, on_date: date) -> Decimal:
     return decayed_score(previous.score, from_date=previous.date, to_date=on_date)
 
 
+def _points_for_client_id(completions: list, client_id: str) -> Decimal | None:
+    for entry in completions:
+        if entry.get("client_id") == client_id:
+            return Decimal(str(entry["points"]))
+    return None
+
+
 @transaction.atomic
 def record_completion(
     *,
     user: AbstractBaseUser,
     difficulties: list[str],
-) -> LearnerScore:
-    """Create or bump today's LearnerScore for a finished deck."""
+    client_id: str,
+) -> CompletionResult:
+    """Create or bump today's LearnerScore for a finished deck.
+
+    ``client_id`` makes the write idempotent: a repeated id does not add points again.
+    """
     today = timezone.localdate()
     points = points_for_difficulties(difficulties)
 
     row = LearnerScore.objects.select_for_update().filter(user=user, date=today).first()
     if row is None:
         starting = _starting_score_for(user, today)
-        return LearnerScore.objects.create(
+        row = LearnerScore.objects.create(
             user=user,
             date=today,
             starting_score=starting,
             score=starting + points,
+            completions=[{"client_id": client_id, "points": float(points)}],
         )
+        return CompletionResult(row=row, points=points, client_id=client_id)
+
+    existing_points = _points_for_client_id(row.completions, client_id)
+    if existing_points is not None:
+        return CompletionResult(row=row, points=existing_points, client_id=client_id)
 
     row.score += points
-    row.save(update_fields=["score"])
-    return row
+    row.completions = [
+        *row.completions,
+        {"client_id": client_id, "points": float(points)},
+    ]
+    row.save(update_fields=["score", "completions"])
+    return CompletionResult(row=row, points=points, client_id=client_id)
 
 
 def get_learner_score(

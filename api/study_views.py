@@ -222,15 +222,19 @@ def learner_score(request: Request) -> Response:
 def record_deck_completion(request: Request) -> Response:
     serializer = DeckCompletionSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    row = record_completion(
+    result = record_completion(
         user=request.user,
         difficulties=serializer.validated_data["difficulties"],
+        client_id=serializer.validated_data["client_id"],
     )
+    row = result.row
     return Response(
         {
             "date": row.date.isoformat(),
             "starting_score": float(row.starting_score),
             "score": float(row.score),
+            "points": float(result.points),
+            "client_id": result.client_id,
         },
         status=status.HTTP_200_OK,
     )

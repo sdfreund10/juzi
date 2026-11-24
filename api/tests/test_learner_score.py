@@ -80,22 +80,38 @@ def test_points_for_difficulties(difficulties: list[str], expected: Decimal) -> 
 
 @pytest.mark.django_db
 def test_first_novice_completion_creates_row(user: User) -> None:
-    row = record_completion(user=user, difficulties=["novice"])
+    result = record_completion(user=user, difficulties=["novice"], client_id="c1")
 
-    assert row.date == timezone.localdate()
-    assert row.starting_score == Decimal("0")
-    assert row.score == Decimal("10")
+    assert result.row.date == timezone.localdate()
+    assert result.row.starting_score == Decimal("0")
+    assert result.row.score == Decimal("10")
+    assert result.points == Decimal("10")
+    assert result.row.completions == [{"client_id": "c1", "points": 10.0}]
     assert LearnerScore.objects.filter(user=user).count() == 1
 
 
 @pytest.mark.django_db
 def test_same_day_second_completion_bumps_score(user: User) -> None:
-    record_completion(user=user, difficulties=["novice"])
-    row = record_completion(user=user, difficulties=["novice"])
+    record_completion(user=user, difficulties=["novice"], client_id="c1")
+    result = record_completion(user=user, difficulties=["novice"], client_id="c2")
 
     assert LearnerScore.objects.filter(user=user).count() == 1
-    assert row.starting_score == Decimal("0")
-    assert row.score == Decimal("20")
+    assert result.row.starting_score == Decimal("0")
+    assert result.row.score == Decimal("20")
+    assert result.points == Decimal("10")
+
+
+@pytest.mark.django_db
+def test_duplicate_client_id_does_not_bump_again(user: User) -> None:
+    first = record_completion(user=user, difficulties=["novice"], client_id="same")
+    second = record_completion(user=user, difficulties=["expert"], client_id="same")
+
+    assert first.row.score == Decimal("10")
+    assert second.row.score == Decimal("10")
+    assert second.points == Decimal("10")
+    assert LearnerScore.objects.get(user=user).completions == [
+        {"client_id": "same", "points": 10.0}
+    ]
 
 
 @pytest.mark.django_db
@@ -108,10 +124,10 @@ def test_new_row_decays_from_yesterday(user: User) -> None:
         score=Decimal("20"),
     )
 
-    row = record_completion(user=user, difficulties=["novice"])
+    result = record_completion(user=user, difficulties=["novice"], client_id="c1")
 
-    assert row.starting_score == Decimal("15")
-    assert row.score == Decimal("25")
+    assert result.row.starting_score == Decimal("15")
+    assert result.row.score == Decimal("25")
     assert LearnerScore.objects.filter(user=user).count() == 2
     earlier = LearnerScore.objects.get(user=user, date=today - timedelta(days=1))
     assert earlier.score == Decimal("20")
@@ -127,20 +143,22 @@ def test_new_row_floors_decay_at_zero(user: User) -> None:
         score=Decimal("10"),
     )
 
-    row = record_completion(user=user, difficulties=["novice"])
+    result = record_completion(user=user, difficulties=["novice"], client_id="c1")
 
-    assert row.starting_score == Decimal("0")
-    assert row.score == Decimal("10")
+    assert result.row.starting_score == Decimal("0")
+    assert result.row.score == Decimal("10")
 
 
 @pytest.mark.django_db
 def test_intermediate_and_expert_multipliers(user: User) -> None:
-    mixed = record_completion(user=user, difficulties=["novice", "intermediate"])
-    assert mixed.score == Decimal("15")
+    mixed = record_completion(user=user, difficulties=["novice", "intermediate"], client_id="c1")
+    assert mixed.row.score == Decimal("15")
+    assert mixed.points == Decimal("15")
 
     LearnerScore.objects.all().delete()
-    expert = record_completion(user=user, difficulties=["expert"])
-    assert expert.score == Decimal("20")
+    expert = record_completion(user=user, difficulties=["expert"], client_id="c2")
+    assert expert.row.score == Decimal("20")
+    assert expert.points == Decimal("20")
 
 
 @pytest.mark.django_db
@@ -279,7 +297,7 @@ def test_post_completion_creates_and_bumps(client: APIClient, user: User) -> Non
 
     first = client.post(
         reverse("learner-score-completions"),
-        {"difficulties": ["novice"]},
+        {"difficulties": ["novice"], "client_id": "deck-1"},
         format="json",
         **headers,
     )
@@ -288,17 +306,35 @@ def test_post_completion_creates_and_bumps(client: APIClient, user: User) -> Non
         "date": timezone.localdate().isoformat(),
         "starting_score": 0.0,
         "score": 10.0,
+        "points": 10.0,
+        "client_id": "deck-1",
     }
 
     second = client.post(
         reverse("learner-score-completions"),
-        {"difficulties": ["intermediate"]},
+        {"difficulties": ["intermediate"], "client_id": "deck-2"},
         format="json",
         **headers,
     )
     assert second.status_code == status.HTTP_200_OK
     assert second.json()["score"] == 22.5
+    assert second.json()["points"] == 12.5
     assert LearnerScore.objects.filter(user=user).count() == 1
+
+
+@pytest.mark.django_db
+def test_post_completion_is_idempotent_for_client_id(client: APIClient, user: User) -> None:
+    headers = _login(client, user, "s3cret-alice")
+    body = {"difficulties": ["novice"], "client_id": "same-deck"}
+
+    first = client.post(reverse("learner-score-completions"), body, format="json", **headers)
+    second = client.post(reverse("learner-score-completions"), body, format="json", **headers)
+
+    assert first.status_code == status.HTTP_200_OK
+    assert second.status_code == status.HTTP_200_OK
+    assert second.json()["score"] == 10.0
+    assert second.json()["points"] == 10.0
+    assert LearnerScore.objects.get(user=user).score == Decimal("10")
 
 
 @pytest.mark.django_db
@@ -306,9 +342,21 @@ def test_post_completion_rejects_unknown_difficulty(client: APIClient, user: Use
     headers = _login(client, user, "s3cret-alice")
     response = client.post(
         reverse("learner-score-completions"),
-        {"difficulties": ["legendary"]},
+        {"difficulties": ["legendary"], "client_id": "x"},
         format="json",
         **headers,
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert LearnerScore.objects.filter(user=user).count() == 0
+
+
+@pytest.mark.django_db
+def test_post_completion_requires_client_id(client: APIClient, user: User) -> None:
+    headers = _login(client, user, "s3cret-alice")
+    response = client.post(
+        reverse("learner-score-completions"),
+        {"difficulties": ["novice"]},
+        format="json",
+        **headers,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST

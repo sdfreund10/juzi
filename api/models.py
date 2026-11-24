@@ -171,6 +171,8 @@ class LearnerScore(models.Model):
     date = models.DateField()
     starting_score = models.DecimalField(max_digits=8, decimal_places=2)
     score = models.DecimalField(max_digits=8, decimal_places=2)
+    # Applied deck completions for this day: [{"client_id": str, "points": number}, ...]
+    completions = models.JSONField(default=list, blank=True)
 
     class Meta:
         constraints = [

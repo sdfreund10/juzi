@@ -76,6 +76,7 @@ class DeckCompletionSerializer(serializers.Serializer):
         child=serializers.CharField(),
         allow_empty=False,
     )
+    client_id = serializers.CharField(max_length=64, trim_whitespace=True)
 
     def validate_difficulties(self, value: list[str]) -> list[str]:
         unknown = [item for item in value if item not in KNOWN_DIFFICULTIES]
@@ -90,6 +91,11 @@ class DeckCompletionSerializer(serializers.Serializer):
                 seen.add(item)
                 ordered.append(item)
         return ordered
+
+    def validate_client_id(self, value: str) -> str:
+        if not value:
+            raise serializers.ValidationError("This field may not be blank.")
+        return value
 
 
 class LearnerScoreQuerySerializer(serializers.Serializer):
