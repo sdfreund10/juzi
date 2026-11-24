@@ -143,6 +143,7 @@ function StudySessionView ({
   )
 
   const bodyRef = useRef<HTMLDivElement>(null)
+  const flagModalRef = useRef<HTMLDivElement>(null)
 
   const card = queue[0]
   const done = !card
@@ -155,6 +156,12 @@ function StudySessionView ({
     setFlagged(false)
     setConfirmFlag(false)
   }, [card?.word_id])
+
+  useEffect(() => {
+    if (confirmFlag && flagModalRef.current) {
+      flagModalRef.current.focus()
+    }
+  }, [confirmFlag])
 
   function onGrade (hard: boolean) {
     if (!card || !revealed || undoing) return
@@ -327,12 +334,23 @@ function StudySessionView ({
                   {confirmFlag
                     ? (
                       <div
+                        ref={flagModalRef}
                         class='study-flag-confirm study-flag-enter'
                         role='dialog'
                         aria-modal='true'
                         aria-labelledby='flag-confirm-copy'
+                        tabIndex={-1}
+                        onClick={() => setConfirmFlag(false)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') {
+                            setConfirmFlag(false)
+                          }
+                        }}
                       >
-                        <div class='study-flag-confirm-panel'>
+                        <div
+                          class='study-flag-confirm-panel'
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           <p id='flag-confirm-copy'>What's wrong with this card?</p>
                           <div class='study-flag-confirm-actions'>
                             {FLAG_REASONS.map(({ value, label }) => (
