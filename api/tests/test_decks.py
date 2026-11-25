@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
+import re
 from unittest.mock import Mock, patch
 
 import pytest
@@ -609,4 +611,71 @@ def test_selection_timeout_saves_nothing(client: APIClient, alice: User) -> None
         response = _post(client, headers, {"prompt": "tea", "size": 20})
     assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert calls == [EMBEDDINGS_URL, OPENROUTER_URL]
+    assert Category.objects.count() == 0
+
+
+_STEP_LINE = re.compile(
+    r"^deck (prompt embed|vector search|model pick|save)( failed)? \d+\.\d{3}s$"
+)
+
+
+def _deck_log_lines(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [record.getMessage() for record in caplog.records if record.name == "api.services.decks"]
+
+
+@pytest.mark.django_db
+@KEY
+def test_deck_build_logs_each_step_duration(
+    client: APIClient,
+    alice: User,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    word = _word()
+    _store(word, _vector_at(0, 1.0))
+    _, http = _patch_provider(_vector_at(0, 1.0), _chat_response([word.id]))
+    headers = _login(client, alice, "s3cret-alice")
+    with caplog.at_level(logging.INFO, logger="api.services.decks"), http:
+        response = _post(client, headers, {"prompt": "tea", "size": 20})
+
+    assert response.status_code == status.HTTP_201_CREATED
+    messages = _deck_log_lines(caplog)
+    assert [message.removeprefix("deck ").rsplit(" ", 1)[0] for message in messages] == [
+        "prompt embed",
+        "vector search",
+        "model pick",
+        "save",
+    ]
+    assert all(_STEP_LINE.fullmatch(message) for message in messages)
+
+
+@pytest.mark.django_db
+@KEY
+def test_a_failed_step_logs_its_duration_and_later_steps_do_not_run(
+    client: APIClient,
+    alice: User,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    word = _word()
+    _store(word, _vector_at(0, 1.0))
+    headers = _login(client, alice, "s3cret-alice")
+
+    def time_out_selection(url: str, headers=None, json=None, timeout=None):
+        if url == EMBEDDINGS_URL:
+            return _embedding_response(_vector_at(0, 1.0))
+        raise requests.Timeout("slow")
+
+    with (
+        caplog.at_level(logging.INFO, logger="api.services.decks"),
+        patch("api.services.embeddings.requests.post", side_effect=time_out_selection),
+    ):
+        response = _post(client, headers, {"prompt": "tea", "size": 20})
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    messages = _deck_log_lines(caplog)
+    assert [message.removeprefix("deck ").rsplit(" ", 1)[0] for message in messages] == [
+        "prompt embed",
+        "vector search",
+        "model pick failed",
+    ]
+    assert all(_STEP_LINE.fullmatch(message) for message in messages)
     assert Category.objects.count() == 0

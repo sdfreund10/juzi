@@ -184,6 +184,26 @@ WHITENOISE_MAX_AGE = 60
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# App INFO goes to stderr in production. Django's default console handler
+# only emits when DEBUG is on, and gunicorn reads stderr.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "api": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "api": {
+            "handlers": ["api"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+
 # OpenRouter key for Word admin card review and catalog embeddings.
 # A blank key disables Analyze and makes embed_words exit before any request.
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")

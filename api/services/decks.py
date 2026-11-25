@@ -7,8 +7,12 @@ rows, embeds the prompt, and asks Postgres for the nearest words.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import requests
@@ -24,6 +28,8 @@ from api.models import EMBEDDING_DIMENSIONS, Category, Word, WordCategory, WordE
 from api.services.categories import HSK_CATEGORY_PREFIX
 from api.services.embeddings import EMBEDDING_MODEL, EmbeddingFailed, embed_texts
 from api.services.openrouter import OPENROUTER_URL, parse_chat_json, strict_json_schema
+
+logger = logging.getLogger(__name__)
 
 DECK_MODEL = "google/gemini-3.8-flash"
 PROMPT_EMBED_TIMEOUT = (2, 5)
@@ -76,21 +82,38 @@ def create_deck(*, user: AbstractBaseUser, prompt: str, size: int) -> Category:
     if not WordEmbedding.objects.filter(model_name=EMBEDDING_MODEL).exists():
         raise DeckUnavailable
 
-    try:
-        query = embed_texts([prompt], timeout=PROMPT_EMBED_TIMEOUT)[0]
-    except EmbeddingFailed as exc:
-        raise DeckUnavailable from exc
-    if not _is_finite_vector(query):
-        raise DeckUnavailable
+    with _step("prompt embed"):
+        try:
+            query = embed_texts([prompt], timeout=PROMPT_EMBED_TIMEOUT)[0]
+        except EmbeddingFailed as exc:
+            raise DeckUnavailable from exc
+        if not _is_finite_vector(query):
+            raise DeckUnavailable
 
-    head = _rank_words(query, size * HEAD_MULTIPLE)
+    with _step("vector search"):
+        head = _rank_words(query, size * HEAD_MULTIPLE)
     if not head:
         raise NoMatchingWords
 
-    chosen, name = _choose_ids(prompt, size, head)
+    with _step("model pick"):
+        chosen, name = _choose_ids(prompt, size, head)
     if not chosen:
         raise NoMatchingWords
-    return _save_deck(user, name, chosen)
+
+    with _step("save"):
+        return _save_deck(user, name, chosen)
+
+
+@contextmanager
+def _step(name: str) -> Iterator[None]:
+    """Log how long one deck-build step took, including when it fails."""
+    started = time.perf_counter()
+    try:
+        yield
+    except Exception:
+        logger.info("deck %s failed %.3fs", name, time.perf_counter() - started)
+        raise
+    logger.info("deck %s %.3fs", name, time.perf_counter() - started)
 
 
 def _rank_words(query: list[float], limit: int) -> list[Word]:
