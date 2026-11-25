@@ -256,15 +256,11 @@ def test_skipped_rows_never_reach_the_candidate_list(client: APIClient, alice: U
     archived = _word(chinese="檔", pinyin="dàng", english_basic="archived")
     archived.archived_at = timezone.now()
     archived.save(update_fields=["archived_at"])
-    short = _word(chinese="短", pinyin="duǎn", english_basic="short")
-    infinite = _word(chinese="無窮", pinyin="wúqióng", english_basic="infinite")
     zero = _word(chinese="零", pinyin="líng", english_basic="zero")
     _store(kept, _vector_at(0, 1.0))
     _store(stale, _vector_at(0, 1.0), source_text="Chinese: yesterday")
     _store(other_model, _vector_at(0, 1.0), model_name="other/model")
     _store(archived, _vector_at(0, 1.0))
-    _store(short, [1.0, 0.0, 0.0])
-    _store(infinite, _vector_at(0, math.inf))
     _store(zero, _vector_at(0, 0.0))
 
     provider, http = _patch_provider(

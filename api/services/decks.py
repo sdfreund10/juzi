@@ -1,7 +1,7 @@
 """Build a private deck from a prompt and stored word embeddings.
 
-The embedding pipeline fills ``WordEmbedding`` as a float array. This module
-reads those rows, embeds the prompt, and asks Postgres for the nearest words.
+The embedding pipeline fills ``WordEmbedding.vector``. This module reads those
+rows, embeds the prompt, and asks Postgres for the nearest words.
 """
 
 from __future__ import annotations
@@ -14,7 +14,10 @@ from typing import Any
 import requests
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
-from django.db import connection, transaction
+from django.db import transaction
+from django.db.models import BooleanField
+from django.db.models.expressions import RawSQL
+from pgvector.django import CosineDistance
 from rest_framework import serializers
 
 from api.models import EMBEDDING_DIMENSIONS, Category, Word, WordCategory, WordEmbedding
@@ -88,60 +91,57 @@ def create_deck(*, user: AbstractBaseUser, prompt: str, size: int) -> Category:
 def _rank_words(query: list[float], limit: int) -> list[Word]:
     """Nearest active words for this embedding model.
 
-    Postgres orders by pgvector cosine distance on the stored float array.
-    Ties break toward the lower word id. Archived words, stale source text,
-    the wrong length, non-finite values, and zero magnitudes are left out.
-    A zero query vector matches nothing.
+    Orders by cosine distance on the vector column. Ties break toward the
+    lower word id. Archived words, stale source text, and zero vectors are
+    left out. A zero query vector matches nothing.
     """
     if not _is_finite_vector(query) or not any(query):
         return []
 
-    word = connection.ops.quote_name(Word._meta.db_table)
-    embedding = connection.ops.quote_name(WordEmbedding._meta.db_table)
-    # Source text matches embedding_source_text: empty fields are omitted.
-    # The CTE is materialized so a non-finite array is dropped before pgvector
-    # casts the column. A cast of Infinity aborts the whole query.
-    sql = f"""
-        WITH candidate AS MATERIALIZED (
-            SELECT embedding.word_id, embedding.vector
-            FROM {word} AS word
-            INNER JOIN {embedding} AS embedding ON embedding.word_id = word.id
-            WHERE embedding.model_name = %s
-              AND word.archived_at IS NULL
-              AND cardinality(embedding.vector) = %s
-              AND embedding.source_text = concat_ws(
-                    E'\\n',
-                    CASE WHEN word.chinese <> '' THEN 'Chinese: ' || word.chinese END,
-                    CASE WHEN word.pinyin <> '' THEN 'Pinyin: ' || word.pinyin END,
-                    CASE WHEN word.english_basic <> '' THEN 'Meaning: ' || word.english_basic END,
-                    CASE WHEN word.example_sentence_english <> ''
-                        THEN 'Example: ' || word.example_sentence_english END
-                  )
-              AND NOT EXISTS (
-                    SELECT 1
-                    FROM unnest(embedding.vector) AS value
-                    WHERE value <> value
-                       OR value = 'Infinity'::float8
-                       OR value = '-Infinity'::float8
-                  )
+    rows = (
+        WordEmbedding.objects.filter(
+            model_name=EMBEDDING_MODEL,
+            word__archived_at__isnull=True,
         )
-        SELECT word.*
-        FROM candidate
-        INNER JOIN {word} AS word ON word.id = candidate.word_id
-        WHERE vector_norm(candidate.vector::vector) > 0
-        ORDER BY candidate.vector::vector <=> %s::vector, word.id
-        LIMIT %s
-    """
-    literal = "[" + ",".join(format(value, ".17g") for value in query) + "]"
-    return list(Word.objects.raw(sql, [EMBEDDING_MODEL, EMBEDDING_DIMENSIONS, literal, limit]))
+        .alias(
+            current_source=_current_source_text(),
+            nonzero=RawSQL(
+                f'vector_norm("{WordEmbedding._meta.db_table}"."vector") > 0',
+                [],
+                output_field=BooleanField(),
+            ),
+            distance=CosineDistance("vector", query),
+        )
+        .filter(current_source=True, nonzero=True)
+        .order_by("distance", "word_id")
+        .select_related("word")[:limit]
+    )
+    return [row.word for row in rows]
+
+
+def _current_source_text() -> RawSQL:
+    """True when the stored text matches ``embedding_source_text``."""
+    word = Word._meta.db_table
+    embedding = WordEmbedding._meta.db_table
+    return RawSQL(
+        f"""
+        "{embedding}"."source_text" = concat_ws(
+            E'\\n',
+            CASE WHEN "{word}"."chinese" <> '' THEN 'Chinese: ' || "{word}"."chinese" END,
+            CASE WHEN "{word}"."pinyin" <> '' THEN 'Pinyin: ' || "{word}"."pinyin" END,
+            CASE WHEN "{word}"."english_basic" <> ''
+                THEN 'Meaning: ' || "{word}"."english_basic" END,
+            CASE WHEN "{word}"."example_sentence_english" <> ''
+                THEN 'Example: ' || "{word}"."example_sentence_english" END
+        )
+        """,
+        [],
+        output_field=BooleanField(),
+    )
 
 
 def _is_finite_vector(vector: list[float]) -> bool:
     return len(vector) == EMBEDDING_DIMENSIONS and all(math.isfinite(value) for value in vector)
-
-
-def _magnitude(vector: list[float]) -> float:
-    return math.sqrt(sum(value * value for value in vector))
 
 
 def _choose_ids(prompt: str, size: int, head: list[Word]) -> list[int]:
