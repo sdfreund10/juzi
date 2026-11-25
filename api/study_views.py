@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from api.models import Category, UserWord, Word
 from api.serializers import (
+    BuildDeckSerializer,
     CreateSessionSerializer,
     DeckCompletionSerializer,
     FlagWordSerializer,
@@ -16,6 +17,7 @@ from api.serializers import (
     UndoRatingSerializer,
 )
 from api.services.categories import list_topic_categories
+from api.services.decks import DeckUnavailable, NoMatchingWords, create_deck
 from api.services.learner_score import (
     DEFAULT_SERIES_DAYS,
     LearnerScoreSnapshot,
@@ -90,6 +92,33 @@ def _user_word_payload(user_word: UserWord) -> dict:
             ),
         },
     }
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def build_deck(request: Request) -> Response:
+    serializer = BuildDeckSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        category = create_deck(
+            user=request.user,
+            prompt=serializer.validated_data["prompt"],
+            size=serializer.validated_data["size"],
+        )
+    except DeckUnavailable:
+        return Response(
+            {"detail": "Could not build a deck. Try again."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except NoMatchingWords:
+        return Response(
+            {"detail": "No matching words."},
+            status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+    return Response(
+        {"id": category.id, "name": category.name},
+        status=status.HTTP_201_CREATED,
+    )
 
 
 @api_view(["GET"])
