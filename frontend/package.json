@@ -19,13 +19,13 @@
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
-    "@sentry/vite-plugin": "^5.4.1",
+    "@sentry/vite-plugin": "^11.17.0",
     "@types/node": "^24.13.3",
-    "@typescript-eslint/parser": "^8.71.2",
-    "happy-dom": "^20.14.5",
+    "@typescript-eslint/parser": "^8.74.0",
+    "happy-dom": "^21.0.4",
     "standard": "^17.1.2",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0",
+    "vite": "^8.3.8",
     "vitest": "^5.0.3"
   },
   "standard": {
