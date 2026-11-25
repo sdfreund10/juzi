@@ -1,12 +1,11 @@
 """Build a private deck from a prompt and stored word embeddings.
 
-The embedding pipeline fills ``WordEmbedding``. This module only reads those
-rows and embeds the prompt.
+The embedding pipeline fills ``WordEmbedding`` as a float array. This module
+reads those rows, embeds the prompt, and asks Postgres for the nearest words.
 """
 
 from __future__ import annotations
 
-import heapq
 import json
 import math
 import re
@@ -15,17 +14,12 @@ from typing import Any
 import requests
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
-from django.db import transaction
+from django.db import connection, transaction
 from rest_framework import serializers
 
 from api.models import EMBEDDING_DIMENSIONS, Category, Word, WordCategory, WordEmbedding
 from api.services.categories import HSK_CATEGORY_PREFIX
-from api.services.embeddings import (
-    EMBEDDING_MODEL,
-    EmbeddingFailed,
-    embed_texts,
-    embedding_source_text,
-)
+from api.services.embeddings import EMBEDDING_MODEL, EmbeddingFailed, embed_texts
 from api.services.openrouter import OPENROUTER_URL, parse_chat_json, strict_json_schema
 
 DECK_MODEL = "anthropic/claude-sonnet-4.5"
@@ -92,62 +86,54 @@ def create_deck(*, user: AbstractBaseUser, prompt: str, size: int) -> Category:
 
 
 def _rank_words(query: list[float], limit: int) -> list[Word]:
-    """Closest active words with a current vector for the embedding model.
+    """Nearest active words for this embedding model.
 
-    Cosine similarity, ties toward the lower word id. Archived words, stale
-    source text, the wrong length, non-finite values, and zero magnitudes
-    are left out. A zero query vector matches nothing.
+    Postgres orders by pgvector cosine distance on the stored float array.
+    Ties break toward the lower word id. Archived words, stale source text,
+    the wrong length, non-finite values, and zero magnitudes are left out.
+    A zero query vector matches nothing.
     """
-    query_magnitude = _magnitude(query)
-    if query_magnitude == 0 or not _is_finite_vector(query):
+    if not _is_finite_vector(query) or not any(query):
         return []
 
-    best: list[tuple[float, int]] = []
-    kept: dict[int, Word] = {}
-    rows = (
-        WordEmbedding.objects.filter(model_name=EMBEDDING_MODEL)
-        .select_related("word")
-        .iterator(chunk_size=100)
-    )
-    for embedding in rows:
-        score = _cosine(query, query_magnitude, embedding)
-        if score is None:
-            continue
-        word_id = embedding.word_id
-        entry = (score, -word_id)
-        if len(best) < limit:
-            heapq.heappush(best, entry)
-            kept[word_id] = embedding.word
-            continue
-        if entry <= best[0]:
-            continue
-        _, dropped = heapq.heapreplace(best, entry)
-        del kept[-dropped]
-        kept[word_id] = embedding.word
-
-    # (score, -id) reversed: higher cosine, then the lower word id.
-    ordered = sorted(best, reverse=True)
-    return [kept[-negated_id] for _, negated_id in ordered]
-
-
-def _cosine(
-    query: list[float],
-    query_magnitude: float,
-    embedding: WordEmbedding,
-) -> float | None:
-    word = embedding.word
-    if word.archived_at is not None:
-        return None
-    if embedding.source_text != embedding_source_text(word):
-        return None
-    vector = list(embedding.vector)
-    if not _is_finite_vector(vector):
-        return None
-    magnitude = _magnitude(vector)
-    if magnitude == 0:
-        return None
-    dot = sum(left * right for left, right in zip(query, vector, strict=True))
-    return dot / (query_magnitude * magnitude)
+    word = connection.ops.quote_name(Word._meta.db_table)
+    embedding = connection.ops.quote_name(WordEmbedding._meta.db_table)
+    # Source text matches embedding_source_text: empty fields are omitted.
+    # The CTE is materialized so a non-finite array is dropped before pgvector
+    # casts the column. A cast of Infinity aborts the whole query.
+    sql = f"""
+        WITH candidate AS MATERIALIZED (
+            SELECT embedding.word_id, embedding.vector
+            FROM {word} AS word
+            INNER JOIN {embedding} AS embedding ON embedding.word_id = word.id
+            WHERE embedding.model_name = %s
+              AND word.archived_at IS NULL
+              AND cardinality(embedding.vector) = %s
+              AND embedding.source_text = concat_ws(
+                    E'\\n',
+                    CASE WHEN word.chinese <> '' THEN 'Chinese: ' || word.chinese END,
+                    CASE WHEN word.pinyin <> '' THEN 'Pinyin: ' || word.pinyin END,
+                    CASE WHEN word.english_basic <> '' THEN 'Meaning: ' || word.english_basic END,
+                    CASE WHEN word.example_sentence_english <> ''
+                        THEN 'Example: ' || word.example_sentence_english END
+                  )
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM unnest(embedding.vector) AS value
+                    WHERE value <> value
+                       OR value = 'Infinity'::float8
+                       OR value = '-Infinity'::float8
+                  )
+        )
+        SELECT word.*
+        FROM candidate
+        INNER JOIN {word} AS word ON word.id = candidate.word_id
+        WHERE vector_norm(candidate.vector::vector) > 0
+        ORDER BY candidate.vector::vector <=> %s::vector, word.id
+        LIMIT %s
+    """
+    literal = "[" + ",".join(format(value, ".17g") for value in query) + "]"
+    return list(Word.objects.raw(sql, [EMBEDDING_MODEL, EMBEDDING_DIMENSIONS, literal, limit]))
 
 
 def _is_finite_vector(vector: list[float]) -> bool:
