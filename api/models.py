@@ -1,5 +1,8 @@
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
+
+EMBEDDING_DIMENSIONS = 1536
 
 
 class WordQuerySet(models.QuerySet):
@@ -52,6 +55,23 @@ class Word(models.Model):
 
     def __str__(self) -> str:
         return self.chinese
+
+
+class WordEmbedding(models.Model):
+    """The stored vector for one word. Deleting the word deletes this row."""
+
+    word = models.OneToOneField(
+        Word,
+        on_delete=models.CASCADE,
+        related_name="embedding",
+    )
+    model_name = models.CharField(max_length=100)
+    source_text = models.TextField()
+    vector = ArrayField(models.FloatField(), size=EMBEDDING_DIMENSIONS)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"{self.word_id}:{self.model_name}"
 
 
 class Category(models.Model):

@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "corsheaders",
     "rest_framework",
     "api",
@@ -184,7 +185,8 @@ WHITENOISE_MAX_AGE = 60
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# Word admin card review (OpenRouter). Blank key disables Analyze.
+# OpenRouter key for Word admin card review and catalog embeddings.
+# A blank key disables Analyze and makes embed_words exit before any request.
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 
