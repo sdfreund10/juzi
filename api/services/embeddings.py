@@ -5,6 +5,7 @@ The chat-completions client in ``openrouter.py`` is a different endpoint.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import requests
@@ -119,6 +120,66 @@ def store_embeddings(words: list[Word], vectors: list[list[float]]) -> None:
         unique_fields=["word"],
         update_fields=["model_name", "source_text", "vector", "updated_at"],
     )
+
+
+def rank_words(query: list[float], *, limit: int) -> list[tuple[float, Word]]:
+    """Closest active words by cosine similarity.
+
+    Skips archived words, a stale source text, a vector of the wrong length,
+    a non-finite value, and a zero vector. Ties break toward the lower word id.
+    """
+    query_vector = _finite_vector(query)
+    if query_vector is None or limit < 1:
+        return []
+
+    scored: list[tuple[float, int, Word]] = []
+    rows = (
+        WordEmbedding.objects.filter(model_name=EMBEDDING_MODEL)
+        .select_related("word")
+        .order_by("word_id")
+    )
+    for row in rows.iterator(chunk_size=100):
+        word = row.word
+        if word.archived_at is not None or row.source_text != embedding_source_text(word):
+            continue
+        vector = _finite_vector(row.vector)
+        if vector is None:
+            continue
+        score = _cosine(query_vector, vector)
+        if score is None:
+            continue
+        scored.append((score, word.id, word))
+
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [(score, word) for score, _word_id, word in scored[:limit]]
+
+
+def _finite_vector(values: list[float]) -> list[float] | None:
+    if len(values) != EMBEDDING_DIMENSIONS:
+        return None
+    vector: list[float] = []
+    for value in values:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(number):
+            return None
+        vector.append(number)
+    return vector
+
+
+def _cosine(left: list[float], right: list[float]) -> float | None:
+    dot = 0.0
+    left_square = 0.0
+    right_square = 0.0
+    for one, other in zip(left, right, strict=True):
+        dot += one * other
+        left_square += one * one
+        right_square += other * other
+    if left_square == 0.0 or right_square == 0.0:
+        return None
+    return dot / math.sqrt(left_square * right_square)
 
 
 def refresh_word_embedding(word: Word) -> None:

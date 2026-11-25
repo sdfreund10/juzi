@@ -117,6 +117,9 @@ make seed-hsk
 # Unchanged words are skipped. This does not run as part of seed.
 make embed-words
 
+# Cosine-search the stored embeddings for one prompt.
+uv run python manage.py search_words "spouse's parents" --limit 8
+
 # Seed local login accounts (DEBUG only; refuses when DJANGO_DEBUG is false)
 make seed-users
 
