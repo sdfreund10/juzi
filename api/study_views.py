@@ -116,6 +116,11 @@ def create_session(request: Request) -> Response:
             {"detail": "Category not found."},
             status=status.HTTP_404_NOT_FOUND,
         )
+    if category.owner_id is not None and category.owner_id != request.user.id:
+        return Response(
+            {"detail": "Category not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
     try:
         session = build_session(

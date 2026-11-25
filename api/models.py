@@ -75,9 +75,20 @@ class WordEmbedding(models.Model):
 
 
 class Category(models.Model):
-    """Named deck of words."""
+    """Named deck of words.
 
-    name = models.CharField(max_length=100, unique=True)
+    Operator topic decks and hidden HSK rows have no owner. A learner deck
+    sets owner so two people can use the same situation title.
+    """
+
+    name = models.CharField(max_length=100)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="owned_categories",
+    )
     words = models.ManyToManyField(
         Word,
         through="WordCategory",
@@ -88,6 +99,18 @@ class Category(models.Model):
     class Meta:
         ordering = ["name"]
         verbose_name_plural = "categories"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "name"],
+                condition=models.Q(owner__isnull=False),
+                name="uniq_category_owner_name",
+            ),
+            models.UniqueConstraint(
+                fields=["name"],
+                condition=models.Q(owner__isnull=True),
+                name="uniq_category_name_unowned",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.name
