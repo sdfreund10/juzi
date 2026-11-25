@@ -532,6 +532,104 @@ body {
   font-size: 14px;
 }
 
+.deck-form {
+  display: grid;
+  gap: 1rem;
+  margin: 16px 20px 0;
+}
+
+.deck-form .deck-prompt {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.deck-form .deck-prompt span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.deck-form input[type='text'] {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.deck-form input[type='text']:focus-visible {
+  outline: 2px solid var(--pin);
+  outline-offset: 2px;
+}
+
+.deck-size {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.deck-size legend {
+  padding: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.deck-size-options {
+  display: flex;
+  gap: 8px;
+}
+
+.deck-size label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.deck-size label.selected {
+  border-color: var(--ink);
+}
+
+.deck-size:disabled {
+  opacity: 0.65;
+}
+
+.deck-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.deck-form .error {
+  margin: 0;
+}
+
+.deck-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+}
+
+.deck-actions .cta {
+  width: auto;
+  flex: 1;
+}
+
+.deck-actions .text-btn {
+  margin: 0;
+}
+
 .panel {
   margin: 16px 20px 0;
   padding: 0;
