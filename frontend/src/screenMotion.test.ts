@@ -5,6 +5,7 @@ import type { Route } from './routes'
 const home: Route = { name: 'home' }
 const install: Route = { name: 'install' }
 const proficiency: Route = { name: 'proficiency' }
+const deckNew: Route = { name: 'deck-new' }
 const sessionNew: Route = { name: 'session-new', categoryId: 3 }
 const session: Route = {
   name: 'session',
@@ -20,6 +21,7 @@ describe('routeDepth', () => {
   it('places masthead stack screens one level down', () => {
     expect(routeDepth(install)).toBe(1)
     expect(routeDepth(proficiency)).toBe(1)
+    expect(routeDepth(deckNew)).toBe(1)
     expect(routeDepth(sessionNew)).toBe(1)
   })
 
@@ -43,12 +45,14 @@ describe('screenMotion', () => {
 
   it('slides forward into the deck stack', () => {
     expect(screenMotion(home, sessionNew)).toBe('forward')
+    expect(screenMotion(home, deckNew)).toBe('forward')
     expect(screenMotion(home, install)).toBe('forward')
     expect(screenMotion(home, proficiency)).toBe('forward')
   })
 
   it('slides back to decks', () => {
     expect(screenMotion(sessionNew, home)).toBe('back')
+    expect(screenMotion(deckNew, home)).toBe('back')
     expect(screenMotion(install, home)).toBe('back')
     expect(screenMotion(proficiency, home)).toBe('back')
   })
@@ -63,5 +67,6 @@ describe('screenMotion', () => {
   it('stays still across same-depth stack screens', () => {
     expect(screenMotion(install, proficiency)).toBe('none')
     expect(screenMotion(sessionNew, install)).toBe('none')
+    expect(screenMotion(deckNew, sessionNew)).toBe('none')
   })
 })
