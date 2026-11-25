@@ -5,12 +5,12 @@ The chat-completions client in ``openrouter.py`` is a different endpoint.
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import requests
 from django.conf import settings
 from django.utils import timezone
+from rest_framework import serializers
 
 from api.models import EMBEDDING_DIMENSIONS, Word, WordEmbedding
 
@@ -29,6 +29,19 @@ _SOURCE_LINES = (
 
 class EmbeddingFailed(Exception):
     """The provider did not return a usable vector."""
+
+
+class EmbeddingItemSerializer(serializers.Serializer):
+    index = serializers.IntegerField(min_value=0)
+    embedding = serializers.ListField(
+        child=serializers.FloatField(),
+        min_length=EMBEDDING_DIMENSIONS,
+        max_length=EMBEDDING_DIMENSIONS,
+    )
+
+
+class EmbeddingResponseSerializer(serializers.Serializer):
+    data = EmbeddingItemSerializer(many=True)
 
 
 def embedding_source_text(word: Word) -> str:
@@ -121,35 +134,15 @@ def refresh_word_embedding(word: Word) -> None:
 
 
 def _vectors_for_inputs(payload: Any, count: int) -> list[list[float]]:
-    if not isinstance(payload, dict):
-        raise EmbeddingFailed("The embedding response was invalid.")
-    data = payload.get("data")
-    if not isinstance(data, list) or len(data) != count:
+    serializer = EmbeddingResponseSerializer(data=payload)
+    if not serializer.is_valid():
         raise EmbeddingFailed("The embedding response was invalid.")
 
-    by_index: dict[int, list[float]] = {}
-    for item in data:
-        if not isinstance(item, dict):
-            raise EmbeddingFailed("The embedding response was invalid.")
-        index = item.get("index")
-        if type(index) is not int or not 0 <= index < count or index in by_index:
-            raise EmbeddingFailed("The embedding response was invalid.")
-        by_index[index] = _require_vector(item.get("embedding"))
-
-    if len(by_index) != count:
+    items = serializer.validated_data["data"]
+    if len(items) != count:
         raise EmbeddingFailed("The embedding response was invalid.")
-    return [by_index[index] for index in range(count)]
-
-
-def _require_vector(value: Any) -> list[float]:
-    if not isinstance(value, list) or len(value) != EMBEDDING_DIMENSIONS:
-        raise EmbeddingFailed("The embedding response was invalid.")
-    vector: list[float] = []
-    for component in value:
-        if isinstance(component, bool) or not isinstance(component, (int, float)):
-            raise EmbeddingFailed("The embedding response was invalid.")
-        number = float(component)
-        if not math.isfinite(number):
-            raise EmbeddingFailed("The embedding response was invalid.")
-        vector.append(number)
-    return vector
+    by_index = {item["index"]: item["embedding"] for item in items}
+    try:
+        return [by_index[index] for index in range(count)]
+    except KeyError as exc:
+        raise EmbeddingFailed("The embedding response was invalid.") from exc
