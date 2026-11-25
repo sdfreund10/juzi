@@ -25,7 +25,7 @@ from api.services.categories import HSK_CATEGORY_PREFIX
 from api.services.embeddings import EMBEDDING_MODEL, EmbeddingFailed, embed_texts
 from api.services.openrouter import OPENROUTER_URL, parse_chat_json, strict_json_schema
 
-DECK_MODEL = "anthropic/claude-sonnet-4.5"
+DECK_MODEL = "google/gemini-3.8-flash"
 PROMPT_EMBED_TIMEOUT = (2, 5)
 SELECTION_TIMEOUT = (3, 15)
 HEAD_MULTIPLE = 3
