@@ -1,6 +1,6 @@
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from pgvector.django import VectorField
 
 EMBEDDING_DIMENSIONS = 1536
 
@@ -67,7 +67,7 @@ class WordEmbedding(models.Model):
     )
     model_name = models.CharField(max_length=100)
     source_text = models.TextField()
-    vector = ArrayField(models.FloatField(), size=EMBEDDING_DIMENSIONS)
+    vector = VectorField(dimensions=EMBEDDING_DIMENSIONS)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
