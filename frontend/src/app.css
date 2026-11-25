@@ -334,6 +334,13 @@ body {
   touch-action: manipulation;
 }
 
+.text-btn.build-deck {
+  display: block;
+  margin: 0 20px 8px;
+  padding: 8px 0;
+  text-align: left;
+}
+
 .link-btn:focus-visible,
 .text-btn:focus-visible,
 .row:focus-visible,

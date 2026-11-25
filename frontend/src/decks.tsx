@@ -158,6 +158,16 @@ export function Decks () {
       />
       <h1 class='title'>Choose a deck</h1>
 
+      {!offline && (
+        <button
+          type='button'
+          class='text-btn build-deck'
+          onClick={() => navigate({ name: 'deck-new' })}
+        >
+          Build a deck
+        </button>
+      )}
+
       {offline && (
         <p class='subtitle offline-status' role='status'>
           Offline · progress not saved.{' '}
