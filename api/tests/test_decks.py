@@ -639,13 +639,17 @@ def test_deck_build_logs_each_step_duration(
 
     assert response.status_code == status.HTTP_201_CREATED
     messages = _deck_log_lines(caplog)
-    assert [message.removeprefix("deck ").rsplit(" ", 1)[0] for message in messages] == [
+    steps = [message for message in messages if _STEP_LINE.fullmatch(message)]
+    assert [message.removeprefix("deck ").rsplit(" ", 1)[0] for message in steps] == [
         "prompt embed",
         "vector search",
         "model pick",
         "save",
     ]
-    assert all(_STEP_LINE.fullmatch(message) for message in messages)
+    assert "deck prompt: tea" in messages
+    assert f"deck candidates: {word.id}" in messages
+    assert f"deck returned: name=Parents ids={word.id}" in messages
+    assert "You choose vocabulary cards" not in "\n".join(messages)
 
 
 @pytest.mark.django_db
@@ -672,10 +676,14 @@ def test_a_failed_step_logs_its_duration_and_later_steps_do_not_run(
 
     assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     messages = _deck_log_lines(caplog)
-    assert [message.removeprefix("deck ").rsplit(" ", 1)[0] for message in messages] == [
+    steps = [message for message in messages if _STEP_LINE.fullmatch(message)]
+    assert [message.removeprefix("deck ").rsplit(" ", 1)[0] for message in steps] == [
         "prompt embed",
         "vector search",
         "model pick failed",
     ]
-    assert all(_STEP_LINE.fullmatch(message) for message in messages)
+    assert "deck prompt: tea" in messages
+    assert f"deck candidates: {word.id}" in messages
+    assert not any(message.startswith("deck returned:") for message in messages)
+    assert "You choose vocabulary cards" not in "\n".join(messages)
     assert Category.objects.count() == 0

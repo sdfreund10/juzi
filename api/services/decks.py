@@ -11,7 +11,7 @@ import logging
 import math
 import re
 import time
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
@@ -79,6 +79,7 @@ def create_deck(*, user: AbstractBaseUser, prompt: str, size: int) -> Category:
     ``prompt`` is the stripped situation sent to the embedding model. The
     stored title is the short English name from the same completion.
     """
+    logger.info("deck prompt: %s", prompt)
     if not WordEmbedding.objects.filter(model_name=EMBEDDING_MODEL).exists():
         raise DeckUnavailable
 
@@ -220,6 +221,7 @@ def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tup
     if not api_key:
         raise DeckUnavailable
 
+    logger.info("deck candidates: %s", _id_list(item["id"] for item in candidates))
     try:
         response = requests.post(
             OPENROUTER_URL,
@@ -268,7 +270,9 @@ def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tup
     if not serializer.is_valid():
         raise DeckUnavailable
     name = _deck_title(serializer.validated_data["name"])
-    return serializer.validated_data["ids"], name
+    ids = serializer.validated_data["ids"]
+    logger.info("deck returned: name=%s ids=%s", name, _id_list(ids))
+    return ids, name
 
 
 def _selection_prompt(size: int) -> str:
@@ -284,6 +288,10 @@ Also return a short English name for the deck.
 When close matches exist at more than one hsk_level, keep that spread.
 Do not pad the list with unrelated easier words.
 """.strip()
+
+
+def _id_list(ids: Iterable[int]) -> str:
+    return ",".join(str(word_id) for word_id in ids)
 
 
 def _deck_title(name: str) -> str:
