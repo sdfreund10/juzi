@@ -113,6 +113,10 @@ uv run scripts/prep_cards.py
 make seed-hsk
 # If the local file is unavailable, set HSK_PREPPED_CARDS_URL in .env
 
+# Store one embedding per active word. Manual; needs OPENROUTER_API_KEY.
+# Unchanged words are skipped. This does not run as part of seed.
+make embed-words
+
 # Seed local login accounts (DEBUG only; refuses when DJANGO_DEBUG is false)
 make seed-users
 
