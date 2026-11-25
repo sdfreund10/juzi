@@ -97,6 +97,7 @@ def _embedding_response(vector: list[float], *, status_code: int = 200) -> Mock:
 def _chat_response(
     ids: list[int],
     *,
+    name: str = "Parents",
     model: str = DECK_MODEL,
     finish_reason: str = "stop",
     content: object | None = None,
@@ -104,7 +105,7 @@ def _chat_response(
 ) -> Mock:
     response = Mock()
     response.status_code = status_code
-    message = json.dumps({"ids": ids}) if content is None else content
+    message = json.dumps({"ids": ids, "name": name}) if content is None else content
     response.json.return_value = {
         "model": model,
         "choices": [{"finish_reason": finish_reason, "message": {"content": message}}],
@@ -240,6 +241,9 @@ def test_cosine_rank_prefers_a_closer_vector_over_a_longer_one(
     assert sent["model"] == DECK_MODEL
     assert sent["provider"] == {"allow_fallbacks": False}
     assert "at most 20" in sent["messages"][0]["content"]
+    assert "short English name" in sent["messages"][0]["content"]
+    schema = sent["response_format"]["json_schema"]["schema"]
+    assert schema["required"] == ["ids", "name"]
     assert provider.chat_calls[0]["timeout"] == SELECTION_TIMEOUT
     assert provider.embed_calls[0]["timeout"] == PROMPT_EMBED_TIMEOUT
     assert provider.embed_calls[0]["json"]["input"] == ["talk to their parents"]
@@ -344,7 +348,7 @@ def test_fewer_than_size_still_saves(client: APIClient, alice: User) -> None:
         response = _post(client, headers, {"prompt": "count", "size": 40})
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert response.json()["name"] == "count"
+    assert response.json()["name"] == "Parents"
     category = Category.objects.get()
     assert _saved_word_ids(category) == [second.id, first.id]
 
@@ -367,7 +371,7 @@ def test_zero_ids_save_nothing(client: APIClient, alice: User) -> None:
 
 @pytest.mark.django_db
 @KEY
-def test_same_prompt_is_suffixed_for_one_learner_and_free_for_another(
+def test_the_same_model_name_is_suffixed_for_one_learner_and_free_for_another(
     client: APIClient,
     alice: User,
 ) -> None:
@@ -375,7 +379,7 @@ def test_same_prompt_is_suffixed_for_one_learner_and_free_for_another(
     topic = Category.objects.create(name="Food, Cooking & Dining")
     word = _word()
     _store(word, _vector_at(0, 1.0))
-    chat = _chat_response([word.id])
+    chat = _chat_response([word.id], name="Talk to parents")
 
     def build(api: APIClient, user: User, password: str, prompt: str) -> dict:
         headers = _login(api, user, password)
@@ -386,12 +390,17 @@ def test_same_prompt_is_suffixed_for_one_learner_and_free_for_another(
         assert provider.embed_calls[0]["json"]["input"] == [prompt.strip()]
         return response.json()
 
-    first = build(client, alice, "s3cret-alice", "talk to parents")
-    second = build(APIClient(enforce_csrf_checks=True), alice, "s3cret-alice", "talk to parents")
-    other = build(APIClient(enforce_csrf_checks=True), bob, "s3cret-bob", "talk to parents")
-    assert first["name"] == "talk to parents"
-    assert second["name"] == "talk to parents 2"
-    assert other["name"] == "talk to parents"
+    first = build(client, alice, "s3cret-alice", "  talk to their parents")
+    second = build(
+        APIClient(enforce_csrf_checks=True),
+        alice,
+        "s3cret-alice",
+        "talk to their parents",
+    )
+    other = build(APIClient(enforce_csrf_checks=True), bob, "s3cret-bob", "talk to their parents")
+    assert first["name"] == "Talk to parents"
+    assert second["name"] == "Talk to parents 2"
+    assert other["name"] == "Talk to parents"
 
     alice_list = APIClient(enforce_csrf_checks=True)
     alice_rows = alice_list.get(
@@ -417,26 +426,26 @@ def test_a_repeated_long_title_keeps_the_suffix_inside_100_characters(
 ) -> None:
     word = _word()
     _store(word, _vector_at(0, 1.0))
-    prompt = "n" * 100
+    title = "n" * 120
     headers = _login(client, alice, "s3cret-alice")
     names = []
     for _ in range(2):
         _, http = _patch_provider(
             _vector_at(0, 1.0),
-            _chat_response([word.id]),
+            _chat_response([word.id], name=title),
         )
         with http:
-            response = _post(client, headers, {"prompt": prompt, "size": 60})
+            response = _post(client, headers, {"prompt": "a long visit", "size": 60})
         assert response.status_code == status.HTTP_201_CREATED
         names.append(response.json()["name"])
-    assert names[0] == prompt
+    assert names[0] == "n" * 100
     assert names[1] == f"{'n' * 98} 2"
     assert len(names[1]) == 100
 
 
 @pytest.mark.django_db
 @KEY
-def test_deck_name_collapses_whitespace_and_the_embedding_uses_the_stripped_prompt(
+def test_the_model_name_collapses_whitespace_and_the_embedding_uses_the_stripped_prompt(
     client: APIClient,
     alice: User,
 ) -> None:
@@ -444,14 +453,14 @@ def test_deck_name_collapses_whitespace_and_the_embedding_uses_the_stripped_prom
     _store(word, _vector_at(0, 1.0))
     provider, http = _patch_provider(
         _vector_at(0, 1.0),
-        _chat_response([word.id]),
+        _chat_response([word.id], name="  Visiting   the\nparents  "),
     )
     headers = _login(client, alice, "s3cret-alice")
     with http:
         response = _post(client, headers, {"prompt": "  meet   their\nparents  ", "size": 20})
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert response.json()["name"] == "meet their parents"
+    assert response.json()["name"] == "Visiting the parents"
     assert provider.embed_calls[0]["json"]["input"] == ["meet   their\nparents"]
     situation = json.loads(provider.chat_calls[0]["json"]["messages"][1]["content"])["situation"]
     assert situation == "meet   their\nparents"
@@ -524,7 +533,9 @@ def test_missing_catalog_or_a_provider_failure_saves_nothing(
     [
         _chat_response([1], finish_reason="length"),
         _chat_response([1], model="openai/gpt-6-luna"),
-        _chat_response([1], content=json.dumps({"ids": [1], "name": "Parents"})),
+        _chat_response([1], content=json.dumps({"ids": [1]})),
+        _chat_response([1], name="   "),
+        _chat_response([1], content=json.dumps({"ids": [1], "name": "Parents", "extra": 1})),
         _chat_response([1], content="not-json"),
         _chat_response([1], status_code=500),
     ],
