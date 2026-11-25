@@ -44,13 +44,14 @@ class Command(BaseCommand):
         if limit is not None and limit < 1:
             raise CommandError("--limit must be a positive count.")
 
-        queryset = Word.objects.active().select_related("embedding").order_by("id")
+        queryset = Word.objects.active().order_by("id")
         if levels:
             queryset = queryset.filter(hsk_level__in=levels)
+        queryset = queryset.select_related("embedding").defer("embedding__vector")
 
         pending: list[Word] = []
         skipped = 0
-        for word in queryset:
+        for word in queryset.iterator(chunk_size=BATCH_SIZE):
             if embedding_is_current(word):
                 skipped += 1
                 continue
