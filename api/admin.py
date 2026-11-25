@@ -10,6 +10,7 @@ from django.utils.text import capfirst
 
 from api.services.accounts import apply_login_email
 from api.services.card_review import SUGGESTION_FIELDS, CardReviewFailed, review_card
+from api.services.embeddings import EmbeddingFailed, refresh_word_embedding
 
 from .models import Category, Learner, LearnerScore, UserWord, Word, WordCategory
 
@@ -242,6 +243,14 @@ class WordAdmin(admin.ModelAdmin):
         if change and "_save_and_restore" in request.POST:
             obj.archived_at = None
         super().save_model(request, obj, form, change)
+        try:
+            refresh_word_embedding(obj)
+        except EmbeddingFailed:
+            self.message_user(
+                request,
+                "The word was saved and the embedding was not updated.",
+                messages.WARNING,
+            )
 
     def construct_change_message(self, request, form, formsets, add=False):
         change_message = super().construct_change_message(request, form, formsets, add)
