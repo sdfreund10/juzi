@@ -83,17 +83,20 @@ def test_category_list_shows_owned_decks_and_shared_topics(client: APIClient) ->
     alice_headers = _login(client, alice, "s3cret-alice")
     alice_response = client.get(reverse("categories"), **alice_headers)
     assert alice_response.status_code == status.HTTP_200_OK
-    assert {row["id"] for row in alice_response.json()} == {
-        topic.id,
-        alice_deck.id,
-        alice_hsk_titled.id,
-    }
+    alice_rows = {row["id"]: row for row in alice_response.json()}
+    assert set(alice_rows) == {topic.id, alice_deck.id, alice_hsk_titled.id}
+    assert alice_rows[topic.id]["public"] is True
+    assert alice_rows[alice_deck.id]["public"] is False
+    assert alice_rows[alice_hsk_titled.id]["public"] is False
 
     bob_client = APIClient(enforce_csrf_checks=True)
     bob_headers = _login(bob_client, bob, "s3cret-bob")
     bob_response = bob_client.get(reverse("categories"), **bob_headers)
     assert bob_response.status_code == status.HTTP_200_OK
-    assert {row["id"] for row in bob_response.json()} == {topic.id, bob_deck.id}
+    bob_rows = {row["id"]: row for row in bob_response.json()}
+    assert set(bob_rows) == {topic.id, bob_deck.id}
+    assert bob_rows[topic.id]["public"] is True
+    assert bob_rows[bob_deck.id]["public"] is False
 
 
 @pytest.mark.django_db

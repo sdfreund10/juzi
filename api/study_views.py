@@ -44,6 +44,7 @@ def _category_list_payload(category: Category) -> dict:
         "last_practiced_at": (
             category.last_practiced_at.isoformat() if category.last_practiced_at else None
         ),
+        "public": category.owner_id is None,
     }
 
 
