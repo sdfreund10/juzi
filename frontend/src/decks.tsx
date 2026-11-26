@@ -158,16 +158,6 @@ export function Decks () {
       />
       <h1 class='title'>Choose a deck</h1>
 
-      {!offline && (
-        <button
-          type='button'
-          class='text-btn build-deck'
-          onClick={() => navigate({ name: 'deck-new' })}
-        >
-          Build a deck
-        </button>
-      )}
-
       {offline && (
         <p class='subtitle offline-status' role='status'>
           Offline · progress not saved.{' '}
@@ -282,6 +272,33 @@ export function Decks () {
               </>
               )
             : null}
+
+      {categories !== null && !offline && (
+        <details class='list deck-section custom-decks' open>
+          <summary class='list-heading'>
+            <h2>Custom decks</h2>
+            <svg
+              class='section-chevron'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              stroke-width='2'
+              stroke-linecap='round'
+              stroke-linejoin='round'
+              aria-hidden='true'
+            >
+              <path d='m9 6 6 6-6 6' />
+            </svg>
+          </summary>
+          <button
+            type='button'
+            class='text-btn build-deck'
+            onClick={() => navigate({ name: 'deck-new' })}
+          >
+            + Build new deck
+          </button>
+        </details>
+      )}
     </>
   )
 }

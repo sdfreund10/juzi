@@ -42,10 +42,13 @@ async function mount () {
   await act(() => render(h(Decks, {}), host))
 }
 
-it('opens the new deck form from Choose a deck', async () => {
+it('opens the new deck form from the custom decks section', async () => {
   await mount()
-  const button = host.querySelector<HTMLButtonElement>('button.build-deck')
-  expect(button?.textContent).toBe('Build a deck')
+  const section = host.querySelector('.custom-decks')
+  expect(section?.textContent).toContain('Custom decks')
+  const button = section?.querySelector<HTMLButtonElement>('button.build-deck')
+  expect(button?.textContent).toBe('+ Build new deck')
+  expect(host.querySelector('h1 + .build-deck')).toBeNull()
   expect(host.textContent).toContain('No decks yet. Seed vocabulary to get started.')
   await act(() => {
     button!.click()
@@ -53,9 +56,10 @@ it('opens the new deck form from Choose a deck', async () => {
   expect(window.location.pathname).toBe('/decks/new')
 })
 
-it('does not offer Build a deck while offline', async () => {
+it('does not offer Build new deck while offline', async () => {
   auth.offline = true
   await mount()
+  expect(host.querySelector('.custom-decks')).toBeNull()
   expect(host.querySelector('button.build-deck')).toBeNull()
   expect(host.textContent).toContain('Offline · progress not saved.')
   expect(window.location.pathname).toBe('/')

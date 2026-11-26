@@ -334,11 +334,16 @@ body {
   touch-action: manipulation;
 }
 
-.text-btn.build-deck {
-  display: block;
-  margin: 0 20px 8px;
-  padding: 8px 0;
+.custom-decks .build-deck {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 12px 0;
   text-align: left;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 15px;
 }
 
 .link-btn:focus-visible,
