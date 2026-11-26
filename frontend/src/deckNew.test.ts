@@ -39,7 +39,7 @@ async function mount () {
 }
 
 function promptInput () {
-  const input = host.querySelector<HTMLInputElement>('input[name="prompt"]')
+  const input = host.querySelector<HTMLTextAreaElement>('textarea[name="prompt"]')
   expect(input).not.toBeNull()
   return input!
 }
@@ -74,6 +74,15 @@ async function submit () {
   })
   await flush()
 }
+
+it('grows the prompt field with the text', async () => {
+  await mount()
+  const field = promptInput()
+  expect(field.tagName).toBe('TEXTAREA')
+  expect(Number(field.rows)).toBe(1)
+  await typePrompt('line one\nline two\nline three')
+  expect(field.value).toBe('line one\nline two\nline three')
+})
 
 it('starts with size 40 selected', async () => {
   await mount()

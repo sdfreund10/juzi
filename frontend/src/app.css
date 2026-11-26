@@ -560,8 +560,9 @@ body {
   font-size: 13px;
 }
 
-.deck-form input[type='text'] {
+.deck-form textarea {
   width: 100%;
+  min-height: 44px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -569,9 +570,12 @@ body {
   color: var(--ink);
   font: inherit;
   font-size: 15px;
+  line-height: 1.4;
+  resize: none;
+  overflow: hidden;
 }
 
-.deck-form input[type='text']:focus-visible {
+.deck-form textarea:focus-visible {
   outline: 2px solid var(--pin);
   outline-offset: 2px;
 }
