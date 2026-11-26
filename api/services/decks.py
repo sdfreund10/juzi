@@ -192,6 +192,14 @@ def _choose_ids(prompt: str, size: int, head: list[Word]) -> tuple[list[int], st
         for word in head
     ]
     picked, name = _select_ids(prompt, size, candidates)
+    return _saved_ids(picked, head_ids, size), name
+
+
+def _saved_ids(picked: list[int], head_ids: set[int], size: int) -> list[int]:
+    """Ids that would be stored: known, unique, and capped at ``size``.
+
+    An id outside the candidate head fails the deck.
+    """
     if any(word_id not in head_ids for word_id in picked):
         raise DeckUnavailable
 
@@ -204,7 +212,7 @@ def _choose_ids(prompt: str, size: int, head: list[Word]) -> tuple[list[int], st
         chosen.append(word_id)
         if len(chosen) == size:
             break
-    return chosen, name
+    return chosen
 
 
 def _topic_names(word_ids: set[int]) -> dict[int, str]:
