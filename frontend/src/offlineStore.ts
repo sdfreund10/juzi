@@ -66,7 +66,8 @@ function categoryFromDeck (entry: OfflineDeckEntry): Category {
     intermediate_count: 0,
     advanced_count: 0,
     expert_count: 0,
-    last_practiced_at: null
+    last_practiced_at: null,
+    public: true
   }
 }
 

@@ -19,6 +19,7 @@ function category (
     advanced_count: 0,
     expert_count: 0,
     last_practiced_at: null,
+    public: true,
     ...partial
   }
 }

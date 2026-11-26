@@ -171,6 +171,7 @@ export type Category = {
   advanced_count: number
   expert_count: number
   last_practiced_at: string | null
+  public: boolean
 }
 
 export type Difficulty = ProficiencyLevel

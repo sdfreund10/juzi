@@ -78,7 +78,8 @@ describe('syncOfflineUser', () => {
         intermediate_count: 0,
         advanced_count: 0,
         expert_count: 0,
-        last_practiced_at: null
+        last_practiced_at: null,
+        public: true
       }
     ])
     cacheOfflineDeck(session(1), 'studied')
@@ -103,7 +104,8 @@ describe('syncOfflineUser', () => {
         intermediate_count: 0,
         advanced_count: 0,
         expert_count: 0,
-        last_practiced_at: null
+        last_practiced_at: null,
+        public: true
       }
     ])
     cacheOfflineDeck(session(1), 'studied')
@@ -128,7 +130,8 @@ describe('categoriesAvailableOffline', () => {
         intermediate_count: 0,
         advanced_count: 0,
         expert_count: 0,
-        last_practiced_at: null
+        last_practiced_at: null,
+        public: true
       }
     ])
 
@@ -140,7 +143,8 @@ describe('categoriesAvailableOffline', () => {
         intermediate_count: 0,
         advanced_count: 0,
         expert_count: 0,
-        last_practiced_at: null
+        last_practiced_at: null,
+        public: true
       }
     ])
   })
@@ -157,7 +161,8 @@ describe('categoriesAvailableOffline', () => {
         intermediate_count: 0,
         advanced_count: 0,
         expert_count: 0,
-        last_practiced_at: null
+        last_practiced_at: null,
+        public: true
       },
       {
         id: 2,
@@ -166,7 +171,8 @@ describe('categoriesAvailableOffline', () => {
         intermediate_count: 0,
         advanced_count: 0,
         expert_count: 0,
-        last_practiced_at: null
+        last_practiced_at: null,
+        public: true
       }
     ])
   })
