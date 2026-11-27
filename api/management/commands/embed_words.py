@@ -21,12 +21,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--hsk-level",
-            action="append",
-            type=int,
-            help="Limit this run to one HSK level (1–7). Repeat to include more than one.",
-        )
-        parser.add_argument(
             "--limit",
             type=int,
             help="Maximum number of embeddings to generate this run. Unchanged words do not count.",
@@ -36,18 +30,16 @@ class Command(BaseCommand):
         if not settings.OPENROUTER_API_KEY.strip():
             raise CommandError("OPENROUTER_API_KEY is not set.")
 
-        levels: list[int] | None = options["hsk_level"]
-        if levels and any(level not in range(1, 8) for level in levels):
-            raise CommandError("--hsk-level must be an integer from 1 to 7.")
-
         limit: int | None = options["limit"]
         if limit is not None and limit < 1:
             raise CommandError("--limit must be a positive count.")
 
-        queryset = Word.objects.active().order_by("id")
-        if levels:
-            queryset = queryset.filter(hsk_level__in=levels)
-        queryset = queryset.select_related("embedding").defer("embedding__vector")
+        queryset = (
+            Word.objects.active()
+            .order_by("id")
+            .select_related("embedding")
+            .defer("embedding__vector")
+        )
 
         pending: list[Word] = []
         skipped = 0
