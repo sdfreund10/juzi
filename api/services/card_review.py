@@ -3,15 +3,18 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import requests
-from django.conf import settings
 from rest_framework import serializers
 
 from api.models import Word
 from api.services.openrouter import (
     EXAMPLE_SENTENCE_PROPERTIES,
     OPENROUTER_URL,
+    OpenRouterError,
+    OpenRouterKeyMissing,
+    OpenRouterResponseInvalid,
+    OpenRouterTimeout,
     parse_chat_json,
+    post_json,
     strict_json_schema,
 )
 
@@ -127,15 +130,10 @@ def review_input(word: Word) -> dict[str, Any]:
 
 def review_card(word: Word) -> dict[str, Any]:
     """Read-only review of a saved word. Never writes."""
-    api_key = settings.OPENROUTER_API_KEY.strip()
-    if not api_key:
-        raise CardReviewFailed("Card review is not configured.")
-
     try:
-        response = requests.post(
+        payload = post_json(
             OPENROUTER_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
+            {
                 "model": REVIEW_MODEL,
                 "messages": [
                     {"role": "system", "content": REVIEW_PROMPT},
@@ -149,16 +147,10 @@ def review_card(word: Word) -> dict[str, Any]:
             },
             timeout=(5, 20),
         )
-    except requests.Timeout as exc:
-        raise CardReviewFailed("The review request timed out.") from exc
-    except requests.RequestException as exc:
-        raise CardReviewFailed("The review provider returned an error.") from exc
-
-    if response.status_code >= 400:
-        raise CardReviewFailed("The review provider returned an error.")
+    except OpenRouterError as exc:
+        raise _review_failed(exc) from exc
 
     try:
-        payload = response.json()
         parsed = parse_chat_json(payload)
     except (ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise CardReviewFailed("The review response was invalid.") from exc
@@ -170,3 +162,13 @@ def review_card(word: Word) -> dict[str, Any]:
     if not serializer.is_valid():
         raise CardReviewFailed("The review response was invalid.")
     return serializer.validated_data
+
+
+def _review_failed(exc: OpenRouterError) -> CardReviewFailed:
+    if isinstance(exc, OpenRouterKeyMissing):
+        return CardReviewFailed("Card review is not configured.")
+    if isinstance(exc, OpenRouterTimeout):
+        return CardReviewFailed("The review request timed out.")
+    if isinstance(exc, OpenRouterResponseInvalid):
+        return CardReviewFailed("The review response was invalid.")
+    return CardReviewFailed("The review provider returned an error.")

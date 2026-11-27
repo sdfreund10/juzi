@@ -73,7 +73,7 @@ def test_saving_a_source_field_refreshes_that_word() -> None:
     client = _client()
 
     with patch(
-        "api.services.embeddings.requests.post",
+        "api.services.openrouter.requests.post",
         return_value=_embedding_response(),
     ) as post:
         response = client.post(
@@ -101,7 +101,7 @@ def test_unrelated_field_and_archive_do_not_call_the_provider() -> None:
     client = _client()
     change_url = reverse("admin:api_word_change", args=[word.pk])
 
-    with patch("api.services.embeddings.requests.post") as post:
+    with patch("api.services.openrouter.requests.post") as post:
         simplified = client.post(change_url, {**_form(word, simplified="爱心"), "_save": "Save"})
         word.refresh_from_db()
         archived = client.post(
@@ -132,7 +132,7 @@ def test_failed_embed_keeps_the_saved_word_and_the_old_vector() -> None:
     )
     client = _client()
 
-    with patch("api.services.embeddings.requests.post", side_effect=requests.Timeout):
+    with patch("api.services.openrouter.requests.post", side_effect=requests.Timeout):
         response = client.post(
             reverse("admin:api_word_change", args=[word.pk]),
             {**_form(word, english_basic="to adore"), "_save": "Save"},

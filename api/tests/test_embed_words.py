@@ -43,7 +43,7 @@ def test_embed_words_stores_each_vector_on_its_word() -> None:
     second = _word(chinese="茶", pinyin="chá", english_basic="tea")
 
     with patch(
-        "api.services.embeddings.requests.post",
+        "api.services.openrouter.requests.post",
         return_value=_response([_vector(0.25), _vector(0.75)], reverse=True),
     ):
         call_command("embed_words")
@@ -57,7 +57,7 @@ def test_embed_words_stores_each_vector_on_its_word() -> None:
 def test_second_run_skips_unchanged_source_text() -> None:
     _word()
     with patch(
-        "api.services.embeddings.requests.post",
+        "api.services.openrouter.requests.post",
         return_value=_response([_vector(0.5)]),
     ) as post:
         call_command("embed_words")

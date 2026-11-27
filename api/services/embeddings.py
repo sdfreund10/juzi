@@ -1,17 +1,19 @@
-"""Catalog embeddings via OpenRouter.
-
-The chat-completions client in ``openrouter.py`` is a different endpoint.
-"""
+"""Catalog embeddings via OpenRouter."""
 
 from __future__ import annotations
 
 from typing import Any
 
-import requests
-from django.conf import settings
 from django.utils import timezone
 
 from api.models import Word, WordEmbedding
+from api.services.openrouter import (
+    OpenRouterError,
+    OpenRouterKeyMissing,
+    OpenRouterResponseInvalid,
+    OpenRouterTimeout,
+    post_json,
+)
 
 EMBEDDING_MODEL = "openai/text-embedding-3-small"
 EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
@@ -56,32 +58,28 @@ def embedding_is_current(word: Word) -> bool:
 
 
 def embed_texts(texts: list[str], *, timeout: tuple[float, float]) -> list[list[float]]:
-    """Return one 1536-float vector per text, in input order."""
-    api_key = settings.OPENROUTER_API_KEY.strip()
-    if not api_key:
-        raise EmbeddingFailed("OPENROUTER_API_KEY is not set.")
-
+    """Return one vector per text, in input order."""
     try:
-        response = requests.post(
+        payload = post_json(
             EMBEDDINGS_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": EMBEDDING_MODEL, "input": texts},
+            {"model": EMBEDDING_MODEL, "input": texts},
             timeout=timeout,
         )
-    except requests.Timeout as exc:
-        raise EmbeddingFailed("The embedding request timed out.") from exc
-    except requests.RequestException as exc:
-        raise EmbeddingFailed("The embedding provider returned an error.") from exc
-
-    if response.status_code != 200:
-        raise EmbeddingFailed("The embedding provider returned an error.")
-
-    try:
-        payload = response.json()
-    except ValueError as exc:
-        raise EmbeddingFailed("The embedding response was invalid.") from exc
-
+    except OpenRouterError as exc:
+        raise _embedding_failed(exc) from exc
     return _vectors_for_inputs(payload, len(texts))
+
+
+def _embedding_failed(exc: OpenRouterError) -> EmbeddingFailed:
+    if isinstance(exc, OpenRouterKeyMissing):
+        message = "OPENROUTER_API_KEY is not set."
+    elif isinstance(exc, OpenRouterTimeout):
+        message = "The embedding request timed out."
+    elif isinstance(exc, OpenRouterResponseInvalid):
+        message = "The embedding response was invalid."
+    else:
+        message = "The embedding provider returned an error."
+    return EmbeddingFailed(message)
 
 
 def store_embeddings(words: list[Word], vectors: list[list[float]]) -> None:

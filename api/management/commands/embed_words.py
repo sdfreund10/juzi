@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from api.models import Word
@@ -12,6 +11,7 @@ from api.services.embeddings import (
     embedding_source_text,
     store_embeddings,
 )
+from api.services.openrouter import OpenRouterKeyMissing, require_openrouter_key
 
 BATCH_SIZE = 100
 
@@ -27,8 +27,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        if not settings.OPENROUTER_API_KEY.strip():
-            raise CommandError("OPENROUTER_API_KEY is not set.")
+        try:
+            require_openrouter_key()
+        except OpenRouterKeyMissing as exc:
+            raise CommandError("OPENROUTER_API_KEY is not set.") from exc
 
         limit: int | None = options["limit"]
         if limit is not None and limit < 1:
