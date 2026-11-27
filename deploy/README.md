@@ -92,13 +92,16 @@ DJANGO_ALLOWED_HOSTS=YOUR_DOMAIN
 CSRF_TRUSTED_ORIGINS=https://YOUR_DOMAIN
 DATABASE_URL='postgres://juzi:choose-a-strong-password@localhost:5432/juzi'
 OPENROUTER_API_KEY=
+# Deck-pick chat model. Blank keeps google/gemini-3.8-flash.
+DECK_PICK_MODEL=
 EOF
 sudo chown root:juzi /etc/juzi.env
 sudo chmod 640 /etc/juzi.env
 ```
 
 Word admin **Analyze card** reads `OPENROUTER_API_KEY`. Leave it blank to
-disable review.
+disable review. `DECK_PICK_MODEL` chooses the deck-pick chat model. Leave it
+blank to keep `google/gemini-3.8-flash`.
 
 ### 6. Deploy key and clone
 

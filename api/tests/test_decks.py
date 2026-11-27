@@ -25,7 +25,12 @@ from api.models import (
     WordEmbedding,
 )
 from api.services.accounts import apply_login_email
-from api.services.decks import DECK_MODEL, PROMPT_EMBED_TIMEOUT, SELECTION_TIMEOUT
+from api.services.decks import (
+    DECK_MODEL,
+    PROMPT_EMBED_TIMEOUT,
+    SELECTION_TIMEOUT,
+    _select_ids,
+)
 from api.services.embeddings import EMBEDDING_MODEL, EMBEDDINGS_URL, embedding_source_text
 from api.services.openrouter import OPENROUTER_URL
 
@@ -163,6 +168,28 @@ def client() -> APIClient:
 @pytest.fixture
 def alice() -> User:
     return _make_user(email="alice@example.com", password="s3cret-alice")
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [
+        ("other/deck-model", "other/deck-model"),
+        ("", DECK_MODEL),
+        ("  other/deck-model  ", "other/deck-model"),
+    ],
+)
+def test_deck_pick_model_setting(configured: str, expected: str) -> None:
+    chat = _chat_response([7], name="Tea", model=expected)
+    provider, http = _patch_provider(_vector_at(0, 1.0), chat)
+    with (
+        override_settings(OPENROUTER_API_KEY="test-openrouter-key", DECK_PICK_MODEL=configured),
+        http,
+    ):
+        ids, name = _select_ids("tea", 20, [{"id": 7}])
+
+    assert provider.chat_calls[0]["json"]["model"] == expected
+    assert ids == [7]
+    assert name == "Tea"
 
 
 @pytest.mark.django_db

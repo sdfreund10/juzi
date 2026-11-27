@@ -208,6 +208,9 @@ LOGGING = {
 # A blank key disables Analyze and makes embed_words exit before any request.
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
+# Deck-pick chat model. Blank keeps google/gemini-3.8-flash.
+DECK_PICK_MODEL = os.getenv("DECK_PICK_MODEL", "").strip()
+
 
 # Scheduling — streak ladder and mode unlock threshold (word-level easy_count)
 
