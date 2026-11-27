@@ -15,8 +15,6 @@ from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
-import requests
-from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import transaction
 from django.db.models import BooleanField
@@ -27,7 +25,13 @@ from rest_framework import serializers
 from api.models import EMBEDDING_DIMENSIONS, Category, Word, WordCategory, WordEmbedding
 from api.services.categories import HSK_CATEGORY_PREFIX
 from api.services.embeddings import EMBEDDING_MODEL, EmbeddingFailed, embed_texts
-from api.services.openrouter import OPENROUTER_URL, parse_chat_json, strict_json_schema
+from api.services.openrouter import (
+    OPENROUTER_URL,
+    OpenRouterError,
+    parse_chat_json,
+    post_json,
+    strict_json_schema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -217,16 +221,11 @@ def _topic_names(word_ids: set[int]) -> dict[int, str]:
 
 
 def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tuple[list[int], str]:
-    api_key = settings.OPENROUTER_API_KEY.strip()
-    if not api_key:
-        raise DeckUnavailable
-
     logger.info("deck candidates: %s", _id_list(item["id"] for item in candidates))
     try:
-        response = requests.post(
+        payload = post_json(
             OPENROUTER_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
+            {
                 "model": DECK_MODEL,
                 "messages": [
                     {"role": "system", "content": _selection_prompt(size)},
@@ -243,16 +242,10 @@ def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tup
             },
             timeout=SELECTION_TIMEOUT,
         )
-    except requests.Timeout as exc:
+    except OpenRouterError as exc:
         raise DeckUnavailable from exc
-    except requests.RequestException as exc:
-        raise DeckUnavailable from exc
-
-    if response.status_code != 200:
-        raise DeckUnavailable
 
     try:
-        payload = response.json()
         if payload["choices"][0].get("finish_reason") != "stop":
             raise DeckUnavailable
         parsed = parse_chat_json(payload)

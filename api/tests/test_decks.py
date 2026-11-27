@@ -140,7 +140,7 @@ class _Provider:
 
 def _patch_provider(query: list[float], chat: Mock):
     provider = _Provider(query, chat)
-    return provider, patch("api.services.embeddings.requests.post", side_effect=provider)
+    return provider, patch("api.services.openrouter.requests.post", side_effect=provider)
 
 
 def _post(client: APIClient, headers: dict[str, str], body: dict) -> object:
@@ -180,7 +180,7 @@ def test_build_deck_rejects_a_blank_prompt_or_a_size_outside_the_three(
     alice: User,
 ) -> None:
     headers = _login(client, alice, "s3cret-alice")
-    with patch("api.services.embeddings.requests.post") as embed:
+    with patch("api.services.openrouter.requests.post") as embed:
         for body in (
             {"prompt": "   ", "size": 20},
             {"prompt": "tea", "size": 15},
@@ -475,7 +475,7 @@ def test_missing_catalog_or_a_provider_failure_saves_nothing(
     alice: User,
 ) -> None:
     headers = _login(client, alice, "s3cret-alice")
-    with patch("api.services.embeddings.requests.post") as post:
+    with patch("api.services.openrouter.requests.post") as post:
         missing = _post(client, headers, {"prompt": "tea", "size": 20})
     assert missing.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert missing.json() == {"detail": "Could not build a deck. Try again."}
@@ -485,7 +485,7 @@ def test_missing_catalog_or_a_provider_failure_saves_nothing(
     _store(word, _vector_at(0, 1.0))
     with (
         override_settings(OPENROUTER_API_KEY=""),
-        patch("api.services.embeddings.requests.post") as post,
+        patch("api.services.openrouter.requests.post") as post,
     ):
         no_key = _post(client, headers, {"prompt": "tea", "size": 20})
     assert no_key.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
@@ -497,7 +497,7 @@ def test_missing_catalog_or_a_provider_failure_saves_nothing(
         calls.append(url)
         raise requests.Timeout("slow")
 
-    with patch("api.services.embeddings.requests.post", side_effect=time_out):
+    with patch("api.services.openrouter.requests.post", side_effect=time_out):
         timed_out = _post(client, headers, {"prompt": "tea", "size": 20})
     assert timed_out.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert calls == [EMBEDDINGS_URL]
@@ -509,7 +509,7 @@ def test_missing_catalog_or_a_provider_failure_saves_nothing(
         raise AssertionError(url)
 
     calls.clear()
-    with patch("api.services.embeddings.requests.post", side_effect=fail_embed):
+    with patch("api.services.openrouter.requests.post", side_effect=fail_embed):
         bad_embed = _post(client, headers, {"prompt": "tea", "size": 20})
     assert bad_embed.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert calls == [EMBEDDINGS_URL]
@@ -521,7 +521,7 @@ def test_missing_catalog_or_a_provider_failure_saves_nothing(
         raise AssertionError(url)
 
     calls.clear()
-    with patch("api.services.embeddings.requests.post", side_effect=infinite_embed):
+    with patch("api.services.openrouter.requests.post", side_effect=infinite_embed):
         infinite = _post(client, headers, {"prompt": "tea", "size": 20})
     assert infinite.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert calls == [EMBEDDINGS_URL]
@@ -573,7 +573,7 @@ def test_an_empty_head_does_not_call_the_chat_model(client: APIClient, alice: Us
             return _embedding_response(_vector_at(0, 1.0))
         raise AssertionError(url)
 
-    with patch("api.services.embeddings.requests.post", side_effect=embed_only):
+    with patch("api.services.openrouter.requests.post", side_effect=embed_only):
         response = _post(client, headers, {"prompt": "tea", "size": 20})
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert response.json() == {"detail": "No matching words."}
@@ -587,7 +587,7 @@ def test_an_empty_head_does_not_call_the_chat_model(client: APIClient, alice: Us
         raise AssertionError(url)
 
     calls.clear()
-    with patch("api.services.embeddings.requests.post", side_effect=zero_embed):
+    with patch("api.services.openrouter.requests.post", side_effect=zero_embed):
         zero_query = _post(client, headers, {"prompt": "tea", "size": 20})
     assert zero_query.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert calls == [EMBEDDINGS_URL]
@@ -607,7 +607,7 @@ def test_selection_timeout_saves_nothing(client: APIClient, alice: User) -> None
             return _embedding_response(_vector_at(0, 1.0))
         raise requests.Timeout("slow")
 
-    with patch("api.services.embeddings.requests.post", side_effect=time_out_selection):
+    with patch("api.services.openrouter.requests.post", side_effect=time_out_selection):
         response = _post(client, headers, {"prompt": "tea", "size": 20})
     assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert calls == [EMBEDDINGS_URL, OPENROUTER_URL]
@@ -670,7 +670,7 @@ def test_a_failed_step_logs_its_duration_and_later_steps_do_not_run(
 
     with (
         caplog.at_level(logging.INFO, logger="api.services.decks"),
-        patch("api.services.embeddings.requests.post", side_effect=time_out_selection),
+        patch("api.services.openrouter.requests.post", side_effect=time_out_selection),
     ):
         response = _post(client, headers, {"prompt": "tea", "size": 20})
 
