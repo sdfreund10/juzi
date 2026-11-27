@@ -25,9 +25,15 @@ from api.models import (
     WordEmbedding,
 )
 from api.services.accounts import apply_login_email
-from api.services.decks import DECK_MODEL, PROMPT_EMBED_TIMEOUT, SELECTION_TIMEOUT
+from api.services.decks import (
+    DECK_MODEL,
+    PROMPT_EMBED_TIMEOUT,
+    SELECTION_TIMEOUT,
+    DeckUnavailable,
+    _select_ids,
+)
 from api.services.embeddings import EMBEDDING_MODEL, EMBEDDINGS_URL, embedding_source_text
-from api.services.openrouter import OPENROUTER_URL
+from api.services.openrouter import OPENROUTER_URL, OpenRouterTimeout
 
 User = get_user_model()
 KEY = override_settings(OPENROUTER_API_KEY="test-openrouter-key")
@@ -163,6 +169,88 @@ def client() -> APIClient:
 @pytest.fixture
 def alice() -> User:
     return _make_user(email="alice@example.com", password="s3cret-alice")
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [
+        ("other/deck-model", "other/deck-model"),
+        ("", DECK_MODEL),
+        ("  other/deck-model  ", "other/deck-model"),
+    ],
+)
+def test_deck_pick_model_setting(configured: str, expected: str) -> None:
+    chat = _chat_response([7], name="Tea", model=expected)
+    provider, http = _patch_provider(_vector_at(0, 1.0), chat)
+    with (
+        override_settings(OPENROUTER_API_KEY="test-openrouter-key", DECK_PICK_MODEL=configured),
+        http,
+    ):
+        ids, name = _select_ids("tea", 20, [{"id": 7}])
+
+    assert provider.chat_calls[0]["json"]["model"] == expected
+    assert ids == [7]
+    assert name == "Tea"
+
+
+def _deck_log_text(caplog: pytest.LogCaptureFixture) -> str:
+    return "\n".join(_deck_log_lines(caplog))
+
+
+@pytest.mark.parametrize(
+    ("usage", "cost"),
+    [
+        ({"cost": 0.000123, "prompt_tokens": 10}, "0.000123"),
+        ({}, "absent"),
+        (None, "absent"),
+    ],
+)
+def test_deck_pick_logs_latency_and_openrouter_cost(
+    usage: dict[str, object] | None,
+    cost: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    chat = _chat_response([7], name="Tea")
+    if usage is not None:
+        chat.json.return_value["usage"] = usage
+    _, http = _patch_provider(_vector_at(0, 1.0), chat)
+    with (
+        override_settings(OPENROUTER_API_KEY="test-openrouter-key", DECK_PICK_MODEL=""),
+        caplog.at_level(logging.INFO, logger="api.services.decks"),
+        http,
+    ):
+        ids, _name = _select_ids("tea", 20, [{"id": 7}])
+
+    assert ids == [7]
+    logged = _deck_log_text(caplog)
+    assert re.search(rf"deck pick \d+\.\d{{3}}s cost={re.escape(cost)}", logged)
+    assert "You choose vocabulary cards" not in logged
+    assert "test-openrouter-key" not in logged
+
+
+def test_deck_pick_asks_openrouter_to_include_usage() -> None:
+    chat = _chat_response([7], name="Tea")
+    provider, http = _patch_provider(_vector_at(0, 1.0), chat)
+    with override_settings(OPENROUTER_API_KEY="test-openrouter-key"), http:
+        _select_ids("tea", 20, [{"id": 7}])
+    assert provider.chat_calls[0]["json"]["usage"] == {"include": True}
+
+
+def test_a_failed_deck_pick_logs_latency_without_a_cost(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with (
+        override_settings(OPENROUTER_API_KEY="test-openrouter-key"),
+        caplog.at_level(logging.INFO, logger="api.services.decks"),
+        patch("api.services.decks.post_json", side_effect=OpenRouterTimeout("timed out")),
+        pytest.raises(DeckUnavailable),
+    ):
+        _select_ids("tea", 20, [{"id": 7}])
+
+    logged = _deck_log_text(caplog)
+    assert re.search(r"deck pick failed \d+\.\d{3}s cost=absent", logged)
+    assert "You choose vocabulary cards" not in logged
+    assert "test-openrouter-key" not in logged
 
 
 @pytest.mark.django_db

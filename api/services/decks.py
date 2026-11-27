@@ -15,6 +15,7 @@ from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import transaction
 from django.db.models import BooleanField
@@ -192,6 +193,14 @@ def _choose_ids(prompt: str, size: int, head: list[Word]) -> tuple[list[int], st
         for word in head
     ]
     picked, name = _select_ids(prompt, size, candidates)
+    return _saved_ids(picked, head_ids, size), name
+
+
+def _saved_ids(picked: list[int], head_ids: set[int], size: int) -> list[int]:
+    """Ids that would be stored: known, unique, and capped at ``size``.
+
+    An id outside the candidate head fails the deck.
+    """
     if any(word_id not in head_ids for word_id in picked):
         raise DeckUnavailable
 
@@ -204,7 +213,7 @@ def _choose_ids(prompt: str, size: int, head: list[Word]) -> tuple[list[int], st
         chosen.append(word_id)
         if len(chosen) == size:
             break
-    return chosen, name
+    return chosen
 
 
 def _topic_names(word_ids: set[int]) -> dict[int, str]:
@@ -220,13 +229,34 @@ def _topic_names(word_ids: set[int]) -> dict[int, str]:
     return names
 
 
+def _deck_chat_model() -> str:
+    """Chat model for a deck pick. A blank setting keeps the product model."""
+    configured = settings.DECK_PICK_MODEL.strip()
+    return configured or DECK_MODEL
+
+
+def _cost_text(payload: object | None) -> str:
+    """Dollar cost from an OpenRouter body, or ``absent`` when it has none."""
+    if not isinstance(payload, dict):
+        return "absent"
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return "absent"
+    cost = usage.get("cost")
+    if isinstance(cost, bool) or not isinstance(cost, int | float):
+        return "absent"
+    return f"{cost:.6f}"
+
+
 def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tuple[list[int], str]:
+    model = _deck_chat_model()
     logger.info("deck candidates: %s", _id_list(item["id"] for item in candidates))
+    started = time.perf_counter()
     try:
         payload = post_json(
             OPENROUTER_URL,
             {
-                "model": DECK_MODEL,
+                "model": model,
                 "messages": [
                     {"role": "system", "content": _selection_prompt(size)},
                     {
@@ -239,11 +269,14 @@ def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tup
                 ],
                 "response_format": SELECTION_SCHEMA,
                 "provider": {"allow_fallbacks": False},
+                "usage": {"include": True},
             },
             timeout=SELECTION_TIMEOUT,
         )
     except OpenRouterError as exc:
+        logger.info("deck pick failed %.3fs cost=absent", time.perf_counter() - started)
         raise DeckUnavailable from exc
+    logger.info("deck pick %.3fs cost=%s", time.perf_counter() - started, _cost_text(payload))
 
     try:
         if payload["choices"][0].get("finish_reason") != "stop":
@@ -254,7 +287,7 @@ def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tup
     except (ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise DeckUnavailable from exc
 
-    if payload.get("model") != DECK_MODEL:
+    if payload.get("model") != model:
         raise DeckUnavailable
     if not isinstance(parsed, dict) or set(parsed) != {"ids", "name"}:
         raise DeckUnavailable

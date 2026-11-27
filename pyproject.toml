@@ -38,6 +38,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = ["-ra", "--strict-markers", "--reuse-db"]
+markers = [
+    "deck_eval: manual live deck-pick eval; CI runs pytest -m 'not deck_eval'",
+]
 
 [tool.ruff]
 target-version = "py312"

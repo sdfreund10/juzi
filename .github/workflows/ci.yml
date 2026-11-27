@@ -63,7 +63,8 @@ jobs:
         run: uv run python manage.py makemigrations --check --dry-run
 
       - name: Pytest
-        run: uv run pytest
+        # Live deck-pick evals stay manual: uv run pytest api/tests/test_deck_evals.py -m deck_eval
+        run: uv run pytest -m "not deck_eval"
 
   frontend:
     name: Frontend test, typecheck & build
