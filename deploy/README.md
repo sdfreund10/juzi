@@ -28,7 +28,7 @@ Replace `YOUR_DOMAIN` everywhere with the production hostname.
 ```bash
 sudo apt update
 sudo apt install -y \
-  build-essential curl git nginx postgresql postgresql-contrib rsync \
+  build-essential curl git nginx postgresql postgresql-contrib postgresql-16-pgvector rsync \
   python3.12 python3.12-venv python3-certbot-nginx
 ```
 

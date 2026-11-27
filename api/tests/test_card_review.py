@@ -167,7 +167,7 @@ def test_review_input_excludes_private_data_and_includes_decks() -> None:
         captured["json"] = json
         return _openrouter_response(content=_review_payload())
 
-    with patch("api.services.card_review.requests.post", side_effect=fake_post):
+    with patch("api.services.openrouter.requests.post", side_effect=fake_post):
         review_card(word)
 
     sent = json.dumps(captured["json"], ensure_ascii=False)
@@ -193,7 +193,7 @@ def test_review_input_excludes_private_data_and_includes_decks() -> None:
 def test_review_card_rejects_invalid_provider_payload(content: str, model: str) -> None:
     word = _word()
     with patch(
-        "api.services.card_review.requests.post",
+        "api.services.openrouter.requests.post",
         return_value=_openrouter_response(content=content, model=model),
     ):
         with pytest.raises(CardReviewFailed, match="review"):
@@ -204,12 +204,12 @@ def test_review_card_rejects_invalid_provider_payload(content: str, model: str) 
 @REVIEW_SETTINGS
 def test_review_card_reports_timeouts_and_provider_errors() -> None:
     word = _word()
-    with patch("api.services.card_review.requests.post", side_effect=requests.Timeout):
+    with patch("api.services.openrouter.requests.post", side_effect=requests.Timeout):
         with pytest.raises(CardReviewFailed, match="timed out"):
             review_card(word)
 
     with patch(
-        "api.services.card_review.requests.post",
+        "api.services.openrouter.requests.post",
         return_value=_openrouter_response(status_code=503, raw_json={"error": "down"}),
     ):
         with pytest.raises(CardReviewFailed, match="provider"):
@@ -220,7 +220,7 @@ def test_review_card_reports_timeouts_and_provider_errors() -> None:
 @override_settings(OPENROUTER_API_KEY="")
 def test_missing_api_key_is_not_configured() -> None:
     word = _word()
-    with patch("api.services.card_review.requests.post") as post:
+    with patch("api.services.openrouter.requests.post") as post:
         with pytest.raises(CardReviewFailed, match="not configured"):
             review_card(word)
     post.assert_not_called()
@@ -234,7 +234,7 @@ def test_change_form_offers_analysis_only_to_editors_of_saved_words() -> None:
     viewer_client = _client_for(_staff_with_word_view())
     admin_client = _client_for(_superuser())
 
-    with patch("api.services.card_review.requests.post") as post:
+    with patch("api.services.openrouter.requests.post") as post:
         change_body = editor_client.get(change_url).content.decode()
         add_body = admin_client.get(reverse("admin:api_word_add")).content.decode()
         viewer_body = viewer_client.get(f"{change_url}?include_analysis=true").content.decode()
@@ -274,7 +274,7 @@ def test_include_analysis_escapes_suggestions_and_does_not_save_the_word() -> No
     )
 
     with patch(
-        "api.services.card_review.requests.post",
+        "api.services.openrouter.requests.post",
         return_value=_openrouter_response(content=script_payload),
     ):
         response = client.get(f"{_change_url(word)}?include_analysis=true")
@@ -299,7 +299,7 @@ def test_remove_verdict_points_active_words_to_archive() -> None:
     )
 
     with patch(
-        "api.services.card_review.requests.post",
+        "api.services.openrouter.requests.post",
         side_effect=[
             _openrouter_response(content=removal_payload),
             _openrouter_response(content=removal_payload),
@@ -322,7 +322,7 @@ def test_include_analysis_shows_review_errors_without_mutating_the_word() -> Non
     client = _client_for(_superuser())
 
     with patch(
-        "api.services.card_review.requests.post",
+        "api.services.openrouter.requests.post",
         return_value=_openrouter_response(content="not-json"),
     ):
         response = client.get(f"{_change_url(word)}?include_analysis=true")
