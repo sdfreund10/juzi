@@ -210,7 +210,7 @@ def _choose_ids(prompt: str, size: int, head: list[Word]) -> tuple[list[int], st
 def _topic_names(word_ids: set[int]) -> dict[int, str]:
     names: dict[int, str] = {}
     links = (
-        WordCategory.objects.filter(word_id__in=word_ids)
+        WordCategory.objects.filter(word_id__in=word_ids, category__owner__isnull=True)
         .exclude(category__name__startswith=HSK_CATEGORY_PREFIX)
         .select_related("category")
         .order_by("category__name")

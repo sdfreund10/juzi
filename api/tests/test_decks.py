@@ -255,6 +255,32 @@ def test_cosine_rank_prefers_a_closer_vector_over_a_longer_one(
 
 @pytest.mark.django_db
 @KEY
+def test_a_learner_deck_title_is_not_sent_as_the_topic(
+    client: APIClient,
+    alice: User,
+) -> None:
+    bob = _make_user(email="bob@example.com", password="s3cret-bob")
+    topic = Category.objects.create(name="Food, Cooking & Dining")
+    theirs = Category.objects.create(name="Bob dinner plans", owner=bob)
+    word = _word(chinese="父母", pinyin="fùmǔ", english_basic="parents")
+    WordCategory.objects.create(word=word, category=theirs)
+    WordCategory.objects.create(word=word, category=topic)
+    _store(word, _vector_at(0, 1.0))
+
+    provider, http = _patch_provider(_vector_at(0, 1.0), _chat_response([word.id]))
+    headers = _login(client, alice, "s3cret-alice")
+    with http:
+        response = _post(client, headers, {"prompt": "talk to their parents", "size": 20})
+
+    assert response.status_code == status.HTTP_201_CREATED
+    sent = provider.chat_calls[0]["json"]["messages"][1]["content"]
+    candidates = json.loads(sent)["candidates"]
+    assert candidates[0]["topic"] == topic.name
+    assert theirs.name not in sent
+
+
+@pytest.mark.django_db
+@KEY
 def test_skipped_rows_never_reach_the_candidate_list(client: APIClient, alice: User) -> None:
     kept = _word(chinese="留", pinyin="liú", english_basic="to keep")
     stale = _word(chinese="舊", pinyin="jiù", english_basic="stale")
