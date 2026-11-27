@@ -10,9 +10,8 @@ from typing import Any
 import requests
 from django.conf import settings
 from django.utils import timezone
-from rest_framework import serializers
 
-from api.models import EMBEDDING_DIMENSIONS, Word, WordEmbedding
+from api.models import Word, WordEmbedding
 
 EMBEDDING_MODEL = "openai/text-embedding-3-small"
 EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
@@ -29,19 +28,6 @@ _SOURCE_LINES = (
 
 class EmbeddingFailed(Exception):
     """The provider did not return a usable vector."""
-
-
-class EmbeddingItemSerializer(serializers.Serializer):
-    index = serializers.IntegerField(min_value=0)
-    embedding = serializers.ListField(
-        child=serializers.FloatField(),
-        min_length=EMBEDDING_DIMENSIONS,
-        max_length=EMBEDDING_DIMENSIONS,
-    )
-
-
-class EmbeddingResponseSerializer(serializers.Serializer):
-    data = EmbeddingItemSerializer(many=True)
 
 
 def embedding_source_text(word: Word) -> str:
@@ -134,15 +120,13 @@ def refresh_word_embedding(word: Word) -> None:
 
 
 def _vectors_for_inputs(payload: Any, count: int) -> list[list[float]]:
-    serializer = EmbeddingResponseSerializer(data=payload)
-    if not serializer.is_valid():
-        raise EmbeddingFailed("The embedding response was invalid.")
+    """Pair each input with the vector OpenAI returned for that index.
 
-    items = serializer.validated_data["data"]
-    if len(items) != count:
-        raise EmbeddingFailed("The embedding response was invalid.")
-    by_index = {item["index"]: item["embedding"] for item in items}
+    The vector itself is stored as sent. A missing index is a broken response,
+    because the batch could not be matched back to the words.
+    """
     try:
+        by_index = {item["index"]: item["embedding"] for item in payload["data"]}
         return [by_index[index] for index in range(count)]
-    except KeyError as exc:
+    except (KeyError, TypeError) as exc:
         raise EmbeddingFailed("The embedding response was invalid.") from exc
