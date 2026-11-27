@@ -39,7 +39,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = ["-ra", "--strict-markers", "--reuse-db"]
 markers = [
-    "deck_eval: live deck-pick eval; skipped unless OPENROUTER_API_KEY is set",
+    "deck_eval: manual live deck-pick eval; CI runs pytest -m 'not deck_eval'",
 ]
 
 [tool.ruff]

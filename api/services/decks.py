@@ -235,9 +235,23 @@ def _deck_chat_model() -> str:
     return configured or DECK_MODEL
 
 
+def _cost_text(payload: object | None) -> str:
+    """Dollar cost from an OpenRouter body, or ``absent`` when it has none."""
+    if not isinstance(payload, dict):
+        return "absent"
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return "absent"
+    cost = usage.get("cost")
+    if isinstance(cost, bool) or not isinstance(cost, int | float):
+        return "absent"
+    return f"{cost:.6f}"
+
+
 def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tuple[list[int], str]:
     model = _deck_chat_model()
     logger.info("deck candidates: %s", _id_list(item["id"] for item in candidates))
+    started = time.perf_counter()
     try:
         payload = post_json(
             OPENROUTER_URL,
@@ -255,11 +269,14 @@ def _select_ids(prompt: str, size: int, candidates: list[dict[str, Any]]) -> tup
                 ],
                 "response_format": SELECTION_SCHEMA,
                 "provider": {"allow_fallbacks": False},
+                "usage": {"include": True},
             },
             timeout=SELECTION_TIMEOUT,
         )
     except OpenRouterError as exc:
+        logger.info("deck pick failed %.3fs cost=absent", time.perf_counter() - started)
         raise DeckUnavailable from exc
+    logger.info("deck pick %.3fs cost=%s", time.perf_counter() - started, _cost_text(payload))
 
     try:
         if payload["choices"][0].get("finish_reason") != "stop":
