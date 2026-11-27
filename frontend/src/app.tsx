@@ -3,6 +3,7 @@ import './app.css'
 import { AuthProvider, useAuth } from './auth'
 import { Brand } from './brand'
 import { ConnectionOverlay } from './connectionOverlay'
+import { DeckNew } from './deckNew'
 import { Decks } from './decks'
 import { DifficultyStep } from './difficulty'
 import { Install } from './install'
@@ -58,6 +59,8 @@ function RoutedScreen ({ route }: { route: Route }) {
   let body
   if (route.name === 'proficiency') {
     body = <ProficiencyStep />
+  } else if (route.name === 'deck-new') {
+    body = <DeckNew />
   } else if (route.name === 'session-new') {
     body = <DifficultyStep categoryId={route.categoryId} />
   } else if (isStudy) {

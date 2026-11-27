@@ -141,6 +141,7 @@ def test_categories_lists_topic_decks_only(
             "advanced_count": 0,
             "expert_count": 0,
             "last_practiced_at": None,
+            "public": True,
         }
     ]
 
@@ -171,6 +172,7 @@ def test_categories_includes_difficulty_counts(
             "advanced_count": 1,
             "expert_count": 1,
             "last_practiced_at": None,
+            "public": True,
         }
     ]
 
@@ -218,6 +220,7 @@ def test_categories_includes_per_user_last_practiced_at(
             "advanced_count": 1,
             "expert_count": 1,
             "last_practiced_at": practiced_at.isoformat(),
+            "public": True,
         }
     ]
 
@@ -517,5 +520,6 @@ def test_categories_exclude_archived_words_from_counts_and_last_practiced(
             "advanced_count": 1,
             "expert_count": 1,
             "last_practiced_at": None,
+            "public": True,
         }
     ]

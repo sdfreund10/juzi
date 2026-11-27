@@ -8,6 +8,7 @@ export function routeDepth (route: Route): number {
       return 0
     case 'install':
     case 'proficiency':
+    case 'deck-new':
     case 'session-new':
       return 1
     case 'session':
@@ -23,6 +24,8 @@ export function routeKey (route: Route): string {
       return 'install'
     case 'proficiency':
       return 'proficiency'
+    case 'deck-new':
+      return 'deck-new'
     case 'session-new':
       return `session-new:${route.categoryId}`
     case 'session':

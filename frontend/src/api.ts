@@ -171,6 +171,7 @@ export type Category = {
   advanced_count: number
   expert_count: number
   last_practiced_at: string | null
+  public: boolean
 }
 
 export type Difficulty = ProficiencyLevel
@@ -203,6 +204,20 @@ export type StudySession = {
 
 export function fetchCategories (): Promise<Category[]> {
   return apiRequest<Category[]>('/api/categories/')
+}
+
+export type DeckSize = 20 | 40 | 60
+
+export type BuiltDeck = {
+  id: number
+  name: string
+}
+
+export function buildDeck (prompt: string, size: DeckSize): Promise<BuiltDeck> {
+  return apiRequest<BuiltDeck>('/api/decks/', {
+    method: 'POST',
+    body: { prompt, size }
+  })
 }
 
 export function createSession (

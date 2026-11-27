@@ -66,6 +66,59 @@ function DeckRow ({
   )
 }
 
+function CustomDecksSection ({
+  categories,
+  showBuild,
+  pinnedIds,
+  availableIds,
+  onTogglePin
+}: {
+  categories: Category[]
+  showBuild: boolean
+  pinnedIds: number[]
+  availableIds: Set<number> | null
+  onTogglePin: (id: number) => void
+}) {
+  if (categories.length === 0 && !showBuild) return null
+  return (
+    <details class='list deck-section custom-decks' open>
+      <summary class='list-heading'>
+        <h2>Custom decks</h2>
+        <svg
+          class='section-chevron'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          stroke-width='2'
+          stroke-linecap='round'
+          stroke-linejoin='round'
+          aria-hidden='true'
+        >
+          <path d='m9 6 6 6-6 6' />
+        </svg>
+      </summary>
+      {categories.map((category) => (
+        <DeckRow
+          key={category.id}
+          category={category}
+          pinned={pinnedIds.includes(category.id)}
+          available={availableIds === null || availableIds.has(category.id)}
+          onTogglePin={onTogglePin}
+        />
+      ))}
+      {showBuild && (
+        <button
+          type='button'
+          class='text-btn build-deck'
+          onClick={() => navigate({ name: 'deck-new' })}
+        >
+          + Build new deck
+        </button>
+      )}
+    </details>
+  )
+}
+
 function DeckSection ({
   label,
   categories,
@@ -139,17 +192,36 @@ export function Decks () {
   }
 
   const searching = query.trim().length > 0
-  const visible =
+  const named =
     categories === null ? null : decksMatchingName(categories, query)
-  const pinned =
-    visible === null || searching ? [] : pinnedDecks(visible, pinnedIds)
-  const recent =
-    visible === null || searching
+  const publicNamed =
+    named === null
+      ? null
+      : named.filter((category) => category.public !== false)
+  const customNamed =
+    named === null
       ? []
-      : recentlyPracticedDecks(visible).filter(
+      : named.filter((category) => category.public === false)
+  const pinned =
+    publicNamed === null || searching
+      ? []
+      : pinnedDecks(publicNamed, pinnedIds)
+  const recent =
+    publicNamed === null || searching
+      ? []
+      : recentlyPracticedDecks(publicNamed).filter(
         (category) => !pinnedIds.includes(category.id)
       )
   const availableIds = offline ? cachedCategoryIds() : null
+  const customSection = (
+    <CustomDecksSection
+      categories={customNamed}
+      showBuild={!offline}
+      pinnedIds={pinnedIds}
+      availableIds={availableIds}
+      onTogglePin={onTogglePin}
+    />
+  )
 
   return (
     <>
@@ -186,9 +258,12 @@ export function Decks () {
           )
         : categories !== null && categories.length === 0
           ? (
-            <section class='panel'>
-              <p>No decks yet. Seed vocabulary to get started.</p>
-            </section>
+            <>
+              <section class='panel'>
+                <p>No decks yet. Seed vocabulary to get started.</p>
+              </section>
+              {customSection}
+            </>
             )
           : categories !== null
             ? (
@@ -217,58 +292,64 @@ export function Decks () {
                   />
                 </label>
 
-                {visible !== null && visible.length === 0
+                {searching
                   ? (
-                    <p class='subtitle'>
-                      {searching ? 'No decks match.' : 'No decks yet.'}
-                    </p>
+                    <>
+                      {publicNamed !== null &&
+                      publicNamed.length === 0 &&
+                      customNamed.length === 0
+                        ? <p class='subtitle'>No decks match.</p>
+                        : publicNamed !== null && publicNamed.length > 0
+                          ? (
+                            <section class='list' aria-label='Decks'>
+                              {publicNamed.map((category) => (
+                                <DeckRow
+                                  key={category.id}
+                                  category={category}
+                                  pinned={pinnedIds.includes(category.id)}
+                                  available={
+                                    availableIds === null ||
+                                    availableIds.has(category.id)
+                                  }
+                                  onTogglePin={onTogglePin}
+                                />
+                              ))}
+                            </section>
+                            )
+                          : null}
+                      {customSection}
+                    </>
                     )
-                  : searching
-                    ? (
-                      <section class='list' aria-label='Decks'>
-                        {visible?.map((category) => (
-                          <DeckRow
-                            key={category.id}
-                            category={category}
-                            pinned={pinnedIds.includes(category.id)}
-                            available={
-                              availableIds === null ||
-                              availableIds.has(category.id)
-                            }
-                            onTogglePin={onTogglePin}
-                          />
-                        ))}
-                      </section>
-                      )
-                    : (
-                      <>
-                        <DeckSection
-                          label='Pinned'
-                          categories={pinned}
-                          pinnedIds={pinnedIds}
-                          availableIds={availableIds}
-                          onTogglePin={onTogglePin}
-                        />
-                        <DeckSection
-                          label='Recent'
-                          categories={recent}
-                          pinnedIds={pinnedIds}
-                          availableIds={availableIds}
-                          onTogglePin={onTogglePin}
-                        />
-                        <DeckSection
-                          label={
-                  pinned.length > 0 || recent.length > 0
-                    ? 'All decks'
-                    : 'Decks'
-                }
-                          categories={visible ?? []}
-                          pinnedIds={pinnedIds}
-                          availableIds={availableIds}
-                          onTogglePin={onTogglePin}
-                        />
-                      </>
-                      )}
+                  : (
+                    <>
+                      <DeckSection
+                        label='Pinned'
+                        categories={pinned}
+                        pinnedIds={pinnedIds}
+                        availableIds={availableIds}
+                        onTogglePin={onTogglePin}
+                      />
+                      <DeckSection
+                        label='Recent'
+                        categories={recent}
+                        pinnedIds={pinnedIds}
+                        availableIds={availableIds}
+                        onTogglePin={onTogglePin}
+                      />
+                      {customSection}
+                      <DeckSection
+                        label={
+                          pinned.length > 0 || recent.length > 0
+                            ? 'All decks'
+                            : 'Decks'
+                        }
+                        categories={publicNamed ?? []}
+                        pinnedIds={pinnedIds}
+                        availableIds={availableIds}
+                        onTogglePin={onTogglePin}
+                      />
+                    </>
+                    )}
               </>
               )
             : null}

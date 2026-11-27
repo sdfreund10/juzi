@@ -13,6 +13,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'install' }
   | { name: 'proficiency' }
+  | { name: 'deck-new' }
   | { name: 'session-new'; categoryId: number }
   | { name: 'session'; categoryId: number; difficulties: Difficulty[] }
 
@@ -37,6 +38,7 @@ export function parsePath (pathname: string): Route {
   if (path === '/') return { name: 'home' }
   if (path === '/install') return { name: 'install' }
   if (path === '/proficiency') return { name: 'proficiency' }
+  if (path === '/decks/new') return { name: 'deck-new' }
 
   const match = path.match(/^\/category\/(\d+)\/sessions\/([^/]+)$/)
   if (!match) return { name: 'home' }
@@ -63,6 +65,8 @@ export function pathFor (route: Route): string {
       return '/install'
     case 'proficiency':
       return '/proficiency'
+    case 'deck-new':
+      return '/decks/new'
     case 'session-new':
       return `/category/${route.categoryId}/sessions/new`
     case 'session':

@@ -38,6 +38,12 @@ describe('parsePath / pathFor', () => {
     expect(pathFor({ name: 'proficiency' })).toBe('/proficiency')
   })
 
+  it('round-trips the new deck form', () => {
+    expect(parsePath('/decks/new')).toEqual({ name: 'deck-new' })
+    expect(parsePath('/decks/new/')).toEqual({ name: 'deck-new' })
+    expect(pathFor({ name: 'deck-new' })).toBe('/decks/new')
+  })
+
   it('parses session-new', () => {
     expect(parsePath('/category/12/sessions/new')).toEqual({
       name: 'session-new',
@@ -55,6 +61,7 @@ describe('parsePath / pathFor', () => {
 
   it('falls back to home for unknown paths', () => {
     expect(parsePath('/nope')).toEqual({ name: 'home' })
+    expect(parsePath('/decks')).toEqual({ name: 'home' })
     expect(parsePath('/category/abc/sessions/new')).toEqual({ name: 'home' })
   })
 })
