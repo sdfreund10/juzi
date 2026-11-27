@@ -18,6 +18,16 @@ class ProficiencyLevelSerializer(serializers.Serializer):
     proficiency_level = serializers.ChoiceField(choices=Learner.ProficiencyLevel.choices)
 
 
+class BuildDeckSerializer(serializers.Serializer):
+    prompt = serializers.CharField(allow_blank=False)
+    size = serializers.IntegerField()
+
+    def validate_size(self, value: int) -> int:
+        if value not in (20, 40, 60):
+            raise serializers.ValidationError("Size must be 20, 40, or 60.")
+        return value
+
+
 class CreateSessionSerializer(serializers.Serializer):
     category_id = serializers.IntegerField(min_value=1)
     difficulties = serializers.ListField(

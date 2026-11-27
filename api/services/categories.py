@@ -10,9 +10,16 @@ HSK_CATEGORY_PREFIX = "HSK "
 
 
 def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
-    """Topic decks with difficulty-band active word counts and per-user last practice."""
+    """Operator topic decks plus this learner's decks, with band counts.
+
+    Owner-null names that start with ``HSK `` stay hidden. A learner deck
+    keeps that prefix and still shows for its owner.
+    """
+    visible = Q(owner=user) | Q(owner__isnull=True)
+    hidden_hsk = Q(owner__isnull=True) & Q(name__startswith=HSK_CATEGORY_PREFIX)
     return (
-        Category.objects.exclude(name__startswith=HSK_CATEGORY_PREFIX)
+        Category.objects.filter(visible)
+        .exclude(hidden_hsk)
         .annotate(
             active_words=FilteredRelation("words", condition=Q(words__archived_at__isnull=True)),
             user_progress=FilteredRelation(
@@ -60,5 +67,5 @@ def topic_categories_queryset(*, user: AbstractBaseUser) -> QuerySet[Category]:
 
 
 def list_topic_categories(*, user: AbstractBaseUser) -> list[Category]:
-    """Return study topic decks, excluding seeded HSK-level category rows."""
+    """Return operator topic decks and decks owned by this user."""
     return list(topic_categories_queryset(user=user))

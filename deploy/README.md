@@ -69,6 +69,9 @@ sudo -u juzi sudo -n systemctl status juzi   # must work with no password prompt
 sudo -u postgres createuser juzi
 sudo -u postgres createdb -O juzi juzi
 sudo -u postgres psql -c "ALTER USER juzi WITH PASSWORD 'choose-a-strong-password';"
+# Ubuntu's pgvector package is not a trusted extension, so the app role cannot
+# create it. The migration runs the same statement and is a no-op after this.
+sudo -u postgres psql -d juzi -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 Use a local peer/password URL in the env file below (`localhost`). Do not expose Postgres on the public interface.

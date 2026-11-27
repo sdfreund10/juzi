@@ -2,6 +2,7 @@ from django.urls import path
 
 from .auth_views import login_view, logout_view, me, set_proficiency_level
 from .study_views import (
+    build_deck,
     categories,
     create_session,
     flag_word,
@@ -19,6 +20,7 @@ urlpatterns = [
     path("auth/logout/", logout_view, name="auth-logout"),
     path("auth/proficiency-level/", set_proficiency_level, name="auth-proficiency-level"),
     path("categories/", categories, name="categories"),
+    path("decks/", build_deck, name="decks-create"),
     path("sessions/", create_session, name="sessions-create"),
     path("ratings/", rate_card, name="ratings-create"),
     path("ratings/undo/", undo_card_rating, name="ratings-undo"),
