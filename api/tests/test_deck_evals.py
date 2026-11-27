@@ -8,9 +8,10 @@ cards that belong which the pick left out. ``unrelated_selected`` is the share
 of the saved deck whose cards do not belong. An empty deck scores 0 on the
 second rate.
 
-A case passes only when both rates are 0, the saved size matches where the
-case requires one, and the name passes where the case checks it. Anything else
-fails and is logged.
+One case runs every check before it fails: saved size, every belonging card
+included, every unrelated card excluded, and the name when the case has one.
+The misses are reported together. A pass still requires both rates at 0, the
+required size, and a fitting name when the case checks it.
 
 CI does not run these cases (``pytest -m "not deck_eval"``). Run them locally
 with the key in the environment or ``.env``:
@@ -267,30 +268,27 @@ def require_perfect(
     selected: list[int],
     name: str,
     outsiders: set[int],
-    required_size: int | None = None,
+    required_size: int,
     hints: tuple[str, ...] | None = None,
 ) -> None:
-    """Fail unless the pick kept every belonging card and nothing else.
-
-    A required size or a name check is logged too when that case has one.
-    """
+    """Run every check for one case, then report every miss together."""
     belonging = {card.id for card in deck if card.belongs}
+    chosen = set(selected)
     excluded, unrelated = score_pick(belonging, outsiders, selected)
     problems: list[str] = []
-    if excluded != 0 or unrelated != 0:
-        left_out = len(belonging - set(selected))
-        kept = len(set(selected) & outsiders)
-        problems.append(
-            f"belonging_excluded={excluded:.3f} ({left_out}/{len(belonging)}) "
-            f"unrelated_selected={unrelated:.3f} ({kept}/{len(selected)})"
-        )
-    if required_size is not None and len(selected) != required_size:
+    if len(selected) != required_size:
         problems.append(f"saved={len(selected)} required_size={required_size}")
+    if excluded != 0:
+        left_out = len(belonging - chosen)
+        problems.append(f"belonging_excluded={excluded:.3f} ({left_out}/{len(belonging)})")
+    if unrelated != 0:
+        kept = len(chosen & outsiders)
+        problems.append(f"unrelated_selected={unrelated:.3f} ({kept}/{len(selected)})")
     if hints is not None and not name_fits(name, prompt, hints):
         problems.append(f"name={name!r}")
     if not problems:
         return
-    message = f"deck eval case={label} imperfect " + " ".join(problems)
+    message = f"deck eval case={label} imperfect " + "; ".join(problems)
     print(message)
     raise AssertionError(message)
 
@@ -316,12 +314,12 @@ def test_a_perfect_pick_passes() -> None:
         ([1], 2, "Restaurant food", ("food", "restaurant"), "belonging_excluded=0.500"),
         ([1, 2, 3], 2, "Restaurant food", ("food", "restaurant"), "unrelated_selected=0.333"),
         ([1, 2], 3, "Restaurant food", ("food", "restaurant"), "required_size=3"),
-        ([1, 2], None, RESTAURANT, ("food", "restaurant"), "name="),
+        ([1, 2], 2, RESTAURANT, ("food", "restaurant"), "name="),
     ],
 )
 def test_an_imperfect_pick_fails_and_logs_the_miss(
     selected: list[int],
-    required_size: int | None,
+    required_size: int,
     name: str,
     hints: tuple[str, ...] | None,
     match: str,
@@ -354,10 +352,11 @@ def test_an_imperfect_pick_logs_every_miss_together(capsys: pytest.CaptureFixtur
             selected=[1, 3],
             name=RESTAURANT,
             outsiders=outsiders,
-            required_size=2,
+            required_size=3,
             hints=("food",),
         )
     message = str(failure.value)
+    assert "saved=2 required_size=3" in message
     assert "belonging_excluded=0.500" in message
     assert "unrelated_selected=0.500" in message
     assert "name=" in message
@@ -440,5 +439,6 @@ def test_the_deck_name_condenses_the_prompt(label, prompt, hints, deck) -> None:
         selected=selected,
         name=name,
         outsiders=outsiders,
+        required_size=sum(card.belongs for card in deck),
         hints=hints,
     )
